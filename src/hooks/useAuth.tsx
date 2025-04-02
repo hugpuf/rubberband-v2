@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authData.user) {
         // 2. Create organization and set user role as admin
         const { data: orgData, error: orgError } = await supabase
-          .from("organizations")
+          .from('organizations')
           .insert([{ name: orgName }])
           .select();
 
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // 3. Create user role as admin
           const { error: roleError } = await supabase
-            .from("user_roles")
+            .from('user_roles')
             .insert([
               {
                 user_id: authData.user.id,

@@ -66,7 +66,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     try {
       // First get the user's role and organization ID
       const { data: roleData, error: roleError } = await supabase
-        .from("user_roles")
+        .from('user_roles')
         .select("organization_id, role")
         .eq("user_id", user.id)
         .single();
@@ -78,7 +78,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         
         // Then fetch the organization details
         const { data: orgData, error: orgError } = await supabase
-          .from("organizations")
+          .from('organizations')
           .select("*")
           .eq("id", roleData.organization_id)
           .single();
@@ -88,7 +88,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         
         // Fetch all users in the organization with their roles and profiles
         const { data: usersData, error: usersError } = await supabase
-          .from("user_roles")
+          .from('user_roles')
           .select(`
             role,
             user_id,
@@ -97,7 +97,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           .eq("organization_id", roleData.organization_id);
           
         if (usersError) throw usersError;
-        setOrganizationUsers(usersData);
+        setOrganizationUsers(usersData as unknown as OrganizationUser[]);
       }
     } catch (error) {
       console.error("Error fetching organization:", error);
@@ -131,7 +131,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     
     try {
       const { error } = await supabase
-        .from("organizations")
+        .from('organizations')
         .update(updates)
         .eq("id", organization.id);
         
@@ -154,7 +154,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   // Helper function to find user by email
   const findUserByEmail = async (email: string) => {
     const { data, error } = await supabase
-      .from("profiles")
+      .from('profiles')
       .select("id")
       .eq("email", email)
       .single();
@@ -174,7 +174,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       
       // Add user role
       const { error: roleError } = await supabase
-        .from("user_roles")
+        .from('user_roles')
         .insert([{
           user_id: userData.id,
           organization_id: organization.id,
@@ -202,7 +202,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     
     try {
       const { error } = await supabase
-        .from("user_roles")
+        .from('user_roles')
         .update({ role: newRole })
         .eq("user_id", userId)
         .eq("organization_id", organization.id);
@@ -228,7 +228,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     
     try {
       const { error } = await supabase
-        .from("user_roles")
+        .from('user_roles')
         .delete()
         .eq("user_id", userId)
         .eq("organization_id", organization.id);
