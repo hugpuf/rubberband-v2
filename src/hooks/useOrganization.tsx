@@ -16,10 +16,23 @@ export type UserRole = {
   role: "admin" | "manager" | "viewer";
 };
 
+export type Profile = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
+type OrganizationUser = {
+  role: string;
+  user_id: string;
+  user: Profile;
+};
+
 type OrganizationContextType = {
   organization: Organization | null;
   userRole: string | null;
-  organizationUsers: any[] | null;
+  organizationUsers: OrganizationUser[] | null;
   isAdmin: boolean;
   isLoading: boolean;
   isError: boolean;
@@ -37,7 +50,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [organizationUsers, setOrganizationUsers] = useState<any[] | null>(null);
+  const [organizationUsers, setOrganizationUsers] = useState<OrganizationUser[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
   
@@ -73,16 +86,13 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         if (orgError) throw orgError;
         setOrganization(orgData);
         
-        // Fetch all users in the organization with their roles
+        // Fetch all users in the organization with their roles and profiles
         const { data: usersData, error: usersError } = await supabase
           .from("user_roles")
           .select(`
             role,
             user_id,
-            users:user_id (
-              email,
-              id
-            )
+            user:profiles(*)
           `)
           .eq("organization_id", roleData.organization_id);
           
@@ -141,22 +151,26 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Helper function to find user by email
+  const findUserByEmail = async (email: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .single();
+      
+    if (error) throw new Error("User not found with this email");
+    return data;
+  };
+
   // Simplified invite user function (a real implementation would send emails)
   const inviteUser = async (email: string, role: string) => {
     if (!organization || !isAdmin) return;
     
     try {
-      // In a real app, this would create a user invite and send an email
-      // For now, we'll assume the user is already registered and we can add the role
-      
       // Find user by email
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", email)
-        .single();
-        
-      if (userError) throw new Error("User not found with this email");
+      const userData = await findUserByEmail(email);
+      if (!userData) throw new Error("User not found with this email");
       
       // Add user role
       const { error: roleError } = await supabase

@@ -9,13 +9,100 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      organizations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          subscription_plan: string | null
+          timezone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          subscription_plan?: string | null
+          timezone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          subscription_plan?: string | null
+          timezone?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_belongs_to_organization: {
+        Args: {
+          org_id: string
+        }
+        Returns: boolean
+      }
+      user_is_admin_of_organization: {
+        Args: {
+          org_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
