@@ -27,10 +27,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for an active session on load
     const checkUser = async () => {
       try {
+        console.log("Checking for active session");
         const { data } = await supabase.auth.getSession();
         setUser(data.session?.user ?? null);
+        if (data.session?.user) {
+          console.log("Active session found, user ID:", data.session.user.id);
+        } else {
+          console.log("No active session found");
+        }
       } catch (error) {
-        console.error("Error checking auth:", error);
+        console.error("Error checking auth session:", error);
       } finally {
         setIsLoading(false);
       }
@@ -72,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
+      console.log("Found organization for user:", orgData[0].organization_id);
+      
       // Check if onboarding is completed
       const { data: settingsData, error: settingsError } = await supabase
         .from('organization_settings')
@@ -95,15 +103,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setAuthError(null);
     try {
+      console.log("Starting signin process for user:", email);
       setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Login error:", error.message, error);
+        throw error;
+      }
       
       if (data.user) {
+        console.log("User successfully authenticated:", data.user.id);
+        
         // Check if onboarding is completed
         const isOnboardingCompleted = await checkOnboardingStatus(data.user.id);
         
@@ -141,41 +155,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthError(null);
     try {
       setIsLoading(true);
-      console.log("Starting signup process for:", email);
+      console.log("Starting signup process for:", email, "with organization:", orgName);
       
-      // 1. Create the user account
+      // STEP 1: Create the user account
+      console.log("STEP 1: Creating user account");
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error("User creation error:", authError.message, authError);
+        throw authError;
+      }
 
       if (!authData.user) {
-        throw new Error("User account creation failed");
+        const errorMsg = "User account creation failed - no user returned from auth";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
       }
       
-      console.log("User created:", authData.user.id);
+      console.log("User created successfully:", authData.user.id);
       
-      // 2. Create organization
+      // STEP 2: Create organization
+      console.log("STEP 2: Creating organization:", orgName);
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .insert([{ name: orgName }])
         .select();
 
       if (orgError) {
-        console.error("Error creating organization:", orgError);
+        console.error("Error creating organization:", orgError.message, orgError);
+        console.error("Organization data attempted:", { name: orgName });
         throw orgError;
       }
 
       if (!orgData || orgData.length === 0) {
-        throw new Error("Failed to create organization");
+        const errorMsg = "Failed to create organization - no data returned";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
       }
       
       const orgId = orgData[0].id;
-      console.log("Organization created:", orgId);
+      console.log("Organization created successfully:", orgId);
       
-      // 3. Create user role as admin
+      // STEP 3: Create user role as admin
+      console.log("STEP 3: Creating user role for user", authData.user.id, "in organization", orgId);
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert([
@@ -187,20 +212,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ]);
 
       if (roleError) {
-        console.error("Error creating user role:", roleError);
+        console.error("Error creating user role:", roleError.message, roleError);
+        console.error("Role data attempted:", {
+          user_id: authData.user.id,
+          organization_id: orgId,
+          role: "admin",
+        });
         throw roleError;
       }
       
-      console.log("User role created for user:", authData.user.id);
+      console.log("User role created successfully");
 
-      // 4. Create user profile if not automatically created by trigger
+      // STEP 4: Create or verify user profile
+      console.log("STEP 4: Verifying user profile exists");
       const { data: profileData, error: profileCheckError } = await supabase
         .from('profiles')
         .select()
         .eq('id', authData.user.id);
         
       if (profileCheckError) {
-        console.error("Error checking profile:", profileCheckError);
+        console.error("Error checking profile:", profileCheckError.message, profileCheckError);
       }
       
       if (!profileData || profileData.length === 0) {
@@ -215,9 +246,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ]);
           
         if (profileError) {
-          console.error("Error creating profile:", profileError);
+          console.error("Error creating profile:", profileError.message, profileError);
+          console.error("Profile data attempted:", {
+            id: authData.user.id,
+            email: email
+          });
           throw profileError;
         }
+        console.log("Profile created manually");
+      } else {
+        console.log("Profile already exists");
       }
 
       toast({
@@ -225,12 +263,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Let's complete your account setup.",
       });
       
+      console.log("Signup process completed successfully, redirecting to onboarding");
+      
       // Redirect to onboarding flow for new users
       setTimeout(() => {
         navigate("/onboarding");
       }, 0);
     } catch (error: any) {
       console.error("Signup error:", error);
+      console.error("Full error object:", JSON.stringify(error, null, 2));
       setAuthError(error.message || "An error occurred during signup");
       toast({
         variant: "destructive",
@@ -245,13 +286,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log("Signing out user");
       await supabase.auth.signOut();
       navigate("/auth");
       toast({
         title: "Logged out",
         description: "You have been signed out successfully.",
       });
+      console.log("Sign out completed");
     } catch (error: any) {
+      console.error("Error signing out:", error);
       setAuthError(error.message || "Error signing out");
       toast({
         variant: "destructive",
