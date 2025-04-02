@@ -159,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // STEP 1: Create the user account
       console.log("STEP 1: Creating user account");
+      console.log("Signup data being sent:", { email });
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -166,12 +167,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authError) {
         console.error("User creation error:", authError.message, authError);
+        console.error("Request data that failed:", { email });
         throw authError;
       }
 
       if (!authData.user) {
         const errorMsg = "User account creation failed - no user returned from auth";
         console.error(errorMsg);
+        console.error("Request data that failed:", { email });
         throw new Error(errorMsg);
       }
       
@@ -179,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // STEP 2: Create organization
       console.log("STEP 2: Creating organization:", orgName);
+      console.log("Organization data being sent:", { name: orgName });
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .insert([{ name: orgName }])
@@ -187,12 +191,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (orgError) {
         console.error("Error creating organization:", orgError.message, orgError);
         console.error("Organization data attempted:", { name: orgName });
+        console.error("User context:", { userId: authData.user.id });
         throw orgError;
       }
 
       if (!orgData || orgData.length === 0) {
         const errorMsg = "Failed to create organization - no data returned";
         console.error(errorMsg);
+        console.error("Organization data attempted:", { name: orgName });
+        console.error("User context:", { userId: authData.user.id });
         throw new Error(errorMsg);
       }
       
@@ -201,6 +208,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // STEP 3: Create user role as admin
       console.log("STEP 3: Creating user role for user", authData.user.id, "in organization", orgId);
+      console.log("Role data being sent:", {
+        user_id: authData.user.id,
+        organization_id: orgId,
+        role: "admin",
+      });
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert([
@@ -218,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           organization_id: orgId,
           role: "admin",
         });
+        console.error("Transaction context:", { organizationCreated: true });
         throw roleError;
       }
       
@@ -225,6 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // STEP 4: Create or verify user profile
       console.log("STEP 4: Verifying user profile exists");
+      console.log("Profile check data:", { id: authData.user.id });
       const { data: profileData, error: profileCheckError } = await supabase
         .from('profiles')
         .select()
@@ -232,10 +246,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
       if (profileCheckError) {
         console.error("Error checking profile:", profileCheckError.message, profileCheckError);
+        console.error("Profile check data:", { id: authData.user.id });
       }
       
       if (!profileData || profileData.length === 0) {
         console.log("Profile not found, creating manually");
+        console.log("Profile data being sent:", {
+          id: authData.user.id,
+          email: email
+        });
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([
@@ -251,12 +270,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: authData.user.id,
             email: email
           });
+          console.error("Transaction context:", { organizationCreated: true, roleCreated: true });
           throw profileError;
         }
         console.log("Profile created manually");
       } else {
         console.log("Profile already exists");
       }
+
+      // STEP 5: Create organization settings
+      console.log("STEP 5: Creating organization settings");
+      console.log("Organization settings data being sent:", {
+        organization_id: orgId,
+        has_completed_onboarding: false
+      });
+      
+      const { error: settingsError } = await supabase
+        .from('organization_settings')
+        .insert([{
+          organization_id: orgId,
+          has_completed_onboarding: false
+        }]);
+        
+      if (settingsError) {
+        console.error("Error creating organization settings:", settingsError.message, settingsError);
+        console.error("Settings data attempted:", {
+          organization_id: orgId,
+          has_completed_onboarding: false
+        });
+        console.error("Transaction context:", { 
+          organizationCreated: true, 
+          roleCreated: true,
+          profileCreated: true 
+        });
+        throw settingsError;
+      }
+      
+      console.log("Organization settings created successfully");
 
       toast({
         title: "Account created!",
