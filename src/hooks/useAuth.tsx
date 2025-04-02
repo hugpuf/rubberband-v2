@@ -1,14 +1,9 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { createClient, User } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
-
-// Create a Supabase client
-const supabaseUrl = "https://your-project-url.supabase.co";
-const supabaseAnonKey = "your-anon-key";
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from "@/integrations/supabase/client";
 
 type AuthContextType = {
   user: User | null;

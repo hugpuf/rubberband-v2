@@ -1,14 +1,8 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "./useAuth";
 import { useToast } from "@/hooks/use-toast";
-
-// Create a Supabase client
-const supabaseUrl = "https://your-project-url.supabase.co";
-const supabaseAnonKey = "your-anon-key";
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from "@/integrations/supabase/client";
 
 export type Organization = {
   id: string;
