@@ -65,6 +65,7 @@ export const createUserAccount = async (email: string, password: string) => {
     throw new Error(errorMsg);
   }
   
+  console.log("User account created successfully:", data.user.id);
   return data.user;
 };
 
@@ -90,6 +91,7 @@ export const createOrganization = async (orgName: string) => {
     throw new Error(errorMsg);
   }
   
+  console.log("Organization created successfully with ID:", data[0].id);
   return data[0].id;
 };
 
@@ -122,6 +124,7 @@ export const createUserRole = async (userId: string, orgId: string, role: string
     throw error;
   }
   
+  console.log("User role created successfully");
   return true;
 };
 

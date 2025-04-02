@@ -110,10 +110,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Complete signup process in steps
       const authUser = await createUserAccount(email, password);
+      console.log("User account created:", authUser.id);
+      
       const orgId = await createOrganization(orgName);
+      console.log("Organization created:", orgId);
+      
       await createUserRole(authUser.id, orgId);
+      console.log("User role created for user", authUser.id, "in organization", orgId);
+      
       await verifyUserProfile(authUser.id, email);
+      console.log("User profile verified/created for user:", authUser.id);
+      
       await createOrganizationSettings(orgId);
+      console.log("Organization settings created for organization:", orgId);
 
       toast({
         title: "Account created!",
