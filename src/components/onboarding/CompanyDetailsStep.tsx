@@ -104,15 +104,17 @@ export function CompanyDetailsStep() {
     try {
       setCheckingHandle(true);
       
-      const { data } = await supabase
+      const { count, error } = await supabase
         .from('organizations')
-        .select('id')
-        .eq('workspace_handle', handle)
-        .single();
+        .select('*', { count: 'exact', head: true })
+        .eq('workspace_handle', handle);
         
-      setHandleAvailable(!data);
+      if (error) throw error;
+      
+      setHandleAvailable(count === 0);
     } catch (error) {
-      // If error, handle doesn't exist (assuming it's a not found error)
+      console.error("Error checking handle:", error);
+      // Default to available in case of error
       setHandleAvailable(true);
     } finally {
       setCheckingHandle(false);

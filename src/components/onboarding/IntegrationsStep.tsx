@@ -2,8 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { OnboardingLayout } from "./OnboardingLayout";
-import { FcGoogle } from "react-icons/fc";
-import { SiMicrosoftoffice } from "react-icons/si";
+import { Mail, Calendar, Cloud, Check } from "lucide-react";
 
 export function IntegrationsStep() {
   const { onboarding, connectIntegration } = useOnboarding();
@@ -44,8 +43,8 @@ export function IntegrationsStep() {
           <div className="border rounded-lg p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="text-2xl">
-                  <FcGoogle />
+                <div className="text-2xl text-blue-500">
+                  <Mail className="h-6 w-6" />
                 </div>
                 <div>
                   <h3 className="font-medium">Google Workspace</h3>
@@ -66,7 +65,7 @@ export function IntegrationsStep() {
             
             {googleConnected && (
               <div className="bg-green-50 border border-green-200 text-green-700 rounded-md p-3 text-sm flex items-center">
-                <div className="mr-2">✓</div>
+                <Check className="w-4 h-4 mr-2" />
                 <span>Successfully connected to Google Workspace</span>
               </div>
             )}
@@ -76,7 +75,7 @@ export function IntegrationsStep() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="text-2xl text-blue-600">
-                  <SiMicrosoftoffice />
+                  <Calendar className="h-6 w-6" />
                 </div>
                 <div>
                   <h3 className="font-medium">Microsoft 365</h3>
@@ -97,7 +96,7 @@ export function IntegrationsStep() {
             
             {microsoftConnected && (
               <div className="bg-green-50 border border-green-200 text-green-700 rounded-md p-3 text-sm flex items-center">
-                <div className="mr-2">✓</div>
+                <Check className="w-4 h-4 mr-2" />
                 <span>Successfully connected to Microsoft 365</span>
               </div>
             )}

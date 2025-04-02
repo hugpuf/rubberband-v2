@@ -76,15 +76,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Check if onboarding is completed
-      const { data: settingsData } = await supabase
-        .from('organization_settings')
-        .select('has_completed_onboarding')
-        .eq('organization_id', orgData.organization_id)
-        .single();
+      // Check if onboarding is completed using an RPC function
+      const { data: completedData, error: checkError } = await supabase.rpc(
+        'check_onboarding_status', 
+        { org_id: orgData.organization_id }
+      );
+
+      if (checkError) {
+        console.error("Error checking onboarding status:", checkError);
+        toast({
+          variant: "destructive",
+          title: "Error checking account status",
+          description: "Please try again or contact support",
+        });
+        return;
+      }
 
       // Redirect based on onboarding status
-      if (settingsData?.has_completed_onboarding) {
+      if (completedData) {
         // Redirect to dashboard on successful login if onboarding is complete
         toast({
           title: "Welcome back!",

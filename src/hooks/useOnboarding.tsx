@@ -150,7 +150,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
                 businessType: settingsData.business_type,
                 workflowStyle: settingsData.workflow_style
               },
-              isCompleted: settingsData.has_completed_onboarding || false
+              isCompleted: !!settingsData.has_completed_onboarding
             }));
           }
         }
@@ -266,17 +266,19 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           })
           .eq('id', roleData.organization_id);
           
-        // Update organization settings
-        await supabase
-          .from('organization_settings')
-          .update({
-            primary_use_case: onboarding.useCaseDetails.primaryUseCase,
-            business_type: onboarding.useCaseDetails.businessType,
-            workflow_style: onboarding.useCaseDetails.workflowStyle,
-            has_completed_onboarding: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('organization_id', roleData.organization_id);
+        // Update organization settings - handle with separate direct SQL call
+        const { error } = await supabase.rpc('update_organization_settings', {
+          org_id: roleData.organization_id,
+          primary_use_case_val: onboarding.useCaseDetails.primaryUseCase,
+          business_type_val: onboarding.useCaseDetails.businessType,
+          workflow_style_val: onboarding.useCaseDetails.workflowStyle,
+          completed_onboarding: true
+        });
+        
+        if (error) {
+          console.error('Error updating organization settings:', error);
+          throw error;
+        }
       }
       
       setOnboarding(prev => ({
@@ -316,13 +318,16 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         .single();
         
       if (roleData?.organization_id) {
-        // Mark onboarding as completed
-        await supabase
-          .from('organization_settings')
-          .update({
-            has_completed_onboarding: true
-          })
-          .eq('organization_id', roleData.organization_id);
+        // Mark onboarding as completed - use the RPC function
+        const { error } = await supabase.rpc('update_organization_settings', {
+          org_id: roleData.organization_id,
+          completed_onboarding: true
+        });
+        
+        if (error) {
+          console.error('Error updating organization settings:', error);
+          throw error;
+        }
       }
       
       setOnboarding(prev => ({
