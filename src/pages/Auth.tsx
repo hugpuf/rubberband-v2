@@ -2,7 +2,7 @@
 import { AuthForm } from "@/components/auth/AuthForm";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ExclamationTriangleIcon } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 
 const Auth = () => {
@@ -32,7 +32,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {(error || authError) && (
           <Alert variant="destructive" className="mb-4">
-            <ExclamationTriangleIcon className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               {error || authError}
             </AlertDescription>
