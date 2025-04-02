@@ -7,9 +7,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
+import { OnboardingProvider } from "@/hooks/useOnboarding";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
@@ -60,6 +62,16 @@ const AppRoutes = () => {
       />
       <Route path="/auth" element={<Auth />} />
       
+      {/* Onboarding route */}
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute>
+            <Onboarding />
+          </ProtectedRoute>
+        }
+      />
+      
       {/* Protected routes */}
       <Route
         path="/dashboard"
@@ -105,13 +117,15 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
-            <OrganizationProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <AppRoutes />
-              </TooltipProvider>
-            </OrganizationProvider>
+            <OnboardingProvider>
+              <OrganizationProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <AppRoutes />
+                </TooltipProvider>
+              </OrganizationProvider>
+            </OnboardingProvider>
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

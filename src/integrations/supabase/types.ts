@@ -9,27 +9,133 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      organizations: {
+      integrations: {
         Row: {
+          access_token: string | null
           created_at: string | null
+          expires_at: number | null
           id: string
-          name: string
-          subscription_plan: string | null
-          timezone: string | null
+          organization_id: string | null
+          provider: string
+          provider_account_id: string | null
+          refresh_token: string | null
+          scope: string | null
+          token_type: string | null
+          updated_at: string | null
+          user_id: string | null
         }
         Insert: {
+          access_token?: string | null
           created_at?: string | null
+          expires_at?: number | null
           id?: string
-          name: string
-          subscription_plan?: string | null
-          timezone?: string | null
+          organization_id?: string | null
+          provider: string
+          provider_account_id?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          token_type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
+          access_token?: string | null
+          created_at?: string | null
+          expires_at?: number | null
+          id?: string
+          organization_id?: string | null
+          provider?: string
+          provider_account_id?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          token_type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_settings: {
+        Row: {
+          business_type: string | null
+          created_at: string | null
+          has_completed_onboarding: boolean | null
+          id: string
+          organization_id: string | null
+          primary_use_case: string | null
+          updated_at: string | null
+          workflow_style: string | null
+        }
+        Insert: {
+          business_type?: string | null
+          created_at?: string | null
+          has_completed_onboarding?: boolean | null
+          id?: string
+          organization_id?: string | null
+          primary_use_case?: string | null
+          updated_at?: string | null
+          workflow_style?: string | null
+        }
+        Update: {
+          business_type?: string | null
+          created_at?: string | null
+          has_completed_onboarding?: boolean | null
+          id?: string
+          organization_id?: string | null
+          primary_use_case?: string | null
+          updated_at?: string | null
+          workflow_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          country: string | null
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          referral_source: string | null
+          subscription_plan: string | null
+          timezone: string | null
+          workspace_handle: string | null
+        }
+        Insert: {
+          country?: string | null
           created_at?: string | null
           id?: string
-          name?: string
+          logo_url?: string | null
+          name: string
+          referral_source?: string | null
           subscription_plan?: string | null
           timezone?: string | null
+          workspace_handle?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          referral_source?: string | null
+          subscription_plan?: string | null
+          timezone?: string | null
+          workspace_handle?: string | null
         }
         Relationships: []
       }
@@ -37,22 +143,31 @@ export type Database = {
         Row: {
           avatar_url: string | null
           email: string
+          first_name: string | null
           full_name: string | null
           id: string
+          last_name: string | null
+          subscribe_to_updates: boolean | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
           email: string
+          first_name?: string | null
           full_name?: string | null
           id: string
+          last_name?: string | null
+          subscribe_to_updates?: boolean | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
           email?: string
+          first_name?: string | null
           full_name?: string | null
           id?: string
+          last_name?: string | null
+          subscribe_to_updates?: boolean | null
           updated_at?: string | null
         }
         Relationships: []

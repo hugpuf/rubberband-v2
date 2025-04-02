@@ -59,12 +59,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
-      // Redirect to dashboard on successful login
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
-      });
-      navigate("/dashboard");
+      // Check if the user has completed onboarding
+      const { data: orgData, error: orgError } = await supabase
+        .from('user_roles')
+        .select('organization_id')
+        .eq('user_id', data.user.id)
+        .single();
+        
+      if (orgError) {
+        // If no organization, user might not be properly set up
+        toast({
+          variant: "destructive",
+          title: "Account setup incomplete",
+          description: "Please contact support",
+        });
+        return;
+      }
+      
+      // Check if onboarding is completed
+      const { data: settingsData } = await supabase
+        .from('organization_settings')
+        .select('has_completed_onboarding')
+        .eq('organization_id', orgData.organization_id)
+        .single();
+
+      // Redirect based on onboarding status
+      if (settingsData?.has_completed_onboarding) {
+        // Redirect to dashboard on successful login if onboarding is complete
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully logged in.",
+        });
+        navigate("/dashboard");
+      } else {
+        // Redirect to onboarding if not completed
+        toast({
+          title: "Welcome!",
+          description: "Let's complete your account setup.",
+        });
+        navigate("/onboarding");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -117,9 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       toast({
         title: "Account created!",
-        description: "Your account has been created and organization setup.",
+        description: "Let's complete your account setup.",
       });
-      navigate("/dashboard");
+      
+      // Redirect to onboarding flow for new users
+      navigate("/onboarding");
     } catch (error: any) {
       toast({
         variant: "destructive",
