@@ -39,7 +39,9 @@ enabled = true
 [[storage.buckets]]
 name = "avatars"
 public = true
+file_size_limit = "5MB"
 
 [[storage.buckets]]
 name = "logos"
 public = true
+file_size_limit = "5MB"
