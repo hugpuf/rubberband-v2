@@ -219,7 +219,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
     fetchOnboardingData();
   }, [user]);
-
+  
   const updatePersonalDetails = (details: Partial<OnboardingState["personalDetails"]>) => {
     setOnboarding(prev => ({
       ...prev,

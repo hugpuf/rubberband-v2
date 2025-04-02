@@ -5,7 +5,11 @@ CREATE TABLE organizations (
   name TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   timezone TEXT DEFAULT 'UTC',
-  subscription_plan TEXT DEFAULT 'free'
+  subscription_plan TEXT DEFAULT 'free',
+  country TEXT,
+  logo_url TEXT,
+  workspace_handle TEXT,
+  referral_source TEXT
 );
 
 -- Create user_roles table to manage organization roles
@@ -17,16 +21,15 @@ CREATE TABLE user_roles (
   PRIMARY KEY (user_id, organization_id)
 );
 
--- Create settings table for organization settings
-CREATE TABLE settings (
-  organization_id UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
-  timezone TEXT DEFAULT 'UTC',
-  date_format TEXT DEFAULT 'YYYY-MM-DD',
-  time_format TEXT DEFAULT '24h',
-  default_language TEXT DEFAULT 'en',
-  subscription_plan TEXT DEFAULT 'free',
-  subscription_status TEXT DEFAULT 'active',
-  subscription_end_date TIMESTAMP WITH TIME ZONE,
+-- Create organization_settings table for organization settings
+CREATE TABLE organization_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  primary_use_case TEXT,
+  business_type TEXT,
+  workflow_style TEXT,
+  has_completed_onboarding BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -48,7 +51,7 @@ CREATE TABLE module_registry (
 -- Enable RLS on all tables
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organization_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE module_registry ENABLE ROW LEVEL SECURITY;
 
 -- Create a function to check if user belongs to an organization
@@ -86,7 +89,7 @@ CREATE POLICY user_roles_select ON user_roles
   FOR SELECT USING (user_belongs_to_organization(organization_id));
 
 CREATE POLICY user_roles_insert ON user_roles
-  FOR INSERT WITH CHECK (user_is_admin_of_organization(organization_id));
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 CREATE POLICY user_roles_update ON user_roles
   FOR UPDATE USING (user_is_admin_of_organization(organization_id));
@@ -95,13 +98,13 @@ CREATE POLICY user_roles_delete ON user_roles
   FOR DELETE USING (user_is_admin_of_organization(organization_id));
 
 -- Settings table policies
-CREATE POLICY settings_select ON settings
+CREATE POLICY settings_select ON organization_settings
   FOR SELECT USING (user_belongs_to_organization(organization_id));
 
-CREATE POLICY settings_insert ON settings
-  FOR INSERT WITH CHECK (user_is_admin_of_organization(organization_id));
+CREATE POLICY settings_insert ON organization_settings
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY settings_update ON settings
+CREATE POLICY settings_update ON organization_settings
   FOR UPDATE USING (user_is_admin_of_organization(organization_id));
 
 -- Module registry table policies
@@ -120,7 +123,7 @@ CREATE POLICY module_registry_delete ON module_registry
 -- Create a trigger to automatically create settings row when an organization is created
 CREATE OR REPLACE FUNCTION create_org_settings() RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO settings (organization_id) VALUES (NEW.id);
+  INSERT INTO organization_settings (organization_id) VALUES (NEW.id);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -129,3 +132,4 @@ CREATE TRIGGER trigger_create_org_settings
   AFTER INSERT ON organizations
   FOR EACH ROW
   EXECUTE FUNCTION create_org_settings();
+

@@ -1,4 +1,5 @@
 
+
 -- Function to check if onboarding is completed
 CREATE OR REPLACE FUNCTION public.check_onboarding_status(org_id uuid)
 RETURNS boolean
@@ -45,3 +46,36 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Function to create a user profile
+CREATE OR REPLACE FUNCTION public.create_profile_for_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  BEGIN
+    INSERT INTO profiles (id, email)
+    VALUES (NEW.id, NEW.email);
+    RETURN NEW;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE LOG 'Error creating profile for user %: %', NEW.id, SQLERRM;
+    RETURN NEW;
+  END;
+END;
+$$;
+
+-- Create the trigger for profile creation if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger 
+    WHERE tgname = 'on_auth_user_created'
+  ) THEN
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW
+      EXECUTE FUNCTION public.create_profile_for_user();
+  END IF;
+END $$;
+
