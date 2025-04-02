@@ -1,11 +1,10 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider } from "@/hooks/auth/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OnboardingProvider } from "@/hooks/useOnboarding";
 
@@ -21,11 +20,9 @@ import { useAuth } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
 
-// Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
-  // Show loading state
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -36,7 +33,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -44,7 +40,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// AppRoutes needs to be inside the AuthProvider to use useAuth
 const AppRoutes = () => {
   const { user } = useAuth();
   
@@ -62,7 +57,6 @@ const AppRoutes = () => {
       />
       <Route path="/auth" element={<Auth />} />
       
-      {/* Onboarding route */}
       <Route
         path="/onboarding"
         element={
@@ -72,7 +66,6 @@ const AppRoutes = () => {
         }
       />
       
-      {/* Protected routes */}
       <Route
         path="/dashboard"
         element={
@@ -104,13 +97,11 @@ const AppRoutes = () => {
         }
       />
       
-      {/* Not found route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
 
-// Main App component with proper nesting of providers
 const App = () => {
   return (
     <React.StrictMode>
