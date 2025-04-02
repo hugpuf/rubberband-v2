@@ -76,10 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Check if onboarding is completed using an RPC function
-      const { data: completedData, error: checkError } = await supabase.rpc(
-        'check_onboarding_status', 
-        { org_id: orgData.organization_id }
+      // Check if onboarding is completed using an direct function call
+      const { data: completedData, error: checkError } = await supabase.functions.invoke(
+        'check_onboarding_status',
+        {
+          body: { org_id: orgData.organization_id }
+        }
       );
 
       if (checkError) {

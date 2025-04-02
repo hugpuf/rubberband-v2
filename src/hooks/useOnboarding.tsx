@@ -266,13 +266,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           })
           .eq('id', roleData.organization_id);
           
-        // Update organization settings - handle with separate direct SQL call
-        const { error } = await supabase.rpc('update_organization_settings', {
-          org_id: roleData.organization_id,
-          primary_use_case_val: onboarding.useCaseDetails.primaryUseCase,
-          business_type_val: onboarding.useCaseDetails.businessType,
-          workflow_style_val: onboarding.useCaseDetails.workflowStyle,
-          completed_onboarding: true
+        // Update organization settings - handle with separate direct function call
+        const { error } = await supabase.functions.invoke('update_organization_settings', {
+          body: {
+            org_id: roleData.organization_id,
+            primary_use_case: onboarding.useCaseDetails.primaryUseCase,
+            business_type: onboarding.useCaseDetails.businessType, 
+            workflow_style: onboarding.useCaseDetails.workflowStyle,
+            completed_onboarding: true
+          }
         });
         
         if (error) {
@@ -318,10 +320,12 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         .single();
         
       if (roleData?.organization_id) {
-        // Mark onboarding as completed - use the RPC function
-        const { error } = await supabase.rpc('update_organization_settings', {
-          org_id: roleData.organization_id,
-          completed_onboarding: true
+        // Mark onboarding as completed - use the functions invoke
+        const { error } = await supabase.functions.invoke('update_organization_settings', {
+          body: {
+            org_id: roleData.organization_id,
+            completed_onboarding: true
+          }
         });
         
         if (error) {
