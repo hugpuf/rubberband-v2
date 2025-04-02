@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Eye, EyeOff } from "lucide-react";
 
 type AuthFormProps = {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -17,6 +18,8 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -32,7 +35,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
     try {
       await onLogin(email, password);
     } catch (error) {
-      console.error("Login error:", error);
+      // Error is handled in the parent component
     }
   };
 
@@ -49,8 +52,12 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
     try {
       await onSignUp(email, password, orgName);
     } catch (error) {
-      console.error("Signup error:", error);
+      // Error is handled in the parent component
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -59,7 +66,12 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
         <CardTitle className="text-center text-2xl font-bold">Rubberband OS</CardTitle>
         <CardDescription className="text-center">Enterprise resource planning, reimagined.</CardDescription>
       </CardHeader>
-      <Tabs defaultValue="login" className="w-full">
+      <Tabs 
+        defaultValue="login" 
+        className="w-full"
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>
           <TabsTrigger value="signup">Create Account</TabsTrigger>
@@ -76,17 +88,32 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    autoComplete="current-password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={togglePasswordVisibility}
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </Button>
+                </div>
               </div>
             </CardContent>
             <CardFooter>
@@ -108,17 +135,32 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Password</Label>
-                <Input
-                  id="signup-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="signup-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    autoComplete="new-password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={togglePasswordVisibility}
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="org-name">Organization Name</Label>
@@ -129,6 +171,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
             </CardContent>

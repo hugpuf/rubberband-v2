@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
+  authError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, orgName: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -49,7 +51,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const checkOnboardingStatus = async (userId: string) => {
+    try {
+      // Get user's organization
+      const { data: orgData, error: orgError } = await supabase
+        .from('user_roles')
+        .select('organization_id')
+        .eq('user_id', userId)
+        .single();
+        
+      if (orgError) {
+        console.error("Error getting organization:", orgError);
+        return false;
+      }
+      
+      // Check if onboarding is completed
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('organization_settings')
+        .select('has_completed_onboarding')
+        .eq('organization_id', orgData.organization_id)
+        .single();
+      
+      if (settingsError) {
+        console.error("Error checking onboarding status:", settingsError);
+        return false;
+      }
+      
+      return !!settingsData?.has_completed_onboarding;
+    } catch (error) {
+      console.error("Error in checkOnboardingStatus:", error);
+      return false;
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
+    setAuthError(null);
     try {
       setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -58,70 +94,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) throw error;
-
-      // Check if the user has completed onboarding
-      const { data: orgData, error: orgError } = await supabase
-        .from('user_roles')
-        .select('organization_id')
-        .eq('user_id', data.user.id)
-        .single();
-        
-      if (orgError) {
-        // If no organization, user might not be properly set up
-        toast({
-          variant: "destructive",
-          title: "Account setup incomplete",
-          description: "Please contact support",
-        });
-        return;
-      }
       
-      // Check if onboarding is completed using an direct function call
-      const { data: completedData, error: checkError } = await supabase.functions.invoke(
-        'check_onboarding_status',
-        {
-          body: { org_id: orgData.organization_id }
+      if (data.user) {
+        // Check if onboarding is completed
+        const isOnboardingCompleted = await checkOnboardingStatus(data.user.id);
+        
+        if (isOnboardingCompleted) {
+          toast({
+            title: "Welcome back!",
+            description: "You've successfully logged in.",
+          });
+          navigate("/dashboard");
+        } else {
+          toast({
+            title: "Welcome!",
+            description: "Let's complete your account setup.",
+          });
+          navigate("/onboarding");
         }
-      );
-
-      if (checkError) {
-        console.error("Error checking onboarding status:", checkError);
-        toast({
-          variant: "destructive",
-          title: "Error checking account status",
-          description: "Please try again or contact support",
-        });
-        return;
-      }
-
-      // Redirect based on onboarding status
-      if (completedData) {
-        // Redirect to dashboard on successful login if onboarding is complete
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
-        });
-        navigate("/dashboard");
-      } else {
-        // Redirect to onboarding if not completed
-        toast({
-          title: "Welcome!",
-          description: "Let's complete your account setup.",
-        });
-        navigate("/onboarding");
       }
     } catch (error: any) {
+      setAuthError(error.message || "An error occurred during login");
       toast({
         variant: "destructive",
         title: "Login failed",
         description: error.message || "An error occurred during login",
       });
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, orgName: string) => {
+    setAuthError(null);
     try {
       setIsLoading(true);
       
@@ -158,21 +164,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (roleError) throw roleError;
         }
-      }
 
-      toast({
-        title: "Account created!",
-        description: "Let's complete your account setup.",
-      });
-      
-      // Redirect to onboarding flow for new users
-      navigate("/onboarding");
+        toast({
+          title: "Account created!",
+          description: "Let's complete your account setup.",
+        });
+        
+        // Redirect to onboarding flow for new users
+        navigate("/onboarding");
+      }
     } catch (error: any) {
+      setAuthError(error.message || "An error occurred during signup");
       toast({
         variant: "destructive",
         title: "Signup failed",
         description: error.message || "An error occurred during signup",
       });
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -187,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "You have been signed out successfully.",
       });
     } catch (error: any) {
+      setAuthError(error.message || "Error signing out");
       toast({
         variant: "destructive",
         title: "Error",
@@ -196,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, authError, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
