@@ -13,12 +13,20 @@ export default function Onboarding() {
   const { user, isLoading: authLoading } = useAuth();
   const { onboarding } = useOnboarding();
   
+  useEffect(() => {
+    // Log current state for debugging
+    console.log("Onboarding page - User:", user?.id);
+    console.log("Onboarding completion status:", onboarding.isCompleted);
+  }, [user, onboarding.isCompleted]);
+  
   // If user completes onboarding or is not authenticated, redirect
   if (onboarding.isCompleted) {
+    console.log("Onboarding completed, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
   
   if (!authLoading && !user) {
+    console.log("User not authenticated, redirecting to auth");
     return <Navigate to="/auth" replace />;
   }
   

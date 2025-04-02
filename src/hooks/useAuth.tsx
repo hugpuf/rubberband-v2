@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state changed:", event, session?.user?.id);
         setUser(session?.user ?? null);
         setIsLoading(false);
       }
@@ -53,15 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkOnboardingStatus = async (userId: string) => {
     try {
+      console.log("Checking onboarding status for user:", userId);
+      
       // Get user's organization
       const { data: orgData, error: orgError } = await supabase
         .from('user_roles')
         .select('organization_id')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', userId);
         
       if (orgError) {
         console.error("Error getting organization:", orgError);
+        return false;
+      }
+      
+      if (!orgData || orgData.length === 0) {
+        console.log("No organization found for user");
         return false;
       }
       
@@ -69,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: settingsData, error: settingsError } = await supabase
         .from('organization_settings')
         .select('has_completed_onboarding')
-        .eq('organization_id', orgData.organization_id)
+        .eq('organization_id', orgData[0].organization_id)
         .single();
       
       if (settingsError) {
@@ -77,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
+      console.log("Onboarding status:", settingsData?.has_completed_onboarding);
       return !!settingsData?.has_completed_onboarding;
     } catch (error) {
       console.error("Error in checkOnboardingStatus:", error);
@@ -99,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Check if onboarding is completed
         const isOnboardingCompleted = await checkOnboardingStatus(data.user.id);
         
+        console.log("User signed in, onboarding completed:", isOnboardingCompleted);
+        
         if (isOnboardingCompleted) {
           toast({
             title: "Welcome back!",
@@ -114,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error: any) {
+      console.error("Login error:", error);
       setAuthError(error.message || "An error occurred during login");
       toast({
         variant: "destructive",
@@ -130,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthError(null);
     try {
       setIsLoading(true);
+      console.log("Starting signup process for:", email);
       
       // 1. Create the user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -139,41 +151,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // 2. Create organization and set user role as admin
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .insert([{ name: orgName }])
-          .select();
-
-        if (orgError) throw orgError;
-
-        if (orgData && orgData[0]) {
-          const orgId = orgData[0].id;
-          
-          // 3. Create user role as admin
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert([
-              {
-                user_id: authData.user.id,
-                organization_id: orgId,
-                role: "admin",
-              },
-            ]);
-
-          if (roleError) throw roleError;
-        }
-
-        toast({
-          title: "Account created!",
-          description: "Let's complete your account setup.",
-        });
-        
-        // Redirect to onboarding flow for new users
-        navigate("/onboarding");
+      if (!authData.user) {
+        throw new Error("User account creation failed");
       }
+      
+      console.log("User created:", authData.user.id);
+      
+      // 2. Create organization
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert([{ name: orgName }])
+        .select();
+
+      if (orgError) {
+        console.error("Error creating organization:", orgError);
+        throw orgError;
+      }
+
+      if (!orgData || orgData.length === 0) {
+        throw new Error("Failed to create organization");
+      }
+      
+      const orgId = orgData[0].id;
+      console.log("Organization created:", orgId);
+      
+      // 3. Create user role as admin
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert([
+          {
+            user_id: authData.user.id,
+            organization_id: orgId,
+            role: "admin",
+          },
+        ]);
+
+      if (roleError) {
+        console.error("Error creating user role:", roleError);
+        throw roleError;
+      }
+      
+      console.log("User role created for user:", authData.user.id);
+
+      // 4. Create user profile if not automatically created by trigger
+      const { data: profileData, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select()
+        .eq('id', authData.user.id);
+        
+      if (profileCheckError) {
+        console.error("Error checking profile:", profileCheckError);
+      }
+      
+      if (!profileData || profileData.length === 0) {
+        console.log("Profile not found, creating manually");
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: authData.user.id,
+              email: email
+            },
+          ]);
+          
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          throw profileError;
+        }
+      }
+
+      toast({
+        title: "Account created!",
+        description: "Let's complete your account setup.",
+      });
+      
+      // Redirect to onboarding flow for new users
+      setTimeout(() => {
+        navigate("/onboarding");
+      }, 0);
     } catch (error: any) {
+      console.error("Signup error:", error);
       setAuthError(error.message || "An error occurred during signup");
       toast({
         variant: "destructive",

@@ -4,16 +4,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 
 const Auth = () => {
-  const { signIn, signUp, isLoading, authError } = useAuth();
+  const { signIn, signUp, isLoading, authError, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  
+  // If user is already authenticated, redirect to dashboard
+  if (user) {
+    return <Navigate to="/dashboard" />;
+  }
   
   const handleSignIn = async (email: string, password: string) => {
     setError(null);
     try {
       await signIn(email, password);
     } catch (err: any) {
+      console.error("Sign in error:", err);
       setError(err.message || "Failed to sign in");
     }
   };
@@ -21,8 +28,10 @@ const Auth = () => {
   const handleSignUp = async (email: string, password: string, orgName: string) => {
     setError(null);
     try {
+      console.log("Signing up with:", email, "org:", orgName);
       await signUp(email, password, orgName);
     } catch (err: any) {
+      console.error("Sign up error:", err);
       setError(err.message || "Failed to create account");
     }
   };

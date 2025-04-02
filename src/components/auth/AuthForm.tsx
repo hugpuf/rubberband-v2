@@ -32,10 +32,13 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
       });
       return;
     }
+    
+    console.log("Login submitted for:", email);
     try {
       await onLogin(email, password);
     } catch (error) {
       // Error is handled in the parent component
+      console.error("Login error in form:", error);
     }
   };
 
@@ -49,10 +52,13 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
       });
       return;
     }
+    
+    console.log("Signup submitted for:", email, "org:", orgName);
     try {
       await onSignUp(email, password, orgName);
     } catch (error) {
       // Error is handled in the parent component
+      console.error("Signup error in form:", error);
     }
   };
 
@@ -150,6 +156,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                     required
                     disabled={isLoading}
                     autoComplete="new-password"
+                    minLength={6}
                   />
                   <Button
                     type="button"
