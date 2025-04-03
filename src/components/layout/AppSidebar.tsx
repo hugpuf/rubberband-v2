@@ -31,9 +31,11 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { organization } = useOrganization();
 
-  const handleSignOut = async () => {
+  // Modified handler to prevent default and ensure signOut is properly called
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log("Signing out user");
     await signOut();
-    navigate("/auth");
   };
 
   // Updated navigation structure - Only Pilot's Chair at the top level
@@ -44,9 +46,6 @@ export function AppSidebar() {
       url: "/dashboard",
     },
   ];
-
-  // New Management section (will be populated with ERP modules in future)
-  // Currently empty as specified in the requirements
 
   // Updated Settings section
   const settingsItems = [
@@ -174,7 +173,12 @@ export function AppSidebar() {
               {user?.email?.split("@")[0] || "User"}
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleSignOut} className="text-[#636366] hover:text-[#1C1C1E]">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleSignOut} 
+            className="text-[#636366] hover:text-[#1C1C1E]"
+          >
             <LogOut className="h-4 w-4 stroke-[1.5px]" />
           </Button>
         </div>

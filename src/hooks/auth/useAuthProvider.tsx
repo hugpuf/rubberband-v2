@@ -215,12 +215,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       console.log("Signing out user");
+      // Use the simpler signOut method without parameters
+      // This avoids the "session doesn't exist" error we're seeing
       await supabase.auth.signOut();
+      
+      // After signout, navigate to auth page
       navigate("/auth");
+      
       toast({
         title: "Logged out",
         description: "You have been signed out successfully.",
       });
+      
       console.log("Sign out completed");
     } catch (error: any) {
       console.error("Error signing out:", error);
