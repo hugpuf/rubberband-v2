@@ -35,12 +35,14 @@ export function DangerZone() {
   const [confirmText, setConfirmText] = useState("");
   const [isLastMember, setIsLastMember] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const openDeleteDialog = () => {
     // Check if user is the last member of the organization
     const isLast = organizationUsers && organizationUsers.length <= 1;
     setIsLastMember(isLast || false);
     setShowDeleteDialog(true);
+    setDeleteError(null);
   };
 
   const handleDeleteAccount = async () => {
@@ -57,13 +59,21 @@ export function DangerZone() {
 
     try {
       setIsDeleting(true);
+      setDeleteError(null);
 
       // Call our edge function to handle the deletion
-      const { error } = await supabase.functions.invoke('delete-user-account');
+      const { data, error } = await supabase.functions.invoke('delete-user-account');
       
       if (error) {
         console.error("Error deleting account:", error);
+        setDeleteError(error.message || "Unknown error occurred during account deletion");
         throw error;
+      }
+
+      if (data?.error) {
+        console.error("Function returned error:", data.error);
+        setDeleteError(data.error || "Server returned an error during account deletion");
+        throw new Error(data.error);
       }
 
       toast({
@@ -82,6 +92,7 @@ export function DangerZone() {
         title: "Deletion failed",
         description: error.message || "An error occurred while deleting your account.",
       });
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -146,6 +157,13 @@ export function DangerZone() {
               placeholder={isLastMember ? organization?.name : "DELETE"}
               className="border-destructive/50 focus:border-destructive"
             />
+            
+            {deleteError && (
+              <div className="mt-4 text-sm text-destructive bg-destructive/5 p-3 rounded-md">
+                <p className="font-medium">Error: {deleteError}</p>
+                <p className="mt-1">Please contact support if this issue persists.</p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

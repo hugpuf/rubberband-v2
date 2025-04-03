@@ -60,6 +60,7 @@ serve(async (req) => {
     console.log(`Database cleanup completed for user: ${user.id}`)
 
     // Create a service role client to delete the auth user
+    // IMPORTANT: This must have the correct service role key to work
     const serviceRoleClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -70,6 +71,23 @@ serve(async (req) => {
         }
       }
     )
+
+    // Verify if the service role key is valid - this is critical
+    try {
+      const { data: adminData, error: adminError } = await serviceRoleClient.auth.admin.listUsers({
+        perPage: 1
+      })
+      
+      if (adminError) {
+        console.error("Service role validation error:", adminError)
+        throw new Error(`Service role key invalid: ${adminError.message}`)
+      }
+
+      console.log("Service role key validated successfully")
+    } catch (serviceRoleError) {
+      console.error("Fatal service role error:", serviceRoleError)
+      throw new Error(`Cannot access admin API: ${serviceRoleError.message}`)
+    }
 
     // Delete the auth user with the service role client
     // This is critical - must happen AFTER database cleanup
