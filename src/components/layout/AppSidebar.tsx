@@ -59,7 +59,7 @@ export function AppSidebar() {
   const userInitials = user?.email ? user.email.substring(0, 2).toUpperCase() : "RB";
 
   return (
-    <Sidebar variant="floating">
+    <Sidebar className="backdrop-blur-lg bg-[rgba(245,245,247,0.8)] border-r-0">
       <SidebarHeader className="py-6 px-6">
         <div className="flex items-center space-x-3">
           <Avatar className="h-8 w-8">
@@ -69,19 +69,19 @@ export function AppSidebar() {
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="font-medium text-gray-800 tracking-wide">
+            <span className="font-medium text-[#1C1C1E] tracking-wide">
               {organization?.name || "Rubberband OS"}
             </span>
-            <span className="text-xs text-gray-500 tracking-wide">
+            <span className="text-xs text-[#636366] tracking-wide">
               {user?.email || ""}
             </span>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-4">
+      <SidebarContent className="px-6">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-normal tracking-wider text-gray-500 px-2">navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-normal tracking-wider text-[#636366] px-2">navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainMenuItems.map((item) => (
@@ -89,7 +89,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-800 font-normal tracking-wider"
+                      className="w-full justify-start rounded-full text-[#636366] hover:bg-[#EAEAEC] hover:text-[#1C1C1E] font-normal tracking-wider"
                       onClick={() => navigate(item.url)}
                     >
                       <item.icon className="mr-3 h-4 w-4 stroke-[1.5px]" />
@@ -102,7 +102,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-normal tracking-wider text-gray-500 px-2">administration</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-normal tracking-wider text-[#636366] px-2">administration</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {adminMenuItems.map((item) => (
@@ -110,7 +110,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-800 font-normal tracking-wider"
+                      className="w-full justify-start rounded-full text-[#636366] hover:bg-[#EAEAEC] hover:text-[#1C1C1E] font-normal tracking-wider"
                       onClick={() => navigate(item.url)}
                     >
                       <item.icon className="mr-3 h-4 w-4 stroke-[1.5px]" />
@@ -125,7 +125,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-gray-100">
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between p-6">
           <div className="flex items-center">
             <Avatar className="h-8 w-8 mr-3">
               <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
@@ -133,11 +133,11 @@ export function AppSidebar() {
                 {userInitials}
               </AvatarFallback>
             </Avatar>
-            <div className="text-sm font-normal tracking-wide text-gray-700">
+            <div className="text-sm font-normal tracking-wide text-[#1C1C1E]">
               {user?.email?.split("@")[0] || "User"}
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleSignOut} className="text-gray-500 hover:text-gray-800">
+          <Button variant="ghost" size="icon" onClick={handleSignOut} className="text-[#636366] hover:text-[#1C1C1E]">
             <LogOut className="h-4 w-4 stroke-[1.5px]" />
           </Button>
         </div>

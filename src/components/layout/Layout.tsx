@@ -23,14 +23,14 @@ export function Layout({ children }: LayoutProps) {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-[#F7F7F7]">
         <AppSidebar />
-        <main className={cn("flex-1 overflow-auto transition-all duration-300")}>
+        <main className={cn("flex-1 overflow-auto transition-all duration-300 bg-[#F7F7F7]")}>
           <div className="container mx-auto p-4 md:p-8 pt-20">
             {isMobile && (
               <div className="fixed top-4 left-4 z-10">
                 <SidebarTrigger />
               </div>
             )}
-            <div className="bg-white rounded-2xl shadow-sm p-8 border border-gray-50">
+            <div className="bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] p-8 border border-gray-50">
               {children}
             </div>
           </div>
