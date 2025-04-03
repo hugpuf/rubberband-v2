@@ -1,8 +1,7 @@
-
 import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOnboarding } from "@/hooks/onboarding";
 import { PersonalDetailsStep } from "@/components/onboarding/PersonalDetailsStep";
 import { CompanyDetailsStep } from "@/components/onboarding/CompanyDetailsStep";
 import { UseCaseStep } from "@/components/onboarding/UseCaseStep";

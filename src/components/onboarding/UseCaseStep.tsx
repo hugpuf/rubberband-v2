@@ -1,5 +1,5 @@
 
-import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOnboarding } from "@/hooks/onboarding";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";

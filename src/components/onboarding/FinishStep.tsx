@@ -1,6 +1,5 @@
-
 import { Button } from "@/components/ui/button";
-import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOnboarding } from "@/hooks/onboarding";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { CheckCircle2 } from "lucide-react";
 

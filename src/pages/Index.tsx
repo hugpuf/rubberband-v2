@@ -1,7 +1,6 @@
-
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOnboarding } from "@/hooks/onboarding";
 import { useEffect } from "react";
 
 const Index = () => {

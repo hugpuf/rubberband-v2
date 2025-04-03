@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/auth/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
-import { OnboardingProvider } from "@/hooks/useOnboarding";
+import { OnboardingProvider } from "@/hooks/onboarding";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -18,17 +17,15 @@ import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import { Layout } from "./components/layout/Layout";
 import { useAuth } from "./hooks/useAuth";
-import { useOnboarding } from "./hooks/useOnboarding";
+import { useOnboarding } from "./hooks/onboarding";
 
 const queryClient = new QueryClient();
 
-// Component to protect routes requiring both authentication and completed onboarding
 const ProtectedDashboardRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const { onboarding } = useOnboarding();
   
   useEffect(() => {
-    // Debug logging
     if (user) {
       console.log("ProtectedDashboardRoute - User:", user.id);
       console.log("ProtectedDashboardRoute - Onboarding completed:", onboarding.isCompleted);
@@ -58,7 +55,6 @@ const ProtectedDashboardRoute = ({ children }: { children: React.ReactNode }) =>
   return <>{children}</>;
 };
 
-// Component to protect routes requiring only authentication
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   

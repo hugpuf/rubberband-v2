@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOnboarding } from "@/hooks/onboarding";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";

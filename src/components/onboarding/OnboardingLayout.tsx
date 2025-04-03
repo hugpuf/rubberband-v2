@@ -1,7 +1,6 @@
-
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOnboarding } from "@/hooks/onboarding";
 
 export function OnboardingLayout({ 
   children,

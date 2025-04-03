@@ -1,11 +1,10 @@
-
 import { AuthForm } from "@/components/auth/AuthForm";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOnboarding } from "@/hooks/onboarding";
 
 const Auth = () => {
   const { signIn, signUp, isLoading, authError, user } = useAuth();
