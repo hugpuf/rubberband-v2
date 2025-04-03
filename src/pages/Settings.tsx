@@ -6,9 +6,6 @@ import { UserManagement } from "@/components/settings/UserManagement";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { Users } from "lucide-react";
 
 const Settings = () => {
   const { isAdmin } = useOrganization();
@@ -23,15 +20,6 @@ const Settings = () => {
         </p>
       </div>
       
-      <div className="flex gap-4 items-center">
-        <Link to="/settings/teams">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Team Management
-          </Button>
-        </Link>
-      </div>
-      
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4 bg-[#F5F5F7] p-1 rounded-lg">
           <TabsTrigger 
@@ -40,12 +28,14 @@ const Settings = () => {
           >
             Organization Profile
           </TabsTrigger>
-          <TabsTrigger 
-            value="users"
-            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
-          >
-            User Management
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger 
+              value="users"
+              className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
+            >
+              User Management
+            </TabsTrigger>
+          )}
           <TabsTrigger 
             value="account"
             className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
@@ -56,9 +46,11 @@ const Settings = () => {
         <TabsContent value="profile">
           <OrgProfile />
         </TabsContent>
-        <TabsContent value="users">
-          <UserManagement />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+        )}
         <TabsContent value="account" className="space-y-6">
           <div>
             <h2 className="text-xl font-normal text-[#1C1C1E] tracking-tight">Account Settings</h2>

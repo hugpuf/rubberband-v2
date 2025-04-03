@@ -16,7 +16,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
-import TeamManagement from "./pages/TeamManagement";
+import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
 import { Layout } from "./components/layout/Layout";
 import { useAuth } from "./hooks/useAuth";
@@ -83,6 +83,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/accept-invitation" element={<AcceptInvitation />} />
       
       <Route
         path="/onboarding"
@@ -119,16 +120,6 @@ const AppRoutes = () => {
           <ProtectedDashboardRoute>
             <Layout>
               <UserManagement />
-            </Layout>
-          </ProtectedDashboardRoute>
-        }
-      />
-      <Route
-        path="/settings/teams"
-        element={
-          <ProtectedDashboardRoute>
-            <Layout>
-              <TeamManagement />
             </Layout>
           </ProtectedDashboardRoute>
         }

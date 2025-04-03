@@ -62,6 +62,50 @@ export type Database = {
           },
         ]
       }
+      invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          organization_id: string
+          role: string
+          status: string
+          token: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          invited_by: string
+          organization_id: string
+          role: string
+          status?: string
+          token: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          organization_id?: string
+          role?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           business_type: string | null
@@ -283,11 +327,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: {
+          token_param: string
+          user_id_param: string
+        }
+        Returns: boolean
+      }
       delete_user_account: {
         Args: {
           user_id_param: string
         }
         Returns: boolean
+      }
+      generate_invitation_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_effective_role: {
         Args: {
@@ -334,6 +389,19 @@ export type Database = {
           team_id: string
         }
         Returns: boolean
+      }
+      validate_invitation_token: {
+        Args: {
+          token_param: string
+        }
+        Returns: {
+          invitation_id: string
+          organization_id: string
+          organization_name: string
+          email: string
+          role: string
+          valid: boolean
+        }[]
       }
     }
     Enums: {

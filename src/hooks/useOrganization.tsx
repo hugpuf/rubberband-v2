@@ -38,7 +38,7 @@ type OrganizationContextType = {
   isError: boolean;
   refreshOrganization: () => Promise<void>;
   updateOrganization: (updates: Partial<Organization>) => Promise<void>;
-  inviteUser: (email: string, role: string) => Promise<void>;
+  inviteUser: (email: string, role: string, expiryHours?: number) => Promise<void>;
   updateUserRole: (userId: string, newRole: string) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
 };
@@ -184,40 +184,94 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
       
     if (error) throw new Error("Error finding user: " + error.message);
-    if (!data) throw new Error("User not found with this email");
     return data;
   };
 
-  // Simplified invite user function (a real implementation would send emails)
-  const inviteUser = async (email: string, role: string) => {
-    if (!organization || !isAdmin) return;
+  // Invite user to the organization
+  const inviteUser = async (email: string, role: string, expiryHours: number = 48) => {
+    if (!organization || !isAdmin || !user) return;
     
     try {
-      // Find user by email
+      // Check if user already exists
       const userData = await findUserByEmail(email);
-      if (!userData) throw new Error("User not found with this email");
       
-      console.log("Found user to invite:", userData.id);
-      
-      // Add user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert([{
-          user_id: userData.id,
-          organization_id: organization.id,
-          role,
-        }]);
+      if (userData) {
+        // User exists, add directly to organization
+        console.log("Found existing user to add:", userData.id);
         
-      if (roleError) {
-        console.error("Error adding user role:", roleError);
-        throw roleError;
+        // Check if user is already in this organization
+        const { data: existingRole, error: checkError } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', userData.id)
+          .eq('organization_id', organization.id)
+          .maybeSingle();
+          
+        if (checkError) throw checkError;
+        
+        if (existingRole) {
+          throw new Error("User is already a member of this organization");
+        }
+        
+        // Add user role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert([{
+            user_id: userData.id,
+            organization_id: organization.id,
+            role,
+          }]);
+          
+        if (roleError) {
+          console.error("Error adding user role:", roleError);
+          throw roleError;
+        }
+        
+        await refreshOrganization();
+        toast({
+          title: "User added",
+          description: `${email} has been added to your organization.`,
+        });
+      } else {
+        // User doesn't exist, send invitation
+        console.log("User not found, creating invitation for:", email);
+        
+        // Calculate expiry date
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + expiryHours);
+        
+        // Generate a token
+        const { data: tokenData, error: tokenError } = await supabase
+          .rpc('generate_invitation_token');
+          
+        if (tokenError) throw tokenError;
+        
+        // Create invitation
+        const { error: inviteError } = await supabase
+          .from("invitations")
+          .insert([
+            {
+              organization_id: organization.id,
+              email,
+              role,
+              invited_by: user.id,
+              token: tokenData,
+              expires_at: expiresAt.toISOString(),
+            },
+          ]);
+          
+        if (inviteError) {
+          if (inviteError.code === '23505') {
+            throw new Error("An invitation for this email already exists");
+          }
+          throw inviteError;
+        }
+        
+        toast({
+          title: "Invitation sent",
+          description: `Invitation sent to ${email}`,
+        });
       }
-      
-      await refreshOrganization();
-      toast({
-        title: "User invited",
-        description: `${email} has been added to your organization.`,
-      });
     } catch (error: any) {
       toast({
         variant: "destructive",

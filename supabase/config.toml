@@ -4,7 +4,7 @@ project_id = "rihcwyknbdkmtqafizji"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "storage"]
+schemas = ["public", "storage", "graphql_public"]
 
 [db]
 port = 54322
@@ -12,19 +12,17 @@ port = 54322
 [studio]
 enabled = true
 port = 54323
-
-[inbucket]
-port = 54324
-smtp_port = 54325
-pop3_port = 54326
+api_url = "http://localhost:54321"
 
 [storage]
 enabled = true
 
-[functions]
-[functions.check_onboarding_status]
-verify_jwt = true
-[functions.update_organization_settings]
-verify_jwt = true
-[functions.delete-user-account]
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+
+[realtime]
+enabled = true
+
+[functions.send-invitation-email]
 verify_jwt = true
