@@ -12,7 +12,8 @@ import {
   createUserRole,
   verifyUserProfile,
   createOrganizationSettings,
-  getAuthSession
+  getAuthSession,
+  verifyUserExists
 } from "./auth-api";
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,6 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (data.user) {
         console.log("User successfully authenticated:", data.user.id);
+        
+        // Check if user exists in the database (profiles, user_roles, organizations)
+        const userExists = await verifyUserExists(data.user.id);
+        
+        if (!userExists) {
+          console.error("User exists in auth but not in the database - likely a deleted account");
+          // Sign out the user to prevent auto-login
+          await supabase.auth.signOut();
+          setUser(null);
+          throw new Error("No account found with these credentials. Please create a new account.");
+        }
         
         // Check if onboarding is completed
         const isOnboardingCompleted = await checkOnboardingStatus(data.user.id);

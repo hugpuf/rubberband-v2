@@ -66,6 +66,14 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
     setShowPassword(!showPassword);
   };
 
+  // Clear form fields when switching tabs to prevent data leakage between forms
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setEmail("");
+    setPassword("");
+    setOrgName("");
+  };
+
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader>
@@ -76,7 +84,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
         defaultValue="login" 
         className="w-full"
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
       >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>

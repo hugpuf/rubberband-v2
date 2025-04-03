@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const checkOnboardingStatus = async (userId: string): Promise<boolean> => {
@@ -38,6 +39,73 @@ export const checkOnboardingStatus = async (userId: string): Promise<boolean> =>
     return !!settingsData?.has_completed_onboarding;
   } catch (error) {
     console.error("Error in checkOnboardingStatus:", error);
+    return false;
+  }
+};
+
+export const verifyUserExists = async (userId: string): Promise<boolean> => {
+  try {
+    console.log("Verifying user exists in database:", userId);
+    
+    // First check if the user has a profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId);
+    
+    if (profileError) {
+      console.error("Error checking profile:", profileError);
+      return false;
+    }
+    
+    if (!profileData || profileData.length === 0) {
+      console.log("No profile found for user:", userId);
+      return false;
+    }
+    
+    console.log("Profile found for user:", userId);
+    
+    // Then check if the user has organization roles
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('organization_id')
+      .eq('user_id', userId);
+    
+    if (roleError) {
+      console.error("Error checking user roles:", roleError);
+      return false;
+    }
+    
+    if (!roleData || roleData.length === 0) {
+      console.log("No organization roles found for user:", userId);
+      return false;
+    }
+    
+    console.log("Organization roles found for user:", userId);
+    
+    // Verify that the organization exists
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', roleData[0].organization_id);
+    
+    if (orgError) {
+      console.error("Error checking organization:", orgError);
+      return false;
+    }
+    
+    if (!orgData || orgData.length === 0) {
+      console.log("No organization found for role:", roleData[0].organization_id);
+      return false;
+    }
+    
+    console.log("Organization exists:", orgData[0].id);
+    
+    // All checks passed, user exists in the database
+    console.log("User verification complete: user exists in the database");
+    return true;
+  } catch (error) {
+    console.error("Error in verifyUserExists:", error);
     return false;
   }
 };
