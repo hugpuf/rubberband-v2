@@ -129,7 +129,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Get user's organization
+        // Get user's organization - don't use single() to avoid 406 errors
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('organization_id, role')

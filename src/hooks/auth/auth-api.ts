@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const checkOnboardingStatus = async (userId: string): Promise<boolean> => {
@@ -129,7 +128,7 @@ export const createUserRole = async (userId: string, orgId: string, role: string
     
     console.log("User role created successfully");
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Exception in createUserRole:", error);
     throw error;
   }
@@ -239,4 +238,3 @@ export const getAuthSession = async () => {
     return null;
   }
 };
-

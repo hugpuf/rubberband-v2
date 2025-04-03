@@ -16,8 +16,13 @@ export default function Onboarding() {
   useEffect(() => {
     // Log current state for debugging
     console.log("Onboarding page - User:", user?.id);
+    console.log("Onboarding page - Auth loading:", authLoading);
+    console.log("Onboarding state:", onboarding);
     console.log("Onboarding completion status:", onboarding.isCompleted);
-  }, [user, onboarding.isCompleted]);
+    
+    // Trigger console trace to see call stack
+    console.trace("Onboarding page render trace");
+  }, [user, authLoading, onboarding]);
   
   // If user completes onboarding or is not authenticated, redirect
   if (onboarding.isCompleted) {

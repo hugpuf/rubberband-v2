@@ -64,41 +64,55 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     setIsError(false);
     
     try {
-      // First get the user's role and organization ID
+      // First get the user's role and organization ID - don't use single() to avoid 406 errors
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select("organization_id, role")
-        .eq("user_id", user.id)
-        .single();
+        .eq("user_id", user.id);
       
-      if (roleError) throw roleError;
-      
-      if (roleData) {
-        setUserRole(roleData.role);
-        
-        // Then fetch the organization details
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select("*")
-          .eq("id", roleData.organization_id)
-          .single();
-          
-        if (orgError) throw orgError;
-        setOrganization(orgData);
-        
-        // Fetch all users in the organization with their roles and profiles
-        const { data: usersData, error: usersError } = await supabase
-          .from('user_roles')
-          .select(`
-            role,
-            user_id,
-            user:profiles(*)
-          `)
-          .eq("organization_id", roleData.organization_id);
-          
-        if (usersError) throw usersError;
-        setOrganizationUsers(usersData as unknown as OrganizationUser[]);
+      if (roleError) {
+        console.error("Error fetching user roles:", roleError);
+        throw roleError;
       }
+      
+      if (!roleData || roleData.length === 0) {
+        console.log("No organization role found for user");
+        setIsLoading(false);
+        return;
+      }
+      
+      setUserRole(roleData[0].role);
+      
+      // Then fetch the organization details
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select("*")
+        .eq("id", roleData[0].organization_id)
+        .maybeSingle(); // Use maybeSingle() instead of single()
+        
+      if (orgError) {
+        console.error("Error fetching organization:", orgError);
+        throw orgError;
+      }
+      
+      setOrganization(orgData);
+      
+      // Fetch all users in the organization with their roles and profiles
+      const { data: usersData, error: usersError } = await supabase
+        .from('user_roles')
+        .select(`
+          role,
+          user_id,
+          user:profiles(*)
+        `)
+        .eq("organization_id", roleData[0].organization_id);
+        
+      if (usersError) {
+        console.error("Error fetching organization users:", usersError);
+        throw usersError;
+      }
+      
+      setOrganizationUsers(usersData as unknown as OrganizationUser[]);
     } catch (error) {
       console.error("Error fetching organization:", error);
       setIsError(true);
