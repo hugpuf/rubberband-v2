@@ -1,147 +1,151 @@
 
 import { useEffect, useState } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
-
-interface InvitationDetails {
-  organization_name: string;
-  email: string;
-  role: string;
-  valid: boolean;
-}
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 const AcceptInvitation = () => {
   const [searchParams] = useSearchParams();
-  const { user, signIn } = useAuth();
-  const { toast } = useToast();
-  const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAccepting, setIsAccepting] = useState(false);
-  const [redirectToAuth, setRedirectToAuth] = useState(false);
-  const [passwordValue, setPasswordValue] = useState("");
-  
   const token = searchParams.get("token");
-  
-  // Fetch invitation details
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [validating, setValidating] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [invitation, setInvitation] = useState<any>(null);
+
   useEffect(() => {
-    const getInvitationDetails = async () => {
+    const validateToken = async () => {
       if (!token) {
-        setIsLoading(false);
+        toast({
+          variant: "destructive",
+          title: "Invalid invitation link",
+          description: "No invitation token provided"
+        });
+        navigate("/auth");
         return;
       }
-      
+
       try {
-        const { data, error } = await supabase.rpc('validate_invitation_token', {
-          token_param: token
-        });
+        setValidating(true);
         
+        // Check if user is authenticated
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (!sessionData.session) {
+          // Redirect to auth with the invitation token
+          navigate(`/auth?invitation=true&token=${token}`);
+          return;
+        }
+
+        // Validate the token
+        const { data, error } = await supabase
+          .rpc('validate_invitation_token', { token_param: token });
+
         if (error) throw error;
-        
-        if (data && data.length > 0) {
-          console.log("Invitation details:", data[0]);
-          setInvitation(data[0] as any);
-        } else {
+
+        if (!data || data.length === 0 || !data[0].valid) {
           toast({
             variant: "destructive",
             title: "Invalid invitation",
-            description: "This invitation link is invalid or has expired.",
+            description: "This invitation has expired or has already been used"
           });
+          navigate("/dashboard");
+          return;
         }
+
+        setInvitation(data[0]);
+        
+        // Check if the user's email matches the invitation email
+        const user = sessionData.session.user;
+        if (user.email !== data[0].email) {
+          toast({
+            variant: "destructive",
+            title: "Email mismatch",
+            description: `This invitation was sent to ${data[0].email}, but you're logged in as ${user.email}`
+          });
+          navigate("/dashboard");
+          return;
+        }
+        
       } catch (error: any) {
         console.error("Error validating invitation:", error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to validate invitation: " + error.message,
+          description: error.message || "An error occurred validating your invitation"
         });
       } finally {
-        setIsLoading(false);
+        setValidating(false);
+        setLoading(false);
       }
     };
-    
-    getInvitationDetails();
-  }, [token]);
-  
-  // If user is already logged in, accept the invitation
-  useEffect(() => {
-    const acceptInvitation = async () => {
-      if (!user || !token || !invitation || isAccepting) return;
-      
-      // If user's email doesn't match invitation email
-      if (user.email !== invitation.email) {
-        toast({
-          variant: "destructive",
-          title: "Email mismatch",
-          description: `This invitation was sent to ${invitation.email} but you're logged in as ${user.email}. Please log in with the correct account.`,
-        });
-        return;
-      }
-      
-      setIsAccepting(true);
-      try {
-        const { data, error } = await supabase.rpc('accept_invitation', {
-          token_param: token,
-          user_id_param: user.id
-        });
-        
-        if (error) throw error;
-        
-        if (data) {
-          toast({
-            title: "Invitation accepted",
-            description: `You've joined ${invitation.organization_name} as a ${invitation.role}`,
-          });
-          
-          // Redirect to dashboard
-          setTimeout(() => {
-            window.location.href = "/dashboard";
-          }, 1500);
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Failed to accept invitation",
-            description: "There was an error accepting the invitation.",
-          });
-        }
-      } catch (error: any) {
-        console.error("Error accepting invitation:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to accept invitation: " + error.message,
-        });
-      } finally {
-        setIsAccepting(false);
-      }
-    };
-    
-    acceptInvitation();
-  }, [user, token, invitation]);
 
-  const handleSignIn = async () => {
-    if (!invitation) return;
-    setRedirectToAuth(true);
+    validateToken();
+  }, [token, navigate, toast]);
+
+  const handleAcceptInvitation = async () => {
+    if (!token || !invitation) return;
+
+    try {
+      setAccepting(true);
+      
+      // Get current user
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error("No authenticated user found");
+      }
+
+      // Accept the invitation
+      const { data, error } = await supabase
+        .rpc('accept_invitation', {
+          token_param: token,
+          user_id_param: userData.user.id
+        });
+
+      if (error) throw error;
+
+      if (!data) {
+        throw new Error("Failed to accept invitation");
+      }
+
+      toast({
+        title: "Invitation accepted",
+        description: `You've joined ${invitation.organization_name}`
+      });
+
+      // Redirect to dashboard
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Error accepting invitation:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "An error occurred accepting your invitation"
+      });
+    } finally {
+      setAccepting(false);
+    }
   };
 
-  // Redirect to auth page with invitation email pre-filled
-  if (redirectToAuth) {
-    return <Navigate to={`/auth?email=${encodeURIComponent(invitation!.email)}&invitation=true`} />;
-  }
+  const handleDecline = () => {
+    navigate("/dashboard");
+  };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle>Verifying invitation</CardTitle>
-            <CardDescription>Please wait while we verify your invitation</CardDescription>
+            <CardTitle className="text-2xl font-bold">Processing Invitation</CardTitle>
+            <CardDescription>
+              Please wait while we validate your invitation...
+            </CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center p-6">
+          <CardContent className="flex justify-center py-6">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
           </CardContent>
         </Card>
@@ -149,72 +153,57 @@ const AcceptInvitation = () => {
     );
   }
 
-  if (!invitation || !invitation.valid) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <XCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
-            <CardTitle>Invalid Invitation</CardTitle>
-            <CardDescription>
-              This invitation link is invalid or has expired. Please contact the organization admin for a new invitation.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="flex justify-center">
-            <Button variant="outline" onClick={() => window.location.href = "/"}>
-              Return to Home
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
+  if (validating || !invitation) {
+    return null;
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle>Join Organization</CardTitle>
+          <CardTitle className="text-2xl font-bold">Organization Invitation</CardTitle>
           <CardDescription>
-            You've been invited to join <strong>{invitation.organization_name}</strong> as a <strong>{invitation.role}</strong>
+            You've been invited to join an organization
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium mb-2">Email</p>
-              <p className="text-sm">{invitation.email}</p>
-            </div>
+        <CardContent className="text-center py-6">
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-1">
+              You've been invited to join
+            </h3>
+            <p className="text-2xl font-bold">{invitation.organization_name}</p>
+          </div>
+          <div className="mb-6">
+            <p className="text-muted-foreground">
+              You'll be added as a <span className="font-medium">{invitation.role}</span>
+            </p>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-center gap-4">
-          {user ? (
-            <>
-              {user.email === invitation.email ? (
-                <Button disabled={isAccepting} className="w-full">
-                  {isAccepting ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                  )}
-                  {isAccepting ? "Accepting..." : "Accept Invitation"}
-                </Button>
-              ) : (
-                <div className="text-center space-y-4 w-full">
-                  <p className="text-sm text-destructive">
-                    This invitation was sent to {invitation.email} but you're logged in as {user.email}.
-                  </p>
-                  <Button variant="outline" onClick={() => window.location.href = "/auth/logout"}>
-                    Sign Out & Continue
-                  </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <Button onClick={handleSignIn} className="w-full">
-              Sign in to Accept
-            </Button>
-          )}
+        <CardFooter className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={handleDecline}
+            disabled={accepting}
+          >
+            Decline
+          </Button>
+          <Button 
+            onClick={handleAcceptInvitation}
+            disabled={accepting}
+            className="flex items-center gap-2"
+          >
+            {accepting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4" />
+                Accept Invitation
+              </>
+            )}
+          </Button>
         </CardFooter>
       </Card>
     </div>

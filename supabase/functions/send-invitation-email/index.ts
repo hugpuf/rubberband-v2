@@ -42,18 +42,16 @@ async function handler(req: Request): Promise<Response> {
       });
     }
     
-    // Generate invitation link
-    const invitationLink = `${FRONTEND_URL}/accept-invitation?token=${token}`;
+    // Generate invitation link with the token
+    const invitationLink = `${FRONTEND_URL}/auth?invitation=true&email=${encodeURIComponent(email)}&token=${token}`;
     
     console.log("Invitation link generated:", invitationLink);
     console.log("Would send email to:", email);
     console.log("Organization:", organization_name);
     console.log("Role:", role);
     
-    // In a real implementation, you'd use a service like Resend, SendGrid, etc.
-    // to send the actual email. For now, we'll just log the details.
-    
-    /* Example with Resend:
+    /* In a production implementation, you'd use a service like Resend, SendGrid, etc.
+    Example with Resend:
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     await resend.emails.send({
       from: "Organization <noreply@yourdomain.com>",
@@ -68,7 +66,11 @@ async function handler(req: Request): Promise<Response> {
     });
     */
     
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ 
+      success: true,
+      message: "Invitation processed successfully",
+      link: invitationLink 
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

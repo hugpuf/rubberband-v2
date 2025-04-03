@@ -64,6 +64,7 @@ export function UserInvitations() {
   const [newUserRole, setNewUserRole] = useState("viewer");
   const [expiryHours, setExpiryHours] = useState(48);
   const [loading, setLoading] = useState(true);
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -105,13 +106,24 @@ export function UserInvitations() {
   };
 
   useEffect(() => {
-    fetchInvitations();
+    if (organization) {
+      fetchInvitations();
+    }
   }, [organization]);
 
   const sendInvitation = async () => {
     if (!organization || !newUserEmail) return;
+    
+    setSendingInvite(true);
 
     try {
+      // Check if user already exists in profiles
+      const { data: existingUser } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", newUserEmail)
+        .maybeSingle();
+      
       // Calculate expiry date
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + expiryHours);
@@ -123,7 +135,7 @@ export function UserInvitations() {
       if (tokenError) throw tokenError;
       
       // Create invitation
-      const { data, error } = await supabase
+      const { data: inviteData, error: inviteError } = await supabase
         .from("invitations")
         .insert([
           {
@@ -134,13 +146,40 @@ export function UserInvitations() {
             token: tokenData,
             expires_at: expiresAt.toISOString(),
           },
-        ]);
+        ])
+        .select();
 
-      if (error) {
-        if (error.code === '23505') {
+      if (inviteError) {
+        if (inviteError.code === '23505') {
           throw new Error("An invitation for this email already exists");
         }
-        throw error;
+        throw inviteError;
+      }
+
+      // Send invitation email via edge function
+      if (inviteData && inviteData.length > 0) {
+        try {
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+            "send-invitation-email", 
+            {
+              body: {
+                invitation_id: inviteData[0].id,
+                organization_name: organization.name,
+                email: newUserEmail,
+                token: tokenData,
+                role: newUserRole
+              }
+            }
+          );
+          
+          if (emailError) {
+            console.error("Error sending invitation email:", emailError);
+          } else {
+            console.log("Email function response:", emailResult);
+          }
+        } catch (emailError) {
+          console.error("Error calling send-invitation-email function:", emailError);
+        }
       }
 
       toast({
@@ -159,6 +198,8 @@ export function UserInvitations() {
         title: "Error",
         description: error.message || "Failed to send invitation",
       });
+    } finally {
+      setSendingInvite(false);
     }
   };
 
@@ -185,6 +226,24 @@ export function UserInvitations() {
         .eq("id", invitation.id);
 
       if (error) throw error;
+
+      // Resend invitation email
+      try {
+        await supabase.functions.invoke(
+          "send-invitation-email", 
+          {
+            body: {
+              invitation_id: invitation.id,
+              organization_name: organization?.name || "",
+              email: invitation.email,
+              token: tokenData,
+              role: invitation.role
+            }
+          }
+        );
+      } catch (emailError) {
+        console.error("Error sending invitation email:", emailError);
+      }
 
       toast({
         title: "Invitation resent",
@@ -229,7 +288,7 @@ export function UserInvitations() {
 
   const copyInvitationLink = (token: string) => {
     const baseUrl = window.location.origin;
-    const invitationLink = `${baseUrl}/accept-invitation?token=${token}`;
+    const invitationLink = `${baseUrl}/auth?invitation=true&token=${token}`;
     navigator.clipboard.writeText(invitationLink);
     
     toast({
@@ -330,10 +389,20 @@ export function UserInvitations() {
                 <Button
                   type="submit"
                   onClick={sendInvitation}
+                  disabled={sendingInvite || !newUserEmail}
                   className="flex items-center gap-2"
                 >
-                  <MailOpen className="h-4 w-4" />
-                  Send Invitation
+                  {sendingInvite ? (
+                    <>
+                      <RefreshCcw className="h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <MailOpen className="h-4 w-4" />
+                      Send Invitation
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
