@@ -10,6 +10,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Delete user account function invoked")
+    
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -27,19 +29,31 @@ serve(async (req) => {
       error: userError,
     } = await supabaseClient.auth.getUser()
 
-    if (userError || !user) {
-      throw new Error('Not authenticated')
+    if (userError) {
+      console.error("Authentication error:", userError)
+      throw new Error(`Authentication failed: ${userError.message}`)
+    }
+    
+    if (!user) {
+      console.error("No authenticated user found")
+      throw new Error('Not authenticated - no user found in session')
     }
 
     console.log(`User ${user.id} requested account deletion`)
 
-    // Call the RPC function to delete the user account
+    // Call the consolidated RPC function to delete the user account
     const { data, error } = await supabaseClient.rpc('delete_user_account', {
       user_id_param: user.id
     })
 
     if (error) {
-      throw error
+      console.error("RPC error:", error)
+      throw new Error(`Database operation failed: ${error.message}`)
+    }
+
+    if (!data) {
+      console.error("RPC returned no data")
+      throw new Error('Database operation did not return expected result')
     }
 
     console.log(`Account deletion for user ${user.id} completed successfully`)
@@ -56,13 +70,17 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    // Enhanced error logging
     console.error('Error in delete-user-account function:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
     
+    // Return detailed error response
     return new Response(
       JSON.stringify({
         success: false,
         message: 'Failed to delete account',
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
