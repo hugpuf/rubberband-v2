@@ -1,5 +1,6 @@
 
 
+
 -- Function to check if onboarding is completed
 CREATE OR REPLACE FUNCTION public.check_onboarding_status(org_id uuid)
 RETURNS boolean
@@ -78,4 +79,66 @@ BEGIN
       EXECUTE FUNCTION public.create_profile_for_user();
   END IF;
 END $$;
+
+-- Function to handle user deletion
+CREATE OR REPLACE FUNCTION public.delete_user_account(user_id_param UUID)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  org_id UUID;
+  member_count INTEGER;
+BEGIN
+  -- Log the deletion request
+  RAISE LOG 'Starting deletion process for user: %', user_id_param;
+  
+  -- Get the organization ID for this user
+  SELECT organization_id INTO org_id
+  FROM user_roles
+  WHERE user_id = user_id_param
+  LIMIT 1;
+  
+  IF org_id IS NULL THEN
+    RAISE LOG 'User % does not belong to any organization', user_id_param;
+    RETURN true;
+  END IF;
+  
+  -- Count remaining members in the organization
+  SELECT COUNT(*) INTO member_count
+  FROM user_roles
+  WHERE organization_id = org_id;
+  
+  RAISE LOG 'User belongs to organization: %, with % members', org_id, member_count;
+  
+  -- If this is the last member, delete the entire organization
+  IF member_count <= 1 THEN
+    RAISE LOG 'Last member of organization detected, deleting organization: %', org_id;
+    
+    -- Delete the organization (will cascade to settings, etc.)
+    DELETE FROM organizations WHERE id = org_id;
+  ELSE
+    -- Just delete user-specific data
+    DELETE FROM user_roles WHERE user_id = user_id_param;
+  END IF;
+  
+  RAISE LOG 'User deletion completed for: %', user_id_param;
+  RETURN true;
+EXCEPTION WHEN OTHERS THEN
+  RAISE LOG 'Error in delete_user_account: %', SQLERRM;
+  RETURN false;
+END;
+$$;
+
+-- Create a secure RPC function to delete the current user
+CREATE OR REPLACE FUNCTION public.rpc_delete_current_user()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Only allow users to delete themselves
+  RETURN delete_user_account(auth.uid());
+END;
+$$;
 
