@@ -47,20 +47,56 @@ serve(async (req) => {
     // Log the email for debugging, but NEVER use email for deletion matching
     console.log(`Associated email (for logging only): ${user.email}`)
 
-    // Call the database function to delete user data
-    const { data, error } = await supabaseClient.rpc('delete_user_account', {
-      user_id_param: user.id
-    })
+    // Step 1: Verify service role key is valid before proceeding
+    try {
+      // Create a temporary service role client to validate the key
+      const verifyClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+      
+      // Test if we can access admin functions
+      const { error: verifyError } = await verifyClient.auth.admin.listUsers({
+        perPage: 1, 
+        page: 1
+      })
+      
+      if (verifyError) {
+        console.error("Service role key validation failed:", verifyError)
+        throw new Error(`Invalid service role key: ${verifyError.message}. Account deletion cannot proceed.`)
+      }
+      
+      console.log("Service role key validated successfully")
+    } catch (serviceKeyError) {
+      console.error("Critical service role validation error:", serviceKeyError)
+      throw new Error(`Cannot validate service role key: ${serviceKeyError.message}`)
+    }
+    
+    // Step 2: Call the database function to delete user data
+    // This must happen BEFORE auth user deletion
+    try {
+      const { data, error } = await supabaseClient.rpc('delete_user_account', {
+        user_id_param: user.id
+      })
 
-    if (error) {
-      console.error("RPC error:", error)
-      throw new Error(`Database operation failed: ${error.message}`)
+      if (error) {
+        console.error("Database cleanup error:", error)
+        throw new Error(`Database operation failed: ${error.message}`)
+      }
+
+      console.log(`Database cleanup completed for user: ${user.id}`)
+    } catch (dbError) {
+      console.error("Database function error:", dbError)
+      throw new Error(`Database cleanup failed: ${dbError.message}`)
     }
 
-    console.log(`Database cleanup completed for user: ${user.id}`)
-
-    // Create a service role client to delete the auth user
-    // IMPORTANT: This must have the correct service role key to work
+    // Step 3: Create a service role client to delete the auth user
     const serviceRoleClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -72,35 +108,22 @@ serve(async (req) => {
       }
     )
 
-    // Verify if the service role key is valid - this is critical
+    // Step 4: Delete the auth user 
     try {
-      const { data: adminData, error: adminError } = await serviceRoleClient.auth.admin.listUsers({
-        perPage: 1
-      })
-      
-      if (adminError) {
-        console.error("Service role validation error:", adminError)
-        throw new Error(`Service role key invalid: ${adminError.message}`)
+      const { error: deleteUserError } = await serviceRoleClient.auth.admin.deleteUser(
+        user.id
+      )
+
+      if (deleteUserError) {
+        console.error("Auth user deletion error:", deleteUserError)
+        throw new Error(`Failed to delete auth user: ${deleteUserError.message}`)
       }
 
-      console.log("Service role key validated successfully")
-    } catch (serviceRoleError) {
-      console.error("Fatal service role error:", serviceRoleError)
-      throw new Error(`Cannot access admin API: ${serviceRoleError.message}`)
+      console.log(`Auth user ${user.id} deleted successfully`)
+    } catch (authDeleteError) {
+      console.error("Auth deletion error:", authDeleteError)
+      throw new Error(`Auth user deletion failed: ${authDeleteError.message}`)
     }
-
-    // Delete the auth user with the service role client
-    // This is critical - must happen AFTER database cleanup
-    const { error: deleteUserError } = await serviceRoleClient.auth.admin.deleteUser(
-      user.id
-    )
-
-    if (deleteUserError) {
-      console.error("Auth user deletion error:", deleteUserError)
-      throw new Error(`Failed to delete auth user: ${deleteUserError.message}`)
-    }
-
-    console.log(`Auth user ${user.id} deleted successfully`)
 
     // Return success response
     return new Response(
