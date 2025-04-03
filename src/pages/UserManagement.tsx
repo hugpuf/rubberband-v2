@@ -1,5 +1,6 @@
 
 import { UserManagement as UserManagementComponent } from "@/components/settings/UserManagement";
+import { TeamProvider } from "@/hooks/useTeams";
 
 const UserManagement = () => {
   return (
@@ -11,7 +12,9 @@ const UserManagement = () => {
         </p>
       </div>
       
-      <UserManagementComponent />
+      <TeamProvider>
+        <UserManagementComponent />
+      </TeamProvider>
     </div>
   );
 };

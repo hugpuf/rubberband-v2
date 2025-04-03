@@ -1,12 +1,13 @@
 
 import { useTeams } from "@/hooks/useTeams";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -21,19 +22,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, PlusCircle } from "lucide-react";
+import { Users, PlusCircle, Loader2 } from "lucide-react";
 import { TeamList } from "@/components/teams/TeamList";
 import { TeamDetails } from "@/components/teams/TeamDetails";
 import { TeamMembers } from "@/components/teams/TeamMembers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function TeamManagementSection() {
-  const { teams, currentTeam, createTeam } = useTeams();
+  const { teams, currentTeam, createTeam, refreshTeams, isLoading } = useTeams();
   const { toast } = useToast();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [teamDescription, setTeamDescription] = useState("");
   const [activeTeamTab, setActiveTeamTab] = useState("members");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Make sure teams are loaded when the component mounts
+  useEffect(() => {
+    refreshTeams();
+  }, [refreshTeams]);
 
   const handleCreateTeam = async () => {
     if (!teamName.trim()) {
@@ -45,7 +52,10 @@ export function TeamManagementSection() {
       return;
     }
 
+    setIsSubmitting(true);
     const newTeam = await createTeam(teamName, teamDescription);
+    setIsSubmitting(false);
+    
     if (newTeam) {
       toast({
         title: "Team created",
@@ -56,6 +66,17 @@ export function TeamManagementSection() {
       setTeamDescription("");
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-48">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading teams...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -105,7 +126,9 @@ export function TeamManagementSection() {
                 type="submit"
                 onClick={handleCreateTeam}
                 className="flex items-center gap-2"
+                disabled={isSubmitting}
               >
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <PlusCircle className="h-4 w-4" />
                 Create Team
               </Button>
@@ -119,8 +142,9 @@ export function TeamManagementSection() {
           <Card>
             <CardHeader>
               <CardTitle>Teams</CardTitle>
+              <CardDescription>Select a team to manage its members and settings</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <TeamList />
             </CardContent>
           </Card>
@@ -131,6 +155,9 @@ export function TeamManagementSection() {
             <Card>
               <CardHeader>
                 <CardTitle>{currentTeam.name}</CardTitle>
+                {currentTeam.description && (
+                  <CardDescription>{currentTeam.description}</CardDescription>
+                )}
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTeamTab} onValueChange={setActiveTeamTab} className="w-full">
@@ -159,12 +186,18 @@ export function TeamManagementSection() {
             </Card>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center p-8 border border-dashed rounded-lg w-full">
-                <h3 className="font-medium text-lg mb-1">No team selected</h3>
-                <p className="text-muted-foreground">
-                  Select a team from the list or create a new team to get started.
-                </p>
-              </div>
+              <Card className="w-full">
+                <CardContent className="text-center p-8">
+                  <h3 className="font-medium text-lg mb-1">No team selected</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Select a team from the list or create a new team to get started.
+                  </p>
+                  <Button onClick={() => setCreateDialogOpen(true)}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create New Team
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>

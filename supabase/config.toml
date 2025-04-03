@@ -24,6 +24,7 @@ site_url = "http://localhost:5173"
 [realtime]
 enabled = true
 
+[functions]
 [functions.send-invitation-email]
 verify_jwt = true
 

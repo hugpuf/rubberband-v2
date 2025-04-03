@@ -14,6 +14,7 @@ interface RequestBody {
   email: string;
   token: string;
   role: string;
+  teams?: string[];  // Array of team IDs to assign the user to upon acceptance
 }
 
 async function handler(req: Request): Promise<Response> {
@@ -33,7 +34,7 @@ async function handler(req: Request): Promise<Response> {
     
     // Parse request body
     const requestData: RequestBody = await req.json();
-    const { organization_name, email, token, role } = requestData;
+    const { organization_name, email, token, role, teams } = requestData;
     
     if (!email || !token || !organization_name) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -42,13 +43,20 @@ async function handler(req: Request): Promise<Response> {
       });
     }
     
-    // Generate invitation link with the token
-    const invitationLink = `${FRONTEND_URL}/auth?invitation=true&email=${encodeURIComponent(email)}&token=${token}`;
+    // Generate invitation link with the token and teams information
+    let invitationLink = `${FRONTEND_URL}/auth?invitation=true&email=${encodeURIComponent(email)}&token=${token}`;
+    
+    // Add teams information if available
+    if (teams && teams.length > 0) {
+      const teamsParam = teams.join(',');
+      invitationLink += `&teams=${encodeURIComponent(teamsParam)}`;
+    }
     
     console.log("Invitation link generated:", invitationLink);
     console.log("Would send email to:", email);
     console.log("Organization:", organization_name);
     console.log("Role:", role);
+    console.log("Teams to assign:", teams || "None");
     
     /* In a production implementation, you'd use a service like Resend, SendGrid, etc.
     Example with Resend:
@@ -60,6 +68,7 @@ async function handler(req: Request): Promise<Response> {
       html: `
         <h1>You've been invited!</h1>
         <p>You've been invited to join <strong>${organization_name}</strong> as a <strong>${role}</strong>.</p>
+        ${teams && teams.length > 0 ? `<p>You will be added to ${teams.length} team(s).</p>` : ''}
         <p><a href="${invitationLink}">Click here to accept the invitation</a></p>
         <p>This invitation link will expire in 48 hours.</p>
       `,
