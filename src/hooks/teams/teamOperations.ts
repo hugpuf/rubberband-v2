@@ -1,7 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Team, TeamMember } from "./types";
-import { toast } from "@/hooks/use-toast";
 
 // Fetch teams for an organization
 export const fetchTeams = async (organizationId: string) => {
@@ -36,6 +35,8 @@ export const fetchTeamMembers = async (teamId: string) => {
   if (!teamId) return [];
   
   try {
+    console.log("Fetching team members for team:", teamId);
+    
     const { data, error } = await supabase
       .from('team_members')
       .select(`
@@ -53,6 +54,7 @@ export const fetchTeamMembers = async (teamId: string) => {
       
     if (error) throw error;
     
+    console.log("Team members fetched:", data);
     return data as TeamMember[];
   } catch (error: any) {
     console.error("Error fetching team members:", error);

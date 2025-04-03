@@ -1,6 +1,6 @@
 
 import { UserManagement as UserManagementComponent } from "@/components/settings/UserManagement";
-import { TeamProvider } from "@/hooks/useTeams";
+import { TeamProvider } from "@/hooks/teams/TeamProvider";
 
 const UserManagement = () => {
   return (

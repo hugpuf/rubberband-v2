@@ -33,11 +33,13 @@ export function TeamProvider({ children }: TeamProviderProps) {
       return;
     }
     
+    console.log("Refreshing teams for organization:", organization.id);
     setIsLoading(true);
     setIsError(false);
     
     try {
       const data = await fetchTeams(organization.id);
+      console.log("Teams refreshed:", data);
       setTeams(data);
       
       // If a current team is set, refresh its data
@@ -52,7 +54,7 @@ export function TeamProvider({ children }: TeamProviderProps) {
         }
       }
     } catch (error: any) {
-      console.error("Error fetching teams:", error);
+      console.error("Error refreshing teams:", error);
       setIsError(true);
       toast({
         variant: "destructive",
