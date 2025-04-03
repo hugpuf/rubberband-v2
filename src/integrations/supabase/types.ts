@@ -213,6 +213,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_user_account: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: boolean
+      }
+      rpc_delete_current_user: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       user_belongs_to_organization: {
         Args: {
           org_id: string
