@@ -108,21 +108,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Starting signup process for:", email, "with organization:", orgName);
       
-      // Complete signup process in steps
-      const authUser = await createUserAccount(email, password);
-      console.log("User account created:", authUser.id);
+      // Complete signup process in steps with better error handling for each step
+      // Step 1: Create user account
+      let authUser;
+      try {
+        authUser = await createUserAccount(email, password);
+        console.log("User account created:", authUser.id);
+      } catch (error: any) {
+        console.error("Failed to create user account:", error);
+        toast({
+          variant: "destructive",
+          title: "Account creation failed",
+          description: "Could not create user account. Please try again.",
+        });
+        throw error;
+      }
       
-      const orgId = await createOrganization(orgName);
-      console.log("Organization created:", orgId);
+      // Step 2: Create organization
+      let orgId;
+      try {
+        orgId = await createOrganization(orgName);
+        console.log("Organization created:", orgId);
+      } catch (error: any) {
+        console.error("Failed to create organization:", error);
+        toast({
+          variant: "destructive",
+          title: "Organization creation failed",
+          description: "Could not create organization. Please try again.",
+        });
+        throw error;
+      }
       
-      await createUserRole(authUser.id, orgId);
-      console.log("User role created for user", authUser.id, "in organization", orgId);
+      // Step 3: Create user role (link user to organization)
+      try {
+        await createUserRole(authUser.id, orgId);
+        console.log("User role created for user", authUser.id, "in organization", orgId);
+      } catch (error: any) {
+        console.error("Failed to create user role:", error);
+        toast({
+          variant: "destructive",
+          title: "Role assignment failed",
+          description: "Could not assign user role. Please try again.",
+        });
+        throw error;
+      }
       
-      await verifyUserProfile(authUser.id, email);
-      console.log("User profile verified/created for user:", authUser.id);
+      // Step 4: Verify user profile
+      try {
+        await verifyUserProfile(authUser.id, email);
+        console.log("User profile verified/created for user:", authUser.id);
+      } catch (error: any) {
+        console.error("Failed to verify user profile:", error);
+        // Don't block signup for this error since profile might be created via trigger
+      }
       
-      await createOrganizationSettings(orgId);
-      console.log("Organization settings created for organization:", orgId);
+      // Step 5: Create organization settings
+      try {
+        await createOrganizationSettings(orgId);
+        console.log("Organization settings created for organization:", orgId);
+      } catch (error: any) {
+        console.error("Failed to create organization settings:", error);
+        // Don't block signup for this error since settings might be created via trigger
+      }
 
       toast({
         title: "Account created!",

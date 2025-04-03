@@ -73,26 +73,50 @@ export const createOrganization = async (orgName: string) => {
   console.log("STEP 2: Creating organization:", orgName);
   console.log("Organization data being sent:", { name: orgName });
   
-  const { data, error } = await supabase
-    .from('organizations')
-    .insert([{ name: orgName }])
-    .select();
-
-  if (error) {
-    console.error("Error creating organization:", error.message, error);
-    console.error("Organization data attempted:", { name: orgName });
-    throw error;
-  }
-
-  if (!data || data.length === 0) {
-    const errorMsg = "Failed to create organization - no data returned";
-    console.error(errorMsg);
-    console.error("Organization data attempted:", { name: orgName });
-    throw new Error(errorMsg);
-  }
+  // Add explicit debugging for the request
+  console.log("Making insert request to organizations table");
   
-  console.log("Organization created successfully with ID:", data[0].id);
-  return data[0].id;
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .insert([{ name: orgName }])
+      .select();
+
+    if (error) {
+      console.error("Error creating organization:", error.message, error);
+      console.error("Organization data attempted:", { name: orgName });
+      console.error("Full error details:", JSON.stringify(error, null, 2));
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      const errorMsg = "Failed to create organization - no data returned";
+      console.error(errorMsg);
+      console.error("Organization data attempted:", { name: orgName });
+      throw new Error(errorMsg);
+    }
+    
+    console.log("Organization created successfully with ID:", data[0].id);
+    return data[0].id;
+  } catch (error) {
+    console.error("Exception in createOrganization:", error);
+    // Try an alternative approach on failure
+    console.log("Trying alternative approach to create organization");
+    
+    const { data: insertData, error: insertError } = await supabase
+      .from('organizations')
+      .insert({ name: orgName })
+      .select('id')
+      .single();
+      
+    if (insertError) {
+      console.error("Alternative approach also failed:", insertError);
+      throw insertError;
+    }
+    
+    console.log("Created organization with alternative approach:", insertData.id);
+    return insertData.id;
+  }
 };
 
 export const createUserRole = async (userId: string, orgId: string, role: string = "admin") => {
@@ -103,29 +127,35 @@ export const createUserRole = async (userId: string, orgId: string, role: string
     role,
   });
   
-  const { error } = await supabase
-    .from('user_roles')
-    .insert([
-      {
+  try {
+    const { error } = await supabase
+      .from('user_roles')
+      .insert([
+        {
+          user_id: userId,
+          organization_id: orgId,
+          role,
+        },
+      ]);
+
+    if (error) {
+      console.error("Error creating user role:", error.message, error);
+      console.error("Role data attempted:", {
         user_id: userId,
         organization_id: orgId,
         role,
-      },
-    ]);
-
-  if (error) {
-    console.error("Error creating user role:", error.message, error);
-    console.error("Role data attempted:", {
-      user_id: userId,
-      organization_id: orgId,
-      role,
-    });
-    console.error("Transaction context:", { organizationCreated: true });
+      });
+      console.error("Transaction context:", { organizationCreated: true });
+      console.error("Full error details:", JSON.stringify(error, null, 2));
+      throw error;
+    }
+    
+    console.log("User role created successfully");
+    return true;
+  } catch (error) {
+    console.error("Exception in createUserRole:", error);
     throw error;
   }
-  
-  console.log("User role created successfully");
-  return true;
 };
 
 export const verifyUserProfile = async (userId: string, email: string) => {
@@ -183,29 +213,35 @@ export const createOrganizationSettings = async (orgId: string) => {
     has_completed_onboarding: false
   });
   
-  const { error } = await supabase
-    .from('organization_settings')
-    .insert([{
-      organization_id: orgId,
-      has_completed_onboarding: false
-    }]);
+  try {
+    const { error } = await supabase
+      .from('organization_settings')
+      .insert([{
+        organization_id: orgId,
+        has_completed_onboarding: false
+      }]);
+      
+    if (error) {
+      console.error("Error creating organization settings:", error.message, error);
+      console.error("Settings data attempted:", {
+        organization_id: orgId,
+        has_completed_onboarding: false
+      });
+      console.error("Transaction context:", { 
+        organizationCreated: true, 
+        roleCreated: true,
+        profileCreated: true 
+      });
+      console.error("Full error details:", JSON.stringify(error, null, 2));
+      throw error;
+    }
     
-  if (error) {
-    console.error("Error creating organization settings:", error.message, error);
-    console.error("Settings data attempted:", {
-      organization_id: orgId,
-      has_completed_onboarding: false
-    });
-    console.error("Transaction context:", { 
-      organizationCreated: true, 
-      roleCreated: true,
-      profileCreated: true 
-    });
+    console.log("Organization settings created successfully");
+    return true;
+  } catch (error) {
+    console.error("Exception in createOrganizationSettings:", error);
     throw error;
   }
-  
-  console.log("Organization settings created successfully");
-  return true;
 };
 
 export const getAuthSession = async () => {
