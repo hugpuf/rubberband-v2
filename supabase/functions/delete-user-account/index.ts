@@ -41,7 +41,7 @@ serve(async (req) => {
 
     console.log(`User ${user.id} requested account deletion`)
 
-    // Call the consolidated RPC function to delete the user account
+    // Call the database function to delete user data
     const { data, error } = await supabaseClient.rpc('delete_user_account', {
       user_id_param: user.id
     })
@@ -51,12 +51,29 @@ serve(async (req) => {
       throw new Error(`Database operation failed: ${error.message}`)
     }
 
-    if (!data) {
-      console.error("RPC returned no data")
-      throw new Error('Database operation did not return expected result')
+    // Create a service role client to delete the auth user
+    const serviceRoleClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
+    // Delete the auth user
+    const { error: deleteUserError } = await serviceRoleClient.auth.admin.deleteUser(
+      user.id
+    )
+
+    if (deleteUserError) {
+      console.error("Auth user deletion error:", deleteUserError)
+      throw new Error(`Failed to delete auth user: ${deleteUserError.message}`)
     }
 
-    console.log(`Account deletion for user ${user.id} completed successfully`)
+    console.log(`Auth user ${user.id} deleted successfully`)
 
     // Return success response
     return new Response(
