@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,9 +53,11 @@ import {
   Copy,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { useTeams } from "@/hooks/useTeams";
 
 export function UserInvitations() {
   const { organization, isAdmin } = useOrganization();
+  const { teams } = useTeams();
   const { toast } = useToast();
   const [invitations, setInvitations] = useState<any[]>([]);
   const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTeams } from "@/hooks/useTeams";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +30,10 @@ export function TeamList() {
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamDescription, setNewTeamDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    console.log("Teams in TeamList:", teams);
+  }, [teams]);
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +124,7 @@ export function TeamList() {
       </div>
       
       {teams && teams.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
           {teams.map((team) => (
             <Card
               key={team.id}

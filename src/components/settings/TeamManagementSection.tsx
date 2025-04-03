@@ -39,8 +39,13 @@ export function TeamManagementSection() {
   
   // Make sure teams are loaded when the component mounts
   useEffect(() => {
+    console.log("TeamManagementSection mounted, refreshing teams");
     refreshTeams();
   }, [refreshTeams]);
+
+  useEffect(() => {
+    console.log("Teams state in TeamManagementSection:", teams);
+  }, [teams]);
 
   const handleCreateTeam = async () => {
     if (!teamName.trim()) {

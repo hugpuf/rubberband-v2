@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,19 +14,10 @@ import { UsersList } from "@/components/settings/UsersList";
 import { UserInvitations } from "@/components/settings/UserInvitations";
 import { TeamManagementSection } from "@/components/settings/TeamManagementSection";
 import { Users, Mail, UserPlus, Users2 } from "lucide-react";
-import { useTeams } from "@/hooks/useTeams";
+import { TeamProvider } from "@/hooks/useTeams";
 
 export function UserManagement() {
   const [activeTab, setActiveTab] = useState("users");
-  const { teams, refreshTeams } = useTeams();
-  
-  // Make sure teams data is loaded when component mounts or tab changes
-  useState(() => {
-    // Ensure teams data is refreshed when accessing this component
-    if (activeTab === "teams" || activeTab === "invitations") {
-      refreshTeams();
-    }
-  }, [activeTab, refreshTeams]);
   
   return (
     <div className="space-y-6">
@@ -72,11 +63,15 @@ export function UserManagement() {
         </TabsContent>
         
         <TabsContent value="invitations">
-          <UserInvitations teamsData={teams} />
+          <TeamProvider>
+            <UserInvitations />
+          </TeamProvider>
         </TabsContent>
         
         <TabsContent value="teams">
-          <TeamManagementSection />
+          <TeamProvider>
+            <TeamManagementSection />
+          </TeamProvider>
         </TabsContent>
       </Tabs>
     </div>

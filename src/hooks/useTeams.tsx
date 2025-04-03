@@ -55,7 +55,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   // Fetch teams for the current organization
   const fetchTeams = async () => {
     if (!organization) {
+      console.log("No organization found, cannot fetch teams");
       setTeams([]);
+      setIsLoading(false);
       return;
     }
     
@@ -63,13 +65,19 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     setIsError(false);
     
     try {
+      console.log("Fetching teams for organization:", organization.id);
+      
       const { data, error } = await supabase
         .from('teams')
         .select('*')
         .eq('organization_id', organization.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching teams:", error);
+        throw error;
+      }
       
+      console.log("Teams fetched:", data);
       setTeams(data);
       
       // If a current team is set, refresh its data
@@ -149,6 +157,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     if (!organization) return null;
     
     try {
+      console.log("Creating team:", name, "for organization:", organization.id);
+      
       const { data, error } = await supabase
         .from('teams')
         .insert([{
@@ -160,6 +170,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         .single();
         
       if (error) throw error;
+      
+      console.log("Team created:", data);
       
       // Refresh teams list
       await fetchTeams();
@@ -353,8 +365,10 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   // Load teams when organization changes
   useEffect(() => {
     if (organization) {
+      console.log("Organization changed, fetching teams for:", organization.id);
       fetchTeams();
     } else {
+      console.log("No organization available, resetting teams data");
       setTeams(null);
       setCurrentTeam(null);
       setTeamMembers(null);
