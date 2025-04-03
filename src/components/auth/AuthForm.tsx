@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,17 +86,17 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
         value={activeTab}
         onValueChange={handleTabChange}
       >
-        <div className="flex justify-center px-6 mb-6">
-          <TabsList className="grid w-[80%] grid-cols-2 bg-[#F5F5F7] rounded-full p-0.5">
+        <div className="flex justify-center px-6 mb-5">
+          <TabsList className="grid w-[70%] grid-cols-2 bg-[#F0F0F2] rounded-full p-0.5">
             <TabsTrigger 
               value="login" 
-              className="rounded-full text-sm px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
+              className="rounded-full text-sm px-3 py-1 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
             >
               Login
             </TabsTrigger>
             <TabsTrigger 
               value="signup" 
-              className="rounded-full text-sm px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
+              className="rounded-full text-sm px-3 py-1 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
             >
               Create Account
             </TabsTrigger>
