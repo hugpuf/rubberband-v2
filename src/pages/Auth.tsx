@@ -37,10 +37,10 @@ const Auth = () => {
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-rubberband-dark to-rubberband-secondary p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-[#F5F5F7] to-[#E8E8ED]">
       <div className="w-full max-w-md">
         {(error || authError) && (
-          <Alert variant="destructive" className="mb-4">
+          <Alert variant="destructive" className="mb-4 apple-glass border-0 shadow-sm">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               {error || authError}

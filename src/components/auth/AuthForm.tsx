@@ -75,10 +75,10 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-sm border-0 bg-white rounded-2xl">
+    <Card className="w-full max-w-md shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-0 bg-white rounded-2xl overflow-hidden">
       <CardHeader className="pb-2">
-        <CardTitle className="text-center text-2xl font-medium text-gray-800">Rubberband OS</CardTitle>
-        <CardDescription className="text-center text-gray-500">Enterprise resource planning, reimagined.</CardDescription>
+        <CardTitle className="text-center text-2xl font-semibold text-[#1C1C1E]">Rubberband OS</CardTitle>
+        <CardDescription className="text-center text-[#636366]">Enterprise resource planning, reimagined.</CardDescription>
       </CardHeader>
       <Tabs 
         defaultValue="login" 
@@ -86,16 +86,16 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
         value={activeTab}
         onValueChange={handleTabChange}
       >
-        <TabsList className="grid w-full grid-cols-2 mb-4 p-1 bg-gray-100 rounded-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4 p-1 bg-[#F5F5F7] rounded-full">
           <TabsTrigger 
             value="login" 
-            className="rounded-full px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-800 transition-all"
+            className="rounded-full px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
           >
             Login
           </TabsTrigger>
           <TabsTrigger 
             value="signup" 
-            className="rounded-full px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-800 transition-all"
+            className="rounded-full px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
           >
             Create Account
           </TabsTrigger>
@@ -104,7 +104,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700 font-normal">Email</Label>
+                <Label htmlFor="email" className="text-[#3A3A3C] font-normal">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -114,11 +114,11 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                   required
                   disabled={isLoading}
                   autoComplete="email"
-                  className="rounded-xl px-4 py-3 border-gray-200 focus:ring-gray-200 transition-all"
+                  className="apple-input"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 font-normal">Password</Label>
+                <Label htmlFor="password" className="text-[#3A3A3C] font-normal">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -128,14 +128,14 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                     required
                     disabled={isLoading}
                     autoComplete="current-password"
-                    className="rounded-xl px-4 py-3 border-gray-200 focus:ring-gray-200 transition-all"
+                    className="apple-input pr-10"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     onClick={togglePasswordVisibility}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 hover:bg-transparent"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-[#8E8E93] hover:text-[#3A3A3C] hover:bg-transparent"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </Button>
@@ -145,7 +145,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
             <CardFooter className="pt-2">
               <Button 
                 type="submit" 
-                className="w-full rounded-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-6" 
+                className="w-full apple-button apple-button-primary py-6" 
                 disabled={isLoading}
               >
                 {isLoading ? "Logging in..." : "Login"}
@@ -157,7 +157,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
           <form onSubmit={handleSignUp}>
             <CardContent className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="signup-email" className="text-gray-700 font-normal">Email</Label>
+                <Label htmlFor="signup-email" className="text-[#3A3A3C] font-normal">Email</Label>
                 <Input
                   id="signup-email"
                   type="email"
@@ -167,11 +167,11 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                   required
                   disabled={isLoading}
                   autoComplete="email"
-                  className="rounded-xl px-4 py-3 border-gray-200 focus:ring-gray-200 transition-all"
+                  className="apple-input"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-password" className="text-gray-700 font-normal">Password</Label>
+                <Label htmlFor="signup-password" className="text-[#3A3A3C] font-normal">Password</Label>
                 <div className="relative">
                   <Input
                     id="signup-password"
@@ -182,21 +182,21 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                     disabled={isLoading}
                     autoComplete="new-password"
                     minLength={6}
-                    className="rounded-xl px-4 py-3 border-gray-200 focus:ring-gray-200 transition-all"
+                    className="apple-input pr-10"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     onClick={togglePasswordVisibility}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 hover:bg-transparent"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-[#8E8E93] hover:text-[#3A3A3C] hover:bg-transparent"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </Button>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="org-name" className="text-gray-700 font-normal">Organization Name</Label>
+                <Label htmlFor="org-name" className="text-[#3A3A3C] font-normal">Organization Name</Label>
                 <Input
                   id="org-name"
                   type="text"
@@ -205,14 +205,14 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
                   onChange={(e) => setOrgName(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="rounded-xl px-4 py-3 border-gray-200 focus:ring-gray-200 transition-all"
+                  className="apple-input"
                 />
               </div>
             </CardContent>
             <CardFooter className="pt-2">
               <Button 
                 type="submit" 
-                className="w-full rounded-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-6" 
+                className="w-full apple-button apple-button-primary py-6" 
                 disabled={isLoading}
               >
                 {isLoading ? "Creating account..." : "Create Account"}

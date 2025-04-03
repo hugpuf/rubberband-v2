@@ -69,15 +69,15 @@
   }
 
   .apple-button {
-    @apply rounded-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2.5 px-6 transition-all;
+    @apply rounded-full bg-[#6E7FFE] hover:bg-[#5D6EED] text-white font-medium py-2.5 px-6 transition-all;
   }
 
   .apple-card {
-    @apply rounded-2xl bg-white shadow-sm border border-gray-50 p-6;
+    @apply rounded-2xl bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-gray-50 p-6;
   }
 
   .apple-input {
-    @apply rounded-xl px-4 py-3 border-gray-200 focus:ring-gray-200 transition-all;
+    @apply rounded-xl px-4 py-3 border-[#E5E5EA] focus:ring-[#E5E5EA] focus:border-[#D1D1D6] transition-all;
   }
   
   .glass-effect {
