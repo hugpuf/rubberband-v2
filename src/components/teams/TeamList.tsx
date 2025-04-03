@@ -52,7 +52,7 @@ export function TeamList() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 p-4">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-20 w-full" />
@@ -61,7 +61,7 @@ export function TeamList() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-medium">Teams</h2>
         
@@ -124,7 +124,7 @@ export function TeamList() {
       </div>
       
       {teams && teams.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+        <div className="grid gap-4">
           {teams.map((team) => (
             <Card
               key={team.id}

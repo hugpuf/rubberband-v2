@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Team, TeamMember } from "./types";
 
@@ -23,10 +22,11 @@ export const fetchTeams = async (organizationId: string) => {
     }
     
     console.log("Teams fetched:", data);
-    return data;
+    return data || [];
   } catch (error: any) {
     console.error("Error fetching teams:", error);
-    throw error;
+    // Return empty array instead of throwing to allow UI to handle no data state
+    return [];
   }
 };
 
@@ -52,13 +52,17 @@ export const fetchTeamMembers = async (teamId: string) => {
       `)
       .eq('team_id', teamId);
       
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching team members:", error);
+      throw error;
+    }
     
     console.log("Team members fetched:", data);
     return data as TeamMember[];
   } catch (error: any) {
     console.error("Error fetching team members:", error);
-    throw error;
+    // Return empty array instead of throwing
+    return [];
   }
 };
 

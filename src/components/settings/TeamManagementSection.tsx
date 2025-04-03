@@ -1,3 +1,4 @@
+
 import { useTeams } from "@/hooks/teams";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,14 +22,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, PlusCircle, Loader2 } from "lucide-react";
+import { Users, PlusCircle, Loader2, AlertTriangle } from "lucide-react";
 import { TeamList } from "@/components/teams/TeamList";
 import { TeamDetails } from "@/components/teams/TeamDetails";
 import { TeamMembers } from "@/components/teams/TeamMembers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function TeamManagementSection() {
-  const { teams, currentTeam, createTeam, refreshTeams, isLoading } = useTeams();
+  const { teams, currentTeam, createTeam, refreshTeams, isLoading, isError } = useTeams();
   const { toast } = useToast();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [teamName, setTeamName] = useState("");
@@ -36,11 +38,6 @@ export function TeamManagementSection() {
   const [activeTeamTab, setActiveTeamTab] = useState("members");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  useEffect(() => {
-    console.log("TeamManagementSection mounted, refreshing teams");
-    refreshTeams();
-  }, [refreshTeams]);
-
   useEffect(() => {
     console.log("Teams state in TeamManagementSection:", teams);
   }, [teams]);
@@ -70,76 +67,30 @@ export function TeamManagementSection() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-48">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading teams...</p>
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center h-48">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Loading teams...</p>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          <h3 className="font-medium text-lg">Teams</h3>
-        </div>
-        
-        <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="flex items-center gap-2">
-              <PlusCircle className="h-4 w-4" />
-              New Team
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create a new team</DialogTitle>
-              <DialogDescription>
-                Create a team to group users with similar roles and permissions
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Team name</Label>
-                <Input
-                  id="name"
-                  placeholder="Engineering, Marketing, etc."
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description (optional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe the team's purpose or focus"
-                  value={teamDescription}
-                  onChange={(e) => setTeamDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="submit"
-                onClick={handleCreateTeam}
-                className="flex items-center gap-2"
-                disabled={isSubmitting}
-              >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <PlusCircle className="h-4 w-4" />
-                Create Team
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
+    if (isError) {
+      return (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            There was an error loading teams. Please check your connection and permissions.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
           <Card>
@@ -205,6 +156,74 @@ export function TeamManagementSection() {
           )}
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          <h3 className="font-medium text-lg">Teams</h3>
+        </div>
+        
+        <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" />
+              New Team
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create a new team</DialogTitle>
+              <DialogDescription>
+                Create a team to group users with similar roles and permissions
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Team name</Label>
+                <Input
+                  id="name"
+                  placeholder="Engineering, Marketing, etc."
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description (optional)</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe the team's purpose or focus"
+                  value={teamDescription}
+                  onChange={(e) => setTeamDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setCreateDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateTeam}
+                className="flex items-center gap-2"
+                disabled={isSubmitting}
+              >
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <PlusCircle className="h-4 w-4" />
+                Create Team
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+      
+      {renderContent()}
     </div>
   );
 }

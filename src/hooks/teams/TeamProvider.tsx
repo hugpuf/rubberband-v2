@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
 import { TeamContext } from "./teamContext";
@@ -23,11 +22,13 @@ export function TeamProvider({ children }: TeamProviderProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState<boolean>(false);
+  const isRefreshing = useRef(false);
 
   // Fetch teams for the current organization
   const refreshTeams = async () => {
-    if (!organization) {
-      console.log("No organization found, cannot fetch teams");
+    if (!organization || isRefreshing.current) {
+      console.log("Skipping team refresh - no organization or already refreshing");
       setTeams([]);
       setIsLoading(false);
       return;
@@ -36,15 +37,16 @@ export function TeamProvider({ children }: TeamProviderProps) {
     console.log("Refreshing teams for organization:", organization.id);
     setIsLoading(true);
     setIsError(false);
+    isRefreshing.current = true;
     
     try {
       const data = await fetchTeams(organization.id);
       console.log("Teams refreshed:", data);
-      setTeams(data);
+      setTeams(data || []);
       
       // If a current team is set, refresh its data
       if (currentTeam) {
-        const updatedTeam = data.find(team => team.id === currentTeam.id);
+        const updatedTeam = data?.find(team => team.id === currentTeam.id);
         if (updatedTeam) {
           setCurrentTeam(updatedTeam);
           await refreshTeamMembers(updatedTeam.id);
@@ -56,13 +58,16 @@ export function TeamProvider({ children }: TeamProviderProps) {
     } catch (error: any) {
       console.error("Error refreshing teams:", error);
       setIsError(true);
+      setTeams([]); // Set to empty array on error to prevent loading state
       toast({
         variant: "destructive",
         title: "Failed to load teams",
-        description: error.message,
+        description: "Network error or permissions issue. Please try again later.",
       });
     } finally {
       setIsLoading(false);
+      setHasAttemptedFetch(true);
+      isRefreshing.current = false;
     }
   };
 
@@ -74,13 +79,14 @@ export function TeamProvider({ children }: TeamProviderProps) {
     
     try {
       const data = await fetchTeamMembers(teamId);
-      setTeamMembers(data);
+      setTeamMembers(data || []);
     } catch (error: any) {
       console.error("Error fetching team members:", error);
+      setTeamMembers([]);
       toast({
         variant: "destructive",
         title: "Failed to load team members",
-        description: error.message,
+        description: "Network error or permissions issue. Please try again later.",
       });
     } finally {
       setIsLoading(false);
@@ -105,8 +111,8 @@ export function TeamProvider({ children }: TeamProviderProps) {
     try {
       const newTeam = await createNewTeam(name, description, organization.id);
       
-      // Refresh teams list
-      await refreshTeams();
+      // Update teams list without full refresh
+      setTeams(prev => prev ? [...prev, newTeam] : [newTeam]);
       
       toast({
         title: "Team created",
@@ -245,19 +251,19 @@ export function TeamProvider({ children }: TeamProviderProps) {
     }
   };
 
-  // Load teams when organization changes
+  // Load teams when organization changes or on component mount
   useEffect(() => {
-    if (organization) {
-      console.log("Organization changed, fetching teams for:", organization.id);
+    if (organization && !hasAttemptedFetch && !isRefreshing.current) {
+      console.log("Organization available, fetching teams for:", organization.id);
       refreshTeams();
-    } else {
+    } else if (!organization) {
       console.log("No organization available, resetting teams data");
-      setTeams(null);
+      setTeams([]);
       setCurrentTeam(null);
       setTeamMembers(null);
       setIsLoading(false);
     }
-  }, [organization]);
+  }, [organization, hasAttemptedFetch]);
 
   const contextValue = {
     teams,
