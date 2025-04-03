@@ -1,6 +1,12 @@
 
 import { useNavigate } from "react-router-dom";
-import { Settings, LayoutDashboard, LogOut, Users, Home } from "lucide-react";
+import { 
+  Settings, 
+  LayoutDashboard, 
+  LogOut, 
+  BarChart,
+  Lightbulb
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -29,29 +35,29 @@ export function AppSidebar() {
     navigate("/auth");
   };
 
-  const mainMenuItems = [
+  // Updated navigation structure - Only Pilot's Chair at the top level
+  const topLevelItems = [
     {
       title: "pilot's chair",
-      icon: LayoutDashboard,
+      icon: BarChart,
       url: "/dashboard",
-    },
-    {
-      title: "home",
-      icon: Home,
-      url: "/",
     },
   ];
 
-  const adminMenuItems = [
+  // New Management section (will be populated with ERP modules in future)
+  // Currently empty as specified in the requirements
+
+  // Updated Settings section (removed User Management)
+  const settingsItems = [
     {
       title: "settings",
       icon: Settings,
       url: "/settings",
     },
     {
-      title: "user management",
-      icon: Users,
-      url: "/settings/users",
+      title: "ideas",
+      icon: Lightbulb,
+      url: "/ideas",
     },
   ];
 
@@ -59,7 +65,7 @@ export function AppSidebar() {
   const userInitials = user?.email ? user.email.substring(0, 2).toUpperCase() : "RB";
 
   return (
-    <Sidebar className="backdrop-blur-lg bg-[rgba(245,245,247,0.8)] border-r-0">
+    <Sidebar className="backdrop-blur-lg bg-[rgba(250,250,252,0.8)] border-r border-gray-100">
       <SidebarHeader className="py-6 px-6">
         <div className="flex items-center space-x-3">
           <Avatar className="h-8 w-8">
@@ -80,16 +86,16 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-6">
+        {/* Top level item - Pilot's Chair */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-normal tracking-wider text-[#636366] px-2">navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
+              {topLevelItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start rounded-full text-[#636366] hover:bg-[#EAEAEC] hover:text-[#1C1C1E] font-normal tracking-wider"
+                      className="w-full justify-start rounded-full text-[#1C1C1E] bg-white hover:bg-white hover:text-[#1C1C1E] font-medium tracking-wide shadow-sm transition-all"
                       onClick={() => navigate(item.url)}
                     >
                       <item.icon className="mr-3 h-4 w-4 stroke-[1.5px]" />
@@ -101,11 +107,28 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-normal tracking-wider text-[#636366] px-2">administration</SidebarGroupLabel>
+        
+        {/* Management section - For future ERP modules */}
+        <SidebarGroup className="mt-8">
+          <SidebarGroupLabel className="text-xs uppercase font-normal tracking-wider text-[#8E9196] px-2 mb-2">
+            management
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminMenuItems.map((item) => (
+              {/* Future modules will be added here */}
+              <div className="h-1"></div> {/* Space holder for future items */}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* Settings section - renamed from Administration */}
+        <SidebarGroup className="mt-8">
+          <SidebarGroupLabel className="text-xs uppercase font-normal tracking-wider text-[#8E9196] px-2 mb-2">
+            settings
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {settingsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Button

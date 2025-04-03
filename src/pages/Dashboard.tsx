@@ -11,7 +11,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[#1C1C1E]">Good afternoon</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-[#1C1C1E]">Good afternoon</h1>
         <p className="text-[#636366] mt-2 tracking-wide">
           Welcome to your command center, {organization?.name}
         </p>
