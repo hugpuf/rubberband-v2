@@ -14,29 +14,29 @@ const Settings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[#1C1C1E]">Settings</h1>
+        <h1 className="text-2xl font-normal tracking-tight text-[#1C1C1E]">Settings</h1>
         <p className="text-[#636366] mt-2 tracking-wide">
           Manage your organization and user settings
         </p>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4 bg-[#F5F5F7] p-1 rounded-full">
+        <TabsList className="mb-4 bg-[#F5F5F7] p-1 rounded-lg">
           <TabsTrigger 
             value="profile" 
-            className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
           >
             Organization Profile
           </TabsTrigger>
           <TabsTrigger 
             value="users"
-            className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
           >
             User Management
           </TabsTrigger>
           <TabsTrigger 
             value="account"
-            className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
           >
             My Account
           </TabsTrigger>
@@ -49,7 +49,7 @@ const Settings = () => {
         </TabsContent>
         <TabsContent value="account" className="space-y-6">
           <div>
-            <h2 className="text-xl font-medium text-[#1C1C1E] tracking-tight">Account Settings</h2>
+            <h2 className="text-xl font-normal text-[#1C1C1E] tracking-tight">Account Settings</h2>
             <p className="text-[#636366] tracking-wide">
               Manage your personal account settings and preferences
             </p>

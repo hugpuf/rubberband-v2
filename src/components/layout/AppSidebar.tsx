@@ -1,10 +1,10 @@
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Settings, 
   LayoutDashboard, 
   LogOut, 
-  BarChart,
+  BarChart3,
   Lightbulb
 } from "lucide-react";
 
@@ -27,6 +27,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 
 export function AppSidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
   const { organization } = useOrganization();
 
@@ -39,7 +40,7 @@ export function AppSidebar() {
   const topLevelItems = [
     {
       title: "pilot's chair",
-      icon: BarChart,
+      icon: BarChart3,
       url: "/dashboard",
     },
   ];
@@ -47,7 +48,7 @@ export function AppSidebar() {
   // New Management section (will be populated with ERP modules in future)
   // Currently empty as specified in the requirements
 
-  // Updated Settings section (removed User Management)
+  // Updated Settings section
   const settingsItems = [
     {
       title: "settings",
@@ -60,6 +61,11 @@ export function AppSidebar() {
       url: "/ideas",
     },
   ];
+
+  // Helper function to determine if the menu item is active
+  const isActive = (url: string) => {
+    return location.pathname.startsWith(url);
+  };
 
   // Placeholder for user initials
   const userInitials = user?.email ? user.email.substring(0, 2).toUpperCase() : "RB";
@@ -85,7 +91,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-6">
+      <SidebarContent className="px-5">
         {/* Top level item - Pilot's Chair */}
         <SidebarGroup>
           <SidebarGroupContent>
@@ -95,11 +101,15 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start rounded-full text-[#1C1C1E] bg-white hover:bg-white hover:text-[#1C1C1E] font-medium tracking-wide shadow-sm transition-all"
+                      className={`w-full justify-start rounded-lg text-[#1C1C1E] px-3 py-2 hover:bg-[#EAEAEC] hover:text-[#1C1C1E] font-normal transition-all ${
+                        isActive(item.url) 
+                          ? 'bg-white shadow-[0_2px_5px_rgba(0,0,0,0.08)] hover:bg-white' 
+                          : ''
+                      }`}
                       onClick={() => navigate(item.url)}
                     >
-                      <item.icon className="mr-3 h-4 w-4 stroke-[1.5px]" />
-                      <span>{item.title}</span>
+                      <item.icon className="mr-2 h-4 w-4 stroke-[1.5px]" />
+                      <span className="font-normal text-sm">{item.title}</span>
                     </Button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -133,11 +143,15 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start rounded-full text-[#636366] hover:bg-[#EAEAEC] hover:text-[#1C1C1E] font-normal tracking-wider"
+                      className={`w-full justify-start rounded-lg px-3 py-2 text-[#636366] hover:bg-[#EAEAEC] hover:text-[#1C1C1E] font-normal ${
+                        isActive(item.url) 
+                          ? 'bg-white text-[#1C1C1E] shadow-[0_2px_5px_rgba(0,0,0,0.08)] hover:bg-white' 
+                          : ''
+                      }`}
                       onClick={() => navigate(item.url)}
                     >
-                      <item.icon className="mr-3 h-4 w-4 stroke-[1.5px]" />
-                      <span>{item.title}</span>
+                      <item.icon className="mr-2 h-4 w-4 stroke-[1.5px]" />
+                      <span className="font-normal text-sm">{item.title}</span>
                     </Button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -156,7 +170,7 @@ export function AppSidebar() {
                 {userInitials}
               </AvatarFallback>
             </Avatar>
-            <div className="text-sm font-normal tracking-wide text-[#1C1C1E]">
+            <div className="text-sm font-normal text-[#1C1C1E]">
               {user?.email?.split("@")[0] || "User"}
             </div>
           </div>
