@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Settings, 
@@ -31,14 +30,11 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { organization } = useOrganization();
 
-  // Modified handler to prevent default and ensure signOut is properly called
-  const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    console.log("Signing out user");
-    await signOut();
+  const handleSignOut = () => {
+    console.log("Sign out button clicked");
+    signOut();
   };
 
-  // Updated navigation structure - Only Pilot's Chair at the top level
   const topLevelItems = [
     {
       title: "pilot's chair",
@@ -47,7 +43,6 @@ export function AppSidebar() {
     },
   ];
 
-  // Updated Settings section
   const settingsItems = [
     {
       title: "settings",
@@ -61,12 +56,10 @@ export function AppSidebar() {
     },
   ];
 
-  // Helper function to determine if the menu item is active
   const isActive = (url: string) => {
     return location.pathname.startsWith(url);
   };
 
-  // Placeholder for user initials
   const userInitials = user?.email ? user.email.substring(0, 2).toUpperCase() : "RB";
 
   return (
@@ -91,7 +84,6 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-5">
-        {/* Top level item - Pilot's Chair */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -117,20 +109,17 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         
-        {/* Management section - For future ERP modules */}
         <SidebarGroup className="mt-8">
           <SidebarGroupLabel className="text-xs uppercase font-normal tracking-wider text-[#8E9196] px-2 mb-2">
             management
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Future modules will be added here */}
-              <div className="h-1"></div> {/* Space holder for future items */}
+              <div className="h-1"></div>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         
-        {/* Settings section - renamed from Administration */}
         <SidebarGroup className="mt-8">
           <SidebarGroupLabel className="text-xs uppercase font-normal tracking-wider text-[#8E9196] px-2 mb-2">
             settings
@@ -176,7 +165,7 @@ export function AppSidebar() {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={handleSignOut} 
+            onClick={handleSignOut}
             className="text-[#636366] hover:text-[#1C1C1E]"
           >
             <LogOut className="h-4 w-4 stroke-[1.5px]" />
