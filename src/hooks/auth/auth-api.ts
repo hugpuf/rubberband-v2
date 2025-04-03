@@ -71,70 +71,59 @@ export const createUserAccount = async (email: string, password: string) => {
 
 export const createOrganization = async (orgName: string) => {
   console.log("STEP 2: Creating organization:", orgName);
-  console.log("Organization data being sent:", { name: orgName });
   
-  // Try direct insert first
+  // Simplified approach - insert only the required fields
+  const organizationData = {
+    name: orgName
+  };
+  
+  console.log("Organization data being sent:", organizationData);
+  
   try {
+    // First attempt - simple insert with minimal data
     const { data, error } = await supabase
       .from('organizations')
-      .insert([{ name: orgName }])
-      .select()
+      .insert(organizationData)
+      .select('id')
       .single();
-
+      
     if (error) {
-      console.error("Error creating organization (attempt 1):", error);
-      // Don't throw immediately, try the second approach
+      console.error("Organization creation error:", error);
+      console.error("Error details:", error.message, error.code, error.details);
       throw error;
+    }
+    
+    if (!data || !data.id) {
+      throw new Error("Organization created but no ID returned");
     }
     
     console.log("Organization created successfully with ID:", data.id);
     return data.id;
-  } catch (firstError) {
-    console.error("First attempt failed, trying alternative approach");
-    
-    // Second approach: Insert with minimal data and return ID only
-    try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .insert({ name: orgName })
-        .select('id')
-        .single();
-        
-      if (error) {
-        console.error("Error creating organization (attempt 2):", error);
-        throw error;
-      }
-      
-      console.log("Created organization with alternative approach:", data.id);
-      return data.id;
-    } catch (secondError) {
-      console.error("Both organization creation attempts failed");
-      throw secondError;
-    }
+  } catch (error) {
+    console.error("Failed to create organization:", error);
+    throw error;
   }
 };
 
 export const createUserRole = async (userId: string, orgId: string, role: string = "admin") => {
   console.log("STEP 3: Creating user role for user", userId, "in organization", orgId);
-  console.log("Role data being sent:", {
+  
+  const roleData = {
     user_id: userId,
     organization_id: orgId,
-    role,
-  });
+    role
+  };
+  
+  console.log("Role data being sent:", roleData);
   
   try {
     const { error } = await supabase
       .from('user_roles')
-      .insert([
-        {
-          user_id: userId,
-          organization_id: orgId,
-          role,
-        },
-      ]);
+      .insert([roleData]);
 
     if (error) {
       console.error("Error creating user role:", error);
+      console.error("Error details:", error.message, error.code, error.details);
       throw error;
     }
     
@@ -161,26 +150,25 @@ export const verifyUserProfile = async (userId: string, email: string) => {
   
   if (!data || data.length === 0) {
     console.log("Profile not found, creating manually");
-    console.log("Profile data being sent:", {
+    
+    const profileData = {
       id: userId,
       email: email
-    });
+    };
+    
+    console.log("Profile data being sent:", profileData);
     
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert([
-        {
-          id: userId,
-          email: email
-        },
-      ]);
+      .insert([profileData]);
       
     if (profileError) {
       console.error("Error creating profile:", profileError);
+      console.error("Error details:", profileError.message, profileError.code, profileError.details);
       // Don't block the signup flow for this error since profile might be created via trigger
+    } else {
+      console.log("Profile created manually");
     }
-    
-    console.log("Profile created manually");
   } else {
     console.log("Profile already exists");
   }
@@ -190,29 +178,47 @@ export const verifyUserProfile = async (userId: string, email: string) => {
 
 export const createOrganizationSettings = async (orgId: string) => {
   console.log("STEP 5: Creating organization settings");
-  console.log("Organization settings data being sent:", {
+  
+  const settingsData = {
     organization_id: orgId,
     has_completed_onboarding: false
-  });
+  };
+  
+  console.log("Organization settings data being sent:", settingsData);
   
   try {
-    const { error } = await supabase
+    // Check if settings already exist
+    const { data: existingSettings, error: checkError } = await supabase
       .from('organization_settings')
-      .insert([{
-        organization_id: orgId,
-        has_completed_onboarding: false
-      }]);
+      .select('id')
+      .eq('organization_id', orgId);
       
-    if (error) {
-      console.error("Error creating organization settings:", error);
-      // Don't block signup for this error since settings might be created via trigger
+    if (checkError) {
+      console.error("Error checking organization settings:", checkError);
     }
     
-    console.log("Organization settings created successfully");
+    // Only create settings if they don't exist
+    if (!existingSettings || existingSettings.length === 0) {
+      const { error } = await supabase
+        .from('organization_settings')
+        .insert([settingsData]);
+        
+      if (error) {
+        console.error("Error creating organization settings:", error);
+        console.error("Error details:", error.message, error.code, error.details);
+        // Don't block signup for this error since settings might be created via trigger
+      } else {
+        console.log("Organization settings created successfully");
+      }
+    } else {
+      console.log("Organization settings already exist");
+    }
+    
     return true;
   } catch (error) {
     console.error("Exception in createOrganizationSettings:", error);
     // Don't throw here as the trigger should handle this
+    return true;
   }
 };
 
@@ -233,3 +239,4 @@ export const getAuthSession = async () => {
     return null;
   }
 };
+

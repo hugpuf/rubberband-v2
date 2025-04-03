@@ -104,8 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, orgName: string) => {
     setAuthError(null);
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
       console.log("Starting signup process for:", email, "with organization:", orgName);
       
       // Step 1: Create user account
@@ -133,9 +134,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({
           variant: "destructive",
           title: "Organization creation failed",
-          description: error.message || "Could not create organization. Please try again.",
+          description: "Could not create organization. Sign up still succeeded - please try logging in.",
         });
-        throw error;
+        
+        // Continue the flow - we'll let the user log in normally
+        navigate("/auth");
+        setIsLoading(false);
+        return;
       }
       
       // Step 3: Create user role (link user to organization)
@@ -147,9 +152,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({
           variant: "destructive",
           title: "Role assignment failed",
-          description: error.message || "Could not assign user role. Please try again.",
+          description: "Sign up succeeded but role assignment failed. Please try logging in.",
         });
-        throw error;
+        
+        navigate("/auth");
+        setIsLoading(false);
+        return;
       }
       
       // Step 4: Verify user profile
@@ -158,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("User profile verified/created for user:", authUser.id);
       } catch (error: any) {
         console.error("Failed to verify user profile:", error);
-        // Don't block signup for this error since profile might be created via trigger
+        // Non-critical error, continue
       }
       
       // Step 5: Ensure organization settings exist
@@ -167,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("Organization settings created for organization:", orgId);
       } catch (error: any) {
         console.error("Failed to create organization settings:", error);
-        // Don't block signup for this error since settings might be created via trigger
+        // Non-critical error, continue
       }
 
       toast({
@@ -187,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Signup failed",
         description: error.message || "An error occurred during signup",
       });
-      throw error;
     } finally {
       setIsLoading(false);
     }
