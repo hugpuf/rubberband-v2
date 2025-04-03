@@ -59,27 +59,29 @@ export function AppSidebar() {
   const userInitials = user?.email ? user.email.substring(0, 2).toUpperCase() : "RB";
 
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <Avatar className="h-10 w-10">
-          <AvatarImage src="" alt="Organization Logo" />
-          <AvatarFallback className="bg-rubberband-primary text-white">
-            {organization?.name?.substring(0, 2).toUpperCase() || "RB"}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col">
-          <span className="font-semibold text-sidebar-foreground">
-            {organization?.name || "Rubberband OS"}
-          </span>
-          <span className="text-xs text-sidebar-foreground/70">
-            {user?.email || ""}
-          </span>
+    <Sidebar variant="floating">
+      <SidebarHeader className="py-4">
+        <div className="flex items-center space-x-2">
+          <Avatar className="h-8 w-8 bg-white">
+            <AvatarImage src="" alt="Organization Logo" />
+            <AvatarFallback className="bg-gray-100 text-gray-700 font-medium">
+              {organization?.name?.substring(0, 2).toUpperCase() || "RB"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-800">
+              {organization?.name || "Rubberband OS"}
+            </span>
+            <span className="text-xs text-gray-500">
+              {user?.email || ""}
+            </span>
+          </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-medium text-gray-500">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainMenuItems.map((item) => (
@@ -87,7 +89,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start"
+                      className="w-full justify-start rounded-xl text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       onClick={() => navigate(item.url)}
                     >
                       <item.icon className="mr-2 h-4 w-4" />
@@ -100,7 +102,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-medium text-gray-500">Administration</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {adminMenuItems.map((item) => (
@@ -108,7 +110,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start"
+                      className="w-full justify-start rounded-xl text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       onClick={() => navigate(item.url)}
                     >
                       <item.icon className="mr-2 h-4 w-4" />
@@ -122,20 +124,20 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-gray-100">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center">
             <Avatar className="h-8 w-8 mr-2">
               <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
-              <AvatarFallback className="bg-rubberband-secondary text-white">
+              <AvatarFallback className="bg-gray-200 text-gray-700">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
-            <div className="text-sm font-medium text-sidebar-foreground">
+            <div className="text-sm font-medium text-gray-700">
               {user?.email?.split("@")[0] || "User"}
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
+          <Button variant="ghost" size="icon" onClick={handleSignOut} className="text-gray-500 hover:text-gray-900">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
