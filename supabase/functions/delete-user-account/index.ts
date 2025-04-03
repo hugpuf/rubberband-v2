@@ -40,6 +40,12 @@ serve(async (req) => {
     }
 
     console.log(`User ${user.id} requested account deletion`)
+    
+    // IMPORTANT: Log the exact user ID to verify we're only deleting the specific auth UUID
+    console.log(`Will delete data for user ID: ${user.id}`)
+    
+    // Log the email for debugging, but NEVER use email for deletion matching
+    console.log(`Associated email (for logging only): ${user.email}`)
 
     // Call the database function to delete user data
     const { data, error } = await supabaseClient.rpc('delete_user_account', {
@@ -50,6 +56,8 @@ serve(async (req) => {
       console.error("RPC error:", error)
       throw new Error(`Database operation failed: ${error.message}`)
     }
+
+    console.log(`Database cleanup completed for user: ${user.id}`)
 
     // Create a service role client to delete the auth user
     const serviceRoleClient = createClient(
@@ -63,7 +71,8 @@ serve(async (req) => {
       }
     )
 
-    // Delete the auth user
+    // Delete the auth user with the service role client
+    // This is critical - must happen AFTER database cleanup
     const { error: deleteUserError } = await serviceRoleClient.auth.admin.deleteUser(
       user.id
     )

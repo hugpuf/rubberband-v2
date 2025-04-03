@@ -1,6 +1,4 @@
 
-
-
 -- Function to check if onboarding is completed
 CREATE OR REPLACE FUNCTION public.check_onboarding_status(org_id uuid)
 RETURNS boolean
@@ -80,7 +78,7 @@ BEGIN
   END IF;
 END $$;
 
--- Function to handle user deletion
+-- FIXED: Function to handle user deletion safely by UUID only
 CREATE OR REPLACE FUNCTION public.delete_user_account(user_id_param UUID)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -89,9 +87,24 @@ AS $$
 DECLARE
   org_id UUID;
   member_count INTEGER;
+  profile_exists BOOLEAN;
+  user_email TEXT;
 BEGIN
-  -- Log the deletion request
-  RAISE LOG 'Starting deletion process for user: %', user_id_param;
+  -- Log the deletion request with clear UUID identification
+  RAISE LOG 'Starting deletion process for user UUID: %', user_id_param;
+  
+  -- Verify the user exists in profiles and store email for logging only
+  SELECT EXISTS(SELECT 1 FROM profiles WHERE id = user_id_param), email 
+  INTO profile_exists, user_email
+  FROM profiles 
+  WHERE id = user_id_param;
+  
+  IF NOT profile_exists THEN
+    RAISE LOG 'User profile does not exist for UUID: %', user_id_param;
+    RETURN false;
+  END IF;
+  
+  RAISE LOG 'Found profile for user % with email % (email used for logging only)', user_id_param, user_email;
   
   -- Get the organization ID for this user
   SELECT organization_id INTO org_id
@@ -109,7 +122,7 @@ BEGIN
   FROM user_roles
   WHERE organization_id = org_id;
   
-  RAISE LOG 'User belongs to organization: %, with % members', org_id, member_count;
+  RAISE LOG 'User % belongs to organization: %, with % members', user_id_param, org_id, member_count;
   
   -- If this is the last member, delete the entire organization
   IF member_count <= 1 THEN
@@ -117,12 +130,20 @@ BEGIN
     
     -- Delete the organization (will cascade to settings, etc.)
     DELETE FROM organizations WHERE id = org_id;
+    RAISE LOG 'Organization % deleted', org_id;
   ELSE
-    -- Just delete user-specific data
+    -- Just remove the user from the organization
+    RAISE LOG 'Organization has % members, only removing user % from organization %', member_count, user_id_param, org_id;
     DELETE FROM user_roles WHERE user_id = user_id_param;
+    RAISE LOG 'Removed user % from organization %', user_id_param, org_id;
   END IF;
   
-  RAISE LOG 'User deletion completed for: %', user_id_param;
+  -- Delete the user profile
+  -- This is now explicit rather than relying on cascade
+  DELETE FROM profiles WHERE id = user_id_param;
+  RAISE LOG 'Deleted profile for user %', user_id_param;
+  
+  RAISE LOG 'User deletion completed for UUID: %', user_id_param;
   RETURN true;
 EXCEPTION WHEN OTHERS THEN
   RAISE LOG 'Error in delete_user_account: %', SQLERRM;
@@ -141,4 +162,3 @@ BEGIN
   RETURN delete_user_account(auth.uid());
 END;
 $$;
-
