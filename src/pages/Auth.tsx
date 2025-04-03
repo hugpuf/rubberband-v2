@@ -37,8 +37,8 @@ const Auth = () => {
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-[#F5F5F7] to-[#E8E8ED]">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E5DEFF] via-[#D3E4FD] to-[#F5F5F7]">
+      <div className="w-full max-w-md px-4">
         {(error || authError) && (
           <Alert variant="destructive" className="mb-4 apple-glass border-0 shadow-sm">
             <AlertTriangle className="h-4 w-4" />

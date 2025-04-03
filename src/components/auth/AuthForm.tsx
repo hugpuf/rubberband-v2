@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,20 +85,23 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
         value={activeTab}
         onValueChange={handleTabChange}
       >
-        <TabsList className="grid w-full grid-cols-2 mb-4 p-1 bg-[#F5F5F7] rounded-full">
-          <TabsTrigger 
-            value="login" 
-            className="rounded-full px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
-          >
-            Login
-          </TabsTrigger>
-          <TabsTrigger 
-            value="signup" 
-            className="rounded-full px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
-          >
-            Create Account
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex justify-center px-6 mb-6">
+          <TabsList className="grid w-[80%] grid-cols-2 bg-[#F5F5F7] rounded-full p-0.5">
+            <TabsTrigger 
+              value="login" 
+              className="rounded-full text-sm px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
+            >
+              Login
+            </TabsTrigger>
+            <TabsTrigger 
+              value="signup" 
+              className="rounded-full text-sm px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
+            >
+              Create Account
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        
         <TabsContent value="login">
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4 pt-2">
