@@ -108,7 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Starting signup process for:", email, "with organization:", orgName);
       
-      // Complete signup process in steps with better error handling for each step
       // Step 1: Create user account
       let authUser;
       try {
@@ -119,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({
           variant: "destructive",
           title: "Account creation failed",
-          description: "Could not create user account. Please try again.",
+          description: error.message || "Could not create user account. Please try again.",
         });
         throw error;
       }
@@ -134,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({
           variant: "destructive",
           title: "Organization creation failed",
-          description: "Could not create organization. Please try again.",
+          description: error.message || "Could not create organization. Please try again.",
         });
         throw error;
       }
@@ -148,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({
           variant: "destructive",
           title: "Role assignment failed",
-          description: "Could not assign user role. Please try again.",
+          description: error.message || "Could not assign user role. Please try again.",
         });
         throw error;
       }
@@ -162,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Don't block signup for this error since profile might be created via trigger
       }
       
-      // Step 5: Create organization settings
+      // Step 5: Ensure organization settings exist
       try {
         await createOrganizationSettings(orgId);
         console.log("Organization settings created for organization:", orgId);
@@ -179,12 +178,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Signup process completed successfully, redirecting to onboarding");
       
       // Redirect to onboarding flow for new users
-      setTimeout(() => {
-        navigate("/onboarding");
-      }, 0);
+      navigate("/onboarding");
     } catch (error: any) {
       console.error("Signup error:", error);
-      console.error("Full error object:", JSON.stringify(error, null, 2));
       setAuthError(error.message || "An error occurred during signup");
       toast({
         variant: "destructive",

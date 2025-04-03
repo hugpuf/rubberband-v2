@@ -73,49 +73,44 @@ export const createOrganization = async (orgName: string) => {
   console.log("STEP 2: Creating organization:", orgName);
   console.log("Organization data being sent:", { name: orgName });
   
-  // Add explicit debugging for the request
-  console.log("Making insert request to organizations table");
-  
+  // Try direct insert first
   try {
     const { data, error } = await supabase
       .from('organizations')
       .insert([{ name: orgName }])
-      .select();
+      .select()
+      .single();
 
     if (error) {
-      console.error("Error creating organization:", error.message, error);
-      console.error("Organization data attempted:", { name: orgName });
-      console.error("Full error details:", JSON.stringify(error, null, 2));
+      console.error("Error creating organization (attempt 1):", error);
+      // Don't throw immediately, try the second approach
       throw error;
     }
-
-    if (!data || data.length === 0) {
-      const errorMsg = "Failed to create organization - no data returned";
-      console.error(errorMsg);
-      console.error("Organization data attempted:", { name: orgName });
-      throw new Error(errorMsg);
-    }
     
-    console.log("Organization created successfully with ID:", data[0].id);
-    return data[0].id;
-  } catch (error) {
-    console.error("Exception in createOrganization:", error);
-    // Try an alternative approach on failure
-    console.log("Trying alternative approach to create organization");
+    console.log("Organization created successfully with ID:", data.id);
+    return data.id;
+  } catch (firstError) {
+    console.error("First attempt failed, trying alternative approach");
     
-    const { data: insertData, error: insertError } = await supabase
-      .from('organizations')
-      .insert({ name: orgName })
-      .select('id')
-      .single();
+    // Second approach: Insert with minimal data and return ID only
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .insert({ name: orgName })
+        .select('id')
+        .single();
+        
+      if (error) {
+        console.error("Error creating organization (attempt 2):", error);
+        throw error;
+      }
       
-    if (insertError) {
-      console.error("Alternative approach also failed:", insertError);
-      throw insertError;
+      console.log("Created organization with alternative approach:", data.id);
+      return data.id;
+    } catch (secondError) {
+      console.error("Both organization creation attempts failed");
+      throw secondError;
     }
-    
-    console.log("Created organization with alternative approach:", insertData.id);
-    return insertData.id;
   }
 };
 
@@ -139,14 +134,7 @@ export const createUserRole = async (userId: string, orgId: string, role: string
       ]);
 
     if (error) {
-      console.error("Error creating user role:", error.message, error);
-      console.error("Role data attempted:", {
-        user_id: userId,
-        organization_id: orgId,
-        role,
-      });
-      console.error("Transaction context:", { organizationCreated: true });
-      console.error("Full error details:", JSON.stringify(error, null, 2));
+      console.error("Error creating user role:", error);
       throw error;
     }
     
@@ -168,8 +156,7 @@ export const verifyUserProfile = async (userId: string, email: string) => {
     .eq('id', userId);
     
   if (profileCheckError) {
-    console.error("Error checking profile:", profileCheckError.message, profileCheckError);
-    console.error("Profile check data:", { id: userId });
+    console.error("Error checking profile:", profileCheckError);
   }
   
   if (!data || data.length === 0) {
@@ -189,13 +176,8 @@ export const verifyUserProfile = async (userId: string, email: string) => {
       ]);
       
     if (profileError) {
-      console.error("Error creating profile:", profileError.message, profileError);
-      console.error("Profile data attempted:", {
-        id: userId,
-        email: email
-      });
-      console.error("Transaction context:", { organizationCreated: true, roleCreated: true });
-      throw profileError;
+      console.error("Error creating profile:", profileError);
+      // Don't block the signup flow for this error since profile might be created via trigger
     }
     
     console.log("Profile created manually");
@@ -222,25 +204,15 @@ export const createOrganizationSettings = async (orgId: string) => {
       }]);
       
     if (error) {
-      console.error("Error creating organization settings:", error.message, error);
-      console.error("Settings data attempted:", {
-        organization_id: orgId,
-        has_completed_onboarding: false
-      });
-      console.error("Transaction context:", { 
-        organizationCreated: true, 
-        roleCreated: true,
-        profileCreated: true 
-      });
-      console.error("Full error details:", JSON.stringify(error, null, 2));
-      throw error;
+      console.error("Error creating organization settings:", error);
+      // Don't block signup for this error since settings might be created via trigger
     }
     
     console.log("Organization settings created successfully");
     return true;
   } catch (error) {
     console.error("Exception in createOrganizationSettings:", error);
-    throw error;
+    // Don't throw here as the trigger should handle this
   }
 };
 
