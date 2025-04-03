@@ -21,28 +21,28 @@ const data = [
 
 export function BusinessPerformanceWidget() {
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center space-x-4">
-        <div className="rounded-full bg-rubberband-light p-2">
-          <TrendingUp className="h-5 w-5 text-rubberband-primary" />
+    <Card className="w-full border-0 shadow-none">
+      <CardHeader className="flex flex-row items-center space-x-4 pb-4">
+        <div className="rounded-full bg-[#F5F5F7] p-2">
+          <TrendingUp className="h-5 w-5 text-[#6E7FFE] stroke-[1.5px]" />
         </div>
         <div>
-          <CardTitle>Overall Business Performance</CardTitle>
-          <CardDescription>Key metrics across all modules</CardDescription>
+          <CardTitle className="text-lg font-medium text-[#1C1C1E]">Overall Business Performance</CardTitle>
+          <CardDescription className="text-[#636366] tracking-wide text-sm">Key metrics across all modules</CardDescription>
         </div>
       </CardHeader>
       <CardContent>
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-              <Line type="monotone" dataKey="value" stroke="#9b87f5" strokeWidth={2} />
-              <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
-              <XAxis dataKey="name" />
-              <YAxis />
+              <Line type="monotone" dataKey="value" stroke="#6E7FFE" strokeWidth={2} />
+              <CartesianGrid stroke="#ECECEC" strokeDasharray="5 5" />
+              <XAxis dataKey="name" stroke="#636366" fontSize={12} />
+              <YAxis stroke="#636366" fontSize={12} />
               <Tooltip 
                 contentStyle={{
                   backgroundColor: "#fff",
-                  border: "1px solid #ccc",
+                  border: "1px solid #ECECEC",
                   borderRadius: "8px",
                 }}
               />

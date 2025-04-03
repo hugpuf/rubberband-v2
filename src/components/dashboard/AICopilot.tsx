@@ -28,10 +28,10 @@ export function AICopilot() {
   };
 
   return (
-    <Card className="w-full bg-rubberband-dark">
+    <Card className="w-full bg-[#FAFAFA] border border-gray-100">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-white">
-          <Bot className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 text-[#1C1C1E] text-lg font-normal">
+          <Bot className="h-5 w-5 stroke-[1.5px]" />
           AI Copilot
         </CardTitle>
       </CardHeader>
@@ -41,22 +41,22 @@ export function AICopilot() {
             placeholder="Ask your copilot something..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="bg-white/10 text-white border-white/20 placeholder:text-white/50"
+            className="bg-white text-[#636366] border-[#DCDCDC] rounded-full placeholder:text-gray-400"
           />
-          <Button type="submit" variant="outline" className="bg-rubberband-primary text-white border-none hover:bg-rubberband-secondary">
+          <Button type="submit" variant="outline" className="bg-[#6E7FFE] text-white border-none hover:bg-[#5D6FEE] rounded-full transition-all">
             <ArrowRight className="h-4 w-4" />
           </Button>
         </form>
         
         <div className="mt-4">
-          <p className="text-xs text-white/60 mb-2">Try asking about:</p>
+          <p className="text-xs text-[#636366] mb-2 tracking-wide">Try asking about:</p>
           <div className="flex gap-2 overflow-x-auto pb-2 flex-wrap">
             {suggestedPrompts.map((suggestion) => (
               <Button
                 key={suggestion}
                 variant="outline"
                 size="sm"
-                className="text-xs text-white border-white/20 whitespace-nowrap hover:bg-white/10 bg-transparent"
+                className="text-xs text-[#636366] border border-[#E0E0E0] whitespace-nowrap hover:bg-[#F5F5F7] bg-white rounded-full transition-all"
                 onClick={() => handleSuggestedPrompt(suggestion)}
               >
                 {suggestion}

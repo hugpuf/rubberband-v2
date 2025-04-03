@@ -23,22 +23,25 @@ const insights = [
 
 export function InsightsWidget() {
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center space-x-4">
-        <div className="rounded-full bg-rubberband-light p-2">
-          <Lightbulb className="h-5 w-5 text-rubberband-primary" />
+    <Card className="w-full border-0 shadow-none">
+      <CardHeader className="flex flex-row items-center space-x-4 pb-4">
+        <div className="rounded-full bg-[#F5F5F7] p-2">
+          <Lightbulb className="h-5 w-5 text-[#6E7FFE] stroke-[1.5px]" />
         </div>
         <div>
-          <CardTitle>Suggested Insights</CardTitle>
-          <CardDescription>AI-powered recommendations for your business</CardDescription>
+          <CardTitle className="text-lg font-medium text-[#1C1C1E]">Suggested Insights</CardTitle>
+          <CardDescription className="text-[#636366] tracking-wide text-sm">AI-powered recommendations for your business</CardDescription>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {insights.map((insight) => (
-            <div key={insight.id} className="rounded-md border p-4 hover:bg-muted/50 cursor-pointer hover-effect">
-              <h4 className="font-semibold">{insight.title}</h4>
-              <p className="text-sm text-muted-foreground mt-1">{insight.description}</p>
+            <div 
+              key={insight.id} 
+              className="rounded-lg border border-gray-100 p-4 hover:bg-[#F5F5F7] cursor-pointer transition-all duration-200"
+            >
+              <h4 className="font-medium text-[#1C1C1E]">{insight.title}</h4>
+              <p className="text-sm text-[#636366] mt-1 tracking-wide">{insight.description}</p>
             </div>
           ))}
         </div>
