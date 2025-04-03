@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useTeams } from "@/hooks/useTeams";
+import { useTeams } from "@/hooks/teams";
 import { useOrganization } from "@/hooks/useOrganization";
 import {
   Card,

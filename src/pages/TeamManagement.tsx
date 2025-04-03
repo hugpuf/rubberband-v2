@@ -5,7 +5,7 @@ import { TeamDetails } from "@/components/teams/TeamDetails";
 import { TeamMembers } from "@/components/teams/TeamMembers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { useTeams } from "@/hooks/useTeams";
+import { useTeams } from "@/hooks/teams";
 
 const TeamManagement = () => {
   const { currentTeam } = useTeams();

@@ -1,5 +1,4 @@
-
-import { useTeams } from "@/hooks/useTeams";
+import { useTeams } from "@/hooks/teams";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +36,6 @@ export function TeamManagementSection() {
   const [activeTeamTab, setActiveTeamTab] = useState("members");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Make sure teams are loaded when the component mounts
   useEffect(() => {
     console.log("TeamManagementSection mounted, refreshing teams");
     refreshTeams();

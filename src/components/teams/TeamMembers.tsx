@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useTeams, TeamMember } from "@/hooks/useTeams";
+import { useTeams, TeamMember } from "@/hooks/teams";
 import { useOrganization } from "@/hooks/useOrganization";
 import {
   Table,

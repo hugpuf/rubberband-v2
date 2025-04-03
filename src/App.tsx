@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -8,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/auth/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OnboardingProvider } from "@/hooks/onboarding";
-import { TeamProvider } from "@/hooks/useTeams";
+import { TeamProvider } from "@/hooks/teams";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";

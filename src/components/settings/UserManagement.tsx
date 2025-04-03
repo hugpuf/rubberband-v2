@@ -14,7 +14,7 @@ import { UsersList } from "@/components/settings/UsersList";
 import { UserInvitations } from "@/components/settings/UserInvitations";
 import { TeamManagementSection } from "@/components/settings/TeamManagementSection";
 import { Users, Mail, UserPlus, Users2 } from "lucide-react";
-import { TeamProvider } from "@/hooks/useTeams";
+import { TeamProvider } from "@/hooks/teams";
 
 export function UserManagement() {
   const [activeTab, setActiveTab] = useState("users");
