@@ -4,7 +4,10 @@ import {
   LayoutDashboard, 
   LogOut, 
   BarChart3,
-  Lightbulb
+  Lightbulb,
+  BarChart2,
+  Users,
+  UsersThree
 } from "lucide-react";
 
 import {
@@ -53,6 +56,29 @@ export function AppSidebar() {
       title: "ideas",
       icon: Lightbulb,
       url: "/ideas",
+    },
+  ];
+
+  const sidebarLinks = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: BarChart2,
+    },
+    {
+      name: 'Settings',
+      href: '/settings',
+      icon: Settings,
+    },
+    {
+      name: 'User Management',
+      href: '/settings/users',
+      icon: Users,
+    },
+    {
+      name: 'Team Management',
+      href: '/settings/teams',
+      icon: UsersThree,
     },
   ];
 

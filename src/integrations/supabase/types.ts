@@ -172,6 +172,76 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+          team_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: string
+          team_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          team_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -219,6 +289,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_effective_role: {
+        Args: {
+          p_user_id: string
+          p_team_id?: string
+        }
+        Returns: string
+      }
+      get_user_teams: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: {
+          team_id: string
+          team_name: string
+          team_description: string
+          user_role: string
+        }[]
+      }
       rpc_delete_current_user: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -229,9 +317,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_belongs_to_team: {
+        Args: {
+          team_id: string
+        }
+        Returns: boolean
+      }
       user_is_admin_of_organization: {
         Args: {
           org_id: string
+        }
+        Returns: boolean
+      }
+      user_is_team_admin: {
+        Args: {
+          team_id: string
         }
         Returns: boolean
       }

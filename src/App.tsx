@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/auth/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OnboardingProvider } from "@/hooks/onboarding";
+import { TeamProvider } from "@/hooks/useTeams";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -14,6 +16,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
+import TeamManagement from "./pages/TeamManagement";
 import NotFound from "./pages/NotFound";
 import { Layout } from "./components/layout/Layout";
 import { useAuth } from "./hooks/useAuth";
@@ -120,6 +123,16 @@ const AppRoutes = () => {
           </ProtectedDashboardRoute>
         }
       />
+      <Route
+        path="/settings/teams"
+        element={
+          <ProtectedDashboardRoute>
+            <Layout>
+              <TeamManagement />
+            </Layout>
+          </ProtectedDashboardRoute>
+        }
+      />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -134,11 +147,13 @@ const App = () => {
           <AuthProvider>
             <OnboardingProvider>
               <OrganizationProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <AppRoutes />
-                </TooltipProvider>
+                <TeamProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <AppRoutes />
+                  </TooltipProvider>
+                </TeamProvider>
               </OrganizationProvider>
             </OnboardingProvider>
           </AuthProvider>

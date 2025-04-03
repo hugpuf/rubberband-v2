@@ -6,6 +6,9 @@ import { UserManagement } from "@/components/settings/UserManagement";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Users } from "lucide-react";
 
 const Settings = () => {
   const { isAdmin } = useOrganization();
@@ -18,6 +21,15 @@ const Settings = () => {
         <p className="text-[#636366] mt-2 tracking-wide">
           Manage your organization and user settings
         </p>
+      </div>
+      
+      <div className="flex gap-4 items-center">
+        <Link to="/settings/teams">
+          <Button variant="outline" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Team Management
+          </Button>
+        </Link>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
