@@ -35,8 +35,9 @@ export const checkOnboardingStatus = async (userId: string): Promise<boolean> =>
       return false;
     }
     
-    console.log("Onboarding status:", settingsData?.has_completed_onboarding);
-    return !!settingsData?.has_completed_onboarding;
+    const isCompleted = !!settingsData?.has_completed_onboarding;
+    console.log("Onboarding status:", isCompleted);
+    return isCompleted;
   } catch (error) {
     console.error("Error in checkOnboardingStatus:", error);
     return false;

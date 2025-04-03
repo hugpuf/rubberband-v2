@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,9 +18,47 @@ import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import { Layout } from "./components/layout/Layout";
 import { useAuth } from "./hooks/useAuth";
+import { useOnboarding } from "./hooks/useOnboarding";
 
 const queryClient = new QueryClient();
 
+// Component to protect routes requiring both authentication and completed onboarding
+const ProtectedDashboardRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  const { onboarding } = useOnboarding();
+  
+  useEffect(() => {
+    // Debug logging
+    if (user) {
+      console.log("ProtectedDashboardRoute - User:", user.id);
+      console.log("ProtectedDashboardRoute - Onboarding completed:", onboarding.isCompleted);
+    }
+  }, [user, onboarding]);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-center">
+          <p className="text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    console.log("User not authenticated, redirecting to auth");
+    return <Navigate to="/auth" replace />;
+  }
+  
+  if (!onboarding.isCompleted) {
+    console.log("Onboarding not completed, redirecting to onboarding");
+    return <Navigate to="/onboarding" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Component to protect routes requiring only authentication
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
@@ -41,20 +80,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { user } = useAuth();
-  
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          user ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <Navigate to="/auth" replace />
-          )
-        }
-      />
+      <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       
       <Route
@@ -69,31 +97,31 @@ const AppRoutes = () => {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedDashboardRoute>
             <Layout>
               <Dashboard />
             </Layout>
-          </ProtectedRoute>
+          </ProtectedDashboardRoute>
         }
       />
       <Route
         path="/settings"
         element={
-          <ProtectedRoute>
+          <ProtectedDashboardRoute>
             <Layout>
               <Settings />
             </Layout>
-          </ProtectedRoute>
+          </ProtectedDashboardRoute>
         }
       />
       <Route
         path="/settings/users"
         element={
-          <ProtectedRoute>
+          <ProtectedDashboardRoute>
             <Layout>
               <UserManagement />
             </Layout>
-          </ProtectedRoute>
+          </ProtectedDashboardRoute>
         }
       />
       

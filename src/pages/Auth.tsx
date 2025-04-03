@@ -3,16 +3,32 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
+import { useOnboarding } from "@/hooks/useOnboarding";
 
 const Auth = () => {
   const { signIn, signUp, isLoading, authError, user } = useAuth();
+  const { onboarding } = useOnboarding();
   const [error, setError] = useState<string | null>(null);
   
-  // If user is already authenticated, redirect to dashboard
+  useEffect(() => {
+    // Log auth and onboarding state for debugging
+    if (user) {
+      console.log("Auth page - User:", user.id);
+      console.log("Auth page - Onboarding completed:", onboarding.isCompleted);
+    }
+  }, [user, onboarding]);
+  
+  // If user is already authenticated, redirect to appropriate page
   if (user) {
-    return <Navigate to="/dashboard" />;
+    if (!onboarding.isCompleted) {
+      console.log("User authenticated but onboarding not complete, redirecting to onboarding");
+      return <Navigate to="/onboarding" />;
+    } else {
+      console.log("User authenticated and onboarding complete, redirecting to dashboard");
+      return <Navigate to="/dashboard" />;
+    }
   }
   
   const handleSignIn = async (email: string, password: string) => {

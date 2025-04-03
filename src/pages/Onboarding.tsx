@@ -11,18 +11,20 @@ import { FinishStep } from "@/components/onboarding/FinishStep";
 
 export default function Onboarding() {
   const { user, isLoading: authLoading } = useAuth();
-  const { onboarding } = useOnboarding();
+  const { onboarding, isLoading: onboardingLoading } = useOnboarding();
   
   useEffect(() => {
     // Log current state for debugging
     console.log("Onboarding page - User:", user?.id);
     console.log("Onboarding page - Auth loading:", authLoading);
+    console.log("Onboarding page - Onboarding loading:", onboardingLoading);
     console.log("Onboarding state:", onboarding);
+    console.log("Onboarding step:", onboarding.step);
     console.log("Onboarding completion status:", onboarding.isCompleted);
     
     // Trigger console trace to see call stack
     console.trace("Onboarding page render trace");
-  }, [user, authLoading, onboarding]);
+  }, [user, authLoading, onboardingLoading, onboarding]);
   
   // If user completes onboarding or is not authenticated, redirect
   if (onboarding.isCompleted) {
@@ -37,6 +39,8 @@ export default function Onboarding() {
   
   // Show the appropriate onboarding step based on the current step
   const renderStep = () => {
+    console.log("Rendering onboarding step:", onboarding.step);
+    
     switch (onboarding.step) {
       case 1:
         return <PersonalDetailsStep />;
@@ -49,11 +53,12 @@ export default function Onboarding() {
       case 5:
         return <FinishStep />;
       default:
+        console.log("No matching step found, defaulting to PersonalDetailsStep");
         return <PersonalDetailsStep />;
     }
   };
   
-  if (authLoading) {
+  if (authLoading || onboardingLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-rubberband-dark to-rubberband-secondary">
         <div className="animate-pulse text-white text-center">
