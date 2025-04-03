@@ -7,7 +7,7 @@ import {
   Lightbulb,
   BarChart2,
   Users,
-  UsersThree
+  UserPlus
 } from "lucide-react";
 
 import {
@@ -78,7 +78,7 @@ export function AppSidebar() {
     {
       name: 'Team Management',
       href: '/settings/teams',
-      icon: UsersThree,
+      icon: UserPlus,
     },
   ];
 
