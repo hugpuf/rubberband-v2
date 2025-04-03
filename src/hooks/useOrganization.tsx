@@ -26,7 +26,7 @@ export type Profile = {
 type OrganizationUser = {
   role: string;
   user_id: string;
-  user: Profile;
+  profiles: Profile;
 };
 
 type OrganizationContextType = {
@@ -64,6 +64,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     setIsError(false);
     
     try {
+      console.log("Fetching organization data for user:", user.id);
+      
       // First get the user's role and organization ID - don't use single() to avoid 406 errors
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
@@ -81,6 +83,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         return;
       }
       
+      console.log("Found user role:", roleData[0]);
       setUserRole(roleData[0].role);
       
       // Then fetch the organization details
@@ -95,15 +98,21 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         throw orgError;
       }
       
-      setOrganization(orgData);
+      if (orgData) {
+        console.log("Found organization:", orgData.name);
+        setOrganization(orgData);
+      } else {
+        console.log("No organization found with ID:", roleData[0].organization_id);
+      }
       
       // Fetch all users in the organization with their roles and profiles
+      // Use the explicitly defined relationship between user_roles and profiles
       const { data: usersData, error: usersError } = await supabase
         .from('user_roles')
         .select(`
           role,
           user_id,
-          user:profiles(*)
+          profiles(*)
         `)
         .eq("organization_id", roleData[0].organization_id);
         
@@ -112,6 +121,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         throw usersError;
       }
       
+      console.log("Fetched organization users:", usersData);
       setOrganizationUsers(usersData as unknown as OrganizationUser[]);
     } catch (error) {
       console.error("Error fetching organization:", error);
@@ -171,9 +181,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .select("id")
       .eq("email", email)
-      .single();
+      .maybeSingle();
       
-    if (error) throw new Error("User not found with this email");
+    if (error) throw new Error("Error finding user: " + error.message);
+    if (!data) throw new Error("User not found with this email");
     return data;
   };
 
@@ -186,6 +197,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       const userData = await findUserByEmail(email);
       if (!userData) throw new Error("User not found with this email");
       
+      console.log("Found user to invite:", userData.id);
+      
       // Add user role
       const { error: roleError } = await supabase
         .from('user_roles')
@@ -195,7 +208,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           role,
         }]);
         
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error("Error adding user role:", roleError);
+        throw roleError;
+      }
       
       await refreshOrganization();
       toast({

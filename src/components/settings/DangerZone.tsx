@@ -1,178 +1,169 @@
 
-import React, { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useOrganization } from "@/hooks/useOrganization";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Trash, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { AlertTriangle, Loader2 } from "lucide-react";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
+import { supabase } from "@/integrations/supabase/client";
 
 export function DangerZone() {
-  const { user } = useAuth();
-  const { organization, organizationUsers, isAdmin } = useOrganization();
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const { signOut } = useAuth();
+  const { organization, organizationUsers } = useOrganization();
+  
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [confirmText, setConfirmText] = useState("");
-  
-  // Determine if this is the last user in the organization
-  const isLastMember = organizationUsers?.length === 1;
-  const confirmationText = isLastMember 
-    ? organization?.name 
-    : "DELETE MY ACCOUNT";
-  
+  const [isLastMember, setIsLastMember] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const openDeleteDialog = () => {
+    // Check if user is the last member of the organization
+    const isLast = organizationUsers && organizationUsers.length <= 1;
+    setIsLastMember(isLast || false);
+    setShowDeleteDialog(true);
+  };
+
   const handleDeleteAccount = async () => {
-    if (!user) return;
+    const expectedText = isLastMember ? organization?.name : "DELETE";
     
-    setIsLoading(true);
-    
-    try {
-      // Call dedicated function for account deletion
-      const { error } = await supabase.functions.invoke('delete-user-account', {
-        body: { isLastMember },
+    if (confirmText !== expectedText) {
+      toast({
+        variant: "destructive",
+        title: "Confirmation failed",
+        description: `Please type ${expectedText} to confirm deletion.`,
       });
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+
+      // Call our edge function to handle the deletion
+      const { error } = await supabase.functions.invoke('delete-user-account');
       
-      if (error) throw error;
-      
-      // Show success message
+      if (error) {
+        console.error("Error deleting account:", error);
+        throw error;
+      }
+
       toast({
         title: "Account deleted",
-        description: isLastMember 
-          ? "Your workspace and all data has been deleted." 
-          : "Your account has been removed from this workspace.",
+        description: "Your account has been successfully deleted.",
       });
+
+      // Sign the user out
+      await signOut();
       
-      // Sign out and redirect to landing page
-      await supabase.auth.signOut();
+      // Redirect to home page
       navigate("/");
     } catch (error: any) {
-      console.error("Account deletion error:", error);
       toast({
         variant: "destructive",
         title: "Deletion failed",
-        description: error?.message || "Could not delete your account. Please try again.",
+        description: error.message || "An error occurred while deleting your account.",
       });
-      setIsLoading(false);
+      setIsDeleting(false);
     }
   };
-  
+
   return (
-    <div className="space-y-6 border rounded-lg p-6 bg-red-50/50">
-      <div className="flex flex-row items-center space-x-2">
-        <AlertTriangle className="h-5 w-5 text-red-500" />
-        <h3 className="text-lg font-medium text-red-600">Danger Zone</h3>
-      </div>
-      
-      <Separator className="bg-red-200" />
-      
-      <div className="space-y-4">
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Critical Action</AlertTitle>
-          <AlertDescription>
-            {isLastMember
-              ? "You are the last member of this workspace. Deleting your account will permanently delete all workspace data."
-              : "Deleting your account will remove you from this workspace and delete your associated data."}
-          </AlertDescription>
-        </Alert>
-        
+    <Card className="border-destructive">
+      <CardHeader className="border-b border-destructive/20 text-destructive">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          <CardTitle>Danger Zone</CardTitle>
+        </div>
+        <CardDescription className="text-destructive/80">
+          Irreversible account actions
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <p className="text-sm text-muted-foreground mb-4">
+          Once you delete your account, there is no going back. Please be certain.
+        </p>
+      </CardContent>
+      <CardFooter className="border-t border-destructive/20 pt-4">
         <Button 
           variant="destructive" 
-          onClick={() => setShowDeleteConfirmation(true)}
+          onClick={openDeleteDialog}
+          className="flex items-center gap-2"
         >
+          <Trash className="h-4 w-4" />
           Delete my account
         </Button>
-      </div>
-      
-      <AlertDialog
-        open={showDeleteConfirmation}
-        onOpenChange={setShowDeleteConfirmation}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600">
-              {isLastMember 
-                ? "Delete entire workspace" 
-                : "Delete your account"}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              {isLastMember ? (
-                <>
-                  <p>
-                    You are the last member of <strong>{organization?.name}</strong>. 
-                    This action will permanently delete:
-                  </p>
-                  <ul className="list-disc pl-6">
-                    <li>Your entire workspace and organization data</li>
-                    <li>All settings and configurations</li>
-                    <li>All integrations and connected services</li>
-                    <li>Your user account and profile</li>
-                  </ul>
-                  <p className="font-semibold">
-                    To confirm, please type <strong>{organization?.name}</strong> below:
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p>This action will permanently delete:</p>
-                  <ul className="list-disc pl-6">
-                    <li>Your user account and profile from this organization</li>
-                    <li>Your role assignments in this workspace</li>
-                    <li>Any personal settings or integrations</li>
-                  </ul>
-                  <p>
-                    The organization and other members will not be affected.
-                  </p>
-                  <p className="font-semibold">
-                    To confirm, please type <strong>DELETE MY ACCOUNT</strong> below:
-                  </p>
-                </>
-              )}
-              <Input
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
-                className={
-                  confirmText === confirmationText
-                    ? "border-green-500 focus:border-green-500"
-                    : "border-red-200 focus:border-red-500"
-                }
-                placeholder={`Type ${confirmationText} here`}
-              />
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              disabled={confirmText !== confirmationText || isLoading}
-              onClick={handleDeleteAccount}
-              className="gap-2"
-            >
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isLoading
-                ? "Deleting..."
-                : isLastMember
-                ? "Delete entire workspace"
-                : "Delete my account"}
+      </CardFooter>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash className="h-5 w-5" />
+              {isLastMember ? "Delete Entire Workspace" : "Delete Your Account"}
+            </DialogTitle>
+            <DialogDescription className="text-destructive/80">
+              {isLastMember
+                ? "You are the last member of this organization. Deleting your account will permanently delete the entire workspace and all its data."
+                : "This will permanently delete your user account, profile and access to all organizations."}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-6">
+            <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4" />
+                <p className="font-medium">Warning: This action cannot be undone</p>
+              </div>
+              <p>
+                {isLastMember 
+                  ? `To verify, type "${organization?.name}" below`
+                  : 'To verify, type "DELETE" below'}
+              </p>
+            </div>
+
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={isLastMember ? organization?.name : "DELETE"}
+              className="border-destructive/50 focus:border-destructive"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
+              Cancel
             </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteAccount} 
+              disabled={isDeleting || confirmText !== (isLastMember ? organization?.name : "DELETE")}
+              className="flex items-center gap-2"
+            >
+              {isDeleting ? "Deleting..." : "Delete Account"}
+              {!isDeleting && <Trash className="h-4 w-4" />}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

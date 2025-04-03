@@ -97,6 +97,8 @@ export function UserManagement() {
     await removeUser(userId);
   };
 
+  console.log("Organization users:", organizationUsers);
+
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-x-4">
@@ -195,7 +197,7 @@ export function UserManagement() {
           <TableBody>
             {organizationUsers?.map((user: any) => (
               <TableRow key={user.user_id}>
-                <TableCell>{user.users?.email}</TableCell>
+                <TableCell>{user.profiles?.email}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {getRoleIcon(user.role)}
