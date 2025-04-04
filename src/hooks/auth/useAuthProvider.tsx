@@ -29,8 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for an active session on load
     const checkUser = async () => {
       try {
+        console.log("AuthProvider: Checking for active session");
         const currentUser = await getAuthSession();
+        console.log("AuthProvider: Session check result:", currentUser ? "User found" : "No user");
         setUser(currentUser);
+      } catch (error) {
+        console.error("AuthProvider: Error checking session:", error);
       } finally {
         setIsLoading(false);
       }
@@ -41,13 +45,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id);
+        console.log("AuthProvider: Auth state changed:", event, session?.user?.id);
         setUser(session?.user ?? null);
         setIsLoading(false);
       }
     );
 
     return () => {
+      console.log("AuthProvider: Cleaning up auth listener");
       authListener?.subscription.unsubscribe();
     };
   }, []);
@@ -55,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setAuthError(null);
     try {
-      console.log("Starting signin process for user:", email);
+      console.log("AuthProvider: Starting signin process for user:", email);
       setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -63,18 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error("Login error:", error.message, error);
+        console.error("AuthProvider: Login error:", error.message, error);
         throw error;
       }
       
       if (data.user) {
-        console.log("User successfully authenticated:", data.user.id);
+        console.log("AuthProvider: User successfully authenticated:", data.user.id);
         
         // Check if user exists in the database (profiles, user_roles, organizations)
         const userExists = await verifyUserExists(data.user.id);
         
         if (!userExists) {
-          console.error("User exists in auth but not in the database - likely a deleted account");
+          console.error("AuthProvider: User exists in auth but not in the database - likely a deleted account");
           // Sign out the user to prevent auto-login
           await supabase.auth.signOut();
           setUser(null);
@@ -84,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Check if onboarding is completed
         const isOnboardingCompleted = await checkOnboardingStatus(data.user.id);
         
-        console.log("User signed in, onboarding completed:", isOnboardingCompleted);
+        console.log("AuthProvider: User signed in, onboarding completed:", isOnboardingCompleted);
         
         if (isOnboardingCompleted) {
           toast({
@@ -101,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("AuthProvider: Login error:", error);
       setAuthError(error.message || "An error occurred during login");
       toast({
         variant: "destructive",
@@ -119,15 +124,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     
     try {
-      console.log("Starting signup process for:", email, "with organization:", orgName);
+      console.log("AuthProvider: Starting signup process for:", email, "with organization:", orgName);
       
       // Step 1: Create user account
       let authUser;
       try {
         authUser = await createUserAccount(email, password);
-        console.log("User account created:", authUser.id);
+        console.log("AuthProvider: User account created:", authUser.id);
       } catch (error: any) {
-        console.error("Failed to create user account:", error);
+        console.error("AuthProvider: Failed to create user account:", error);
         toast({
           variant: "destructive",
           title: "Account creation failed",
@@ -140,9 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let orgId;
       try {
         orgId = await createOrganization(orgName);
-        console.log("Organization created:", orgId);
+        console.log("AuthProvider: Organization created:", orgId);
       } catch (error: any) {
-        console.error("Failed to create organization:", error);
+        console.error("AuthProvider: Failed to create organization:", error);
         toast({
           variant: "destructive",
           title: "Organization creation failed",
@@ -158,9 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Step 3: Create user role (link user to organization)
       try {
         await createUserRole(authUser.id, orgId);
-        console.log("User role created for user", authUser.id, "in organization", orgId);
+        console.log("AuthProvider: User role created for user", authUser.id, "in organization", orgId);
       } catch (error: any) {
-        console.error("Failed to create user role:", error);
+        console.error("AuthProvider: Failed to create user role:", error);
         toast({
           variant: "destructive",
           title: "Role assignment failed",
@@ -175,18 +180,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Step 4: Verify user profile
       try {
         await verifyUserProfile(authUser.id, email);
-        console.log("User profile verified/created for user:", authUser.id);
+        console.log("AuthProvider: User profile verified/created for user:", authUser.id);
       } catch (error: any) {
-        console.error("Failed to verify user profile:", error);
+        console.error("AuthProvider: Failed to verify user profile:", error);
         // Non-critical error, continue
       }
       
       // Step 5: Ensure organization settings exist
       try {
         await createOrganizationSettings(orgId);
-        console.log("Organization settings created for organization:", orgId);
+        console.log("AuthProvider: Organization settings created for organization:", orgId);
       } catch (error: any) {
-        console.error("Failed to create organization settings:", error);
+        console.error("AuthProvider: Failed to create organization settings:", error);
         // Non-critical error, continue
       }
 
@@ -195,12 +200,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Let's complete your account setup.",
       });
       
-      console.log("Signup process completed successfully, redirecting to onboarding");
+      console.log("AuthProvider: Signup process completed successfully, redirecting to onboarding");
       
       // Redirect to onboarding flow for new users
       navigate("/onboarding");
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("AuthProvider: Signup error:", error);
       setAuthError(error.message || "An error occurred during signup");
       toast({
         variant: "destructive",
@@ -214,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      console.log("Signing out user");
+      console.log("AuthProvider: Signing out user");
       
       // Clear local state first
       setUser(null);
@@ -224,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("Error during sign out:", error);
+        console.error("AuthProvider: Error during sign out:", error);
         throw error;
       }
       
@@ -236,9 +241,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "You have been signed out successfully.",
       });
       
-      console.log("Sign out completed");
+      console.log("AuthProvider: Sign out completed");
     } catch (error: any) {
-      console.error("Error signing out:", error);
+      console.error("AuthProvider: Error signing out:", error);
       setAuthError(error.message || "Error signing out");
       toast({
         variant: "destructive",

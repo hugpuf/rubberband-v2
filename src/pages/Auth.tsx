@@ -3,7 +3,9 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import OriginalAuth from "./Auth.original";
+import { AuthForm } from "@/components/auth/AuthForm";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -12,6 +14,7 @@ const Auth = () => {
   const isInvitation = searchParams.get("invitation") === "true";
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, signUp, isLoading, authError } = useAuth();
   const [validatingToken, setValidatingToken] = useState(false);
   const [tokenValidation, setTokenValidation] = useState<{
     valid: boolean;
@@ -94,6 +97,26 @@ const Auth = () => {
     checkAuthStatus();
   }, [navigate]);
 
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      console.log("Auth page: handleLogin called with email:", email);
+      await signIn(email, password);
+    } catch (error) {
+      console.error("Login error in Auth component:", error);
+      // Error is shown through the authError state from useAuth
+    }
+  };
+
+  const handleSignUp = async (email: string, password: string, orgName: string) => {
+    try {
+      console.log("Auth page: handleSignUp called with email:", email, "org:", orgName);
+      await signUp(email, password, orgName);
+    } catch (error) {
+      console.error("Sign up error in Auth component:", error);
+      // Error is shown through the authError state from useAuth
+    }
+  };
+
   return (
     <>
       {validatingToken ? (
@@ -104,7 +127,9 @@ const Auth = () => {
           </div>
         </div>
       ) : (
-        <OriginalAuth />
+        <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
+          <AuthForm onLogin={handleLogin} onSignUp={handleSignUp} isLoading={isLoading} />
+        </div>
       )}
     </>
   );

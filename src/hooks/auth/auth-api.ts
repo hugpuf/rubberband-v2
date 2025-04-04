@@ -1,309 +1,273 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
-export const checkOnboardingStatus = async (userId: string): Promise<boolean> => {
+// Get the current session
+export const getAuthSession = async (): Promise<User | null> => {
   try {
-    console.log("Checking onboarding status for user:", userId);
+    console.log("auth-api: Getting current session");
+    const { data, error } = await supabase.auth.getSession();
     
-    // Get user's organization
-    const { data: orgData, error: orgError } = await supabase
-      .from('user_roles')
-      .select('organization_id')
-      .eq('user_id', userId);
-      
-    if (orgError) {
-      console.error("Error getting organization:", orgError);
-      return false;
+    if (error) {
+      console.error("auth-api: Error getting session:", error.message);
+      throw error;
     }
     
-    if (!orgData || orgData.length === 0) {
-      console.log("No organization found for user");
-      return false;
-    }
-    
-    console.log("Found organization for user:", orgData[0].organization_id);
-    
-    // Check if onboarding is completed
-    const { data: settingsData, error: settingsError } = await supabase
-      .from('organization_settings')
-      .select('has_completed_onboarding')
-      .eq('organization_id', orgData[0].organization_id)
-      .single();
-    
-    if (settingsError) {
-      console.error("Error checking onboarding status:", settingsError);
-      return false;
-    }
-    
-    const isCompleted = !!settingsData?.has_completed_onboarding;
-    console.log("Onboarding status:", isCompleted);
-    return isCompleted;
+    return data.session?.user || null;
   } catch (error) {
-    console.error("Error in checkOnboardingStatus:", error);
-    return false;
+    console.error("auth-api: Error getting session:", error);
+    return null;
   }
 };
 
+// Verify if a user exists in the database
 export const verifyUserExists = async (userId: string): Promise<boolean> => {
   try {
-    console.log("Verifying user exists in database:", userId);
+    console.log("auth-api: Verifying if user exists in database:", userId);
     
-    // First check if the user has a profile
-    const { data: profileData, error: profileError } = await supabase
+    // Check if the user has a profile
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id')
-      .eq('id', userId);
-    
+      .eq('id', userId)
+      .maybeSingle();
+      
     if (profileError) {
-      console.error("Error checking profile:", profileError);
-      return false;
+      console.error("auth-api: Error checking profile:", profileError);
+      throw profileError;
     }
     
-    if (!profileData || profileData.length === 0) {
-      console.log("No profile found for user:", userId);
-      return false;
-    }
-    
-    console.log("Profile found for user:", userId);
-    
-    // Then check if the user has organization roles
-    const { data: roleData, error: roleError } = await supabase
+    // Check if the user has a role
+    const { data: userRole, error: roleError } = await supabase
       .from('user_roles')
-      .select('organization_id')
-      .eq('user_id', userId);
-    
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+      
     if (roleError) {
-      console.error("Error checking user roles:", roleError);
-      return false;
+      console.error("auth-api: Error checking user role:", roleError);
+      throw roleError;
     }
     
-    if (!roleData || roleData.length === 0) {
-      console.log("No organization roles found for user:", userId);
-      return false;
-    }
+    // User exists if both profile and role are present
+    const userExists = !!profile && !!userRole;
+    console.log("auth-api: User exists check result:", userExists);
     
-    console.log("Organization roles found for user:", userId);
-    
-    // Verify that the organization exists
-    const { data: orgData, error: orgError } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('id', roleData[0].organization_id);
-    
-    if (orgError) {
-      console.error("Error checking organization:", orgError);
-      return false;
-    }
-    
-    if (!orgData || orgData.length === 0) {
-      console.log("No organization found for role:", roleData[0].organization_id);
-      return false;
-    }
-    
-    console.log("Organization exists:", orgData[0].id);
-    
-    // All checks passed, user exists in the database
-    console.log("User verification complete: user exists in the database");
-    return true;
+    return userExists;
   } catch (error) {
-    console.error("Error in verifyUserExists:", error);
+    console.error("auth-api: Error verifying user exists:", error);
     return false;
   }
 };
 
-export const createUserAccount = async (email: string, password: string) => {
-  console.log("STEP 1: Creating user account");
-  console.log("Signup data being sent:", { email });
-  
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) {
-    console.error("User creation error:", error.message, error);
-    console.error("Request data that failed:", { email });
-    throw error;
+// Check if a user has completed onboarding
+export const checkOnboardingStatus = async (userId: string): Promise<boolean> => {
+  try {
+    console.log("auth-api: Checking onboarding status for user:", userId);
+    
+    // Get the user's organization
+    const { data: userRoles, error: roleError } = await supabase
+      .from('user_roles')
+      .select('organization_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+      
+    if (roleError) {
+      console.error("auth-api: Error getting user roles:", roleError);
+      throw roleError;
+    }
+    
+    if (!userRoles || !userRoles.organization_id) {
+      console.log("auth-api: No organization found for user");
+      return false;
+    }
+    
+    // Check if the organization has completed onboarding
+    const { data: settings, error: settingsError } = await supabase
+      .from('organization_settings')
+      .select('has_completed_onboarding')
+      .eq('organization_id', userRoles.organization_id)
+      .maybeSingle();
+      
+    if (settingsError) {
+      console.error("auth-api: Error getting organization settings:", settingsError);
+      throw settingsError;
+    }
+    
+    const isCompleted = settings?.has_completed_onboarding || false;
+    console.log("auth-api: Onboarding completion status:", isCompleted);
+    
+    return isCompleted;
+  } catch (error) {
+    console.error("auth-api: Error checking onboarding status:", error);
+    return false;
   }
-
-  if (!data.user) {
-    const errorMsg = "User account creation failed - no user returned from auth";
-    console.error(errorMsg);
-    console.error("Request data that failed:", { email });
-    throw new Error(errorMsg);
-  }
-  
-  console.log("User account created successfully:", data.user.id);
-  return data.user;
 };
 
-export const createOrganization = async (orgName: string) => {
-  console.log("STEP 2: Creating organization:", orgName);
-  
-  // Simplified approach - insert only the required fields
-  const organizationData = {
-    name: orgName
-  };
-  
-  console.log("Organization data being sent:", organizationData);
-  
+// Create a user account
+export const createUserAccount = async (email: string, password: string): Promise<User> => {
   try {
-    // First attempt - simple insert with minimal data
+    console.log("auth-api: Creating user account for:", email);
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    
+    if (error) {
+      console.error("auth-api: Error creating user account:", error);
+      throw error;
+    }
+    
+    if (!data.user) {
+      console.error("auth-api: No user returned after signup");
+      throw new Error("Failed to create user account");
+    }
+    
+    console.log("auth-api: User account created:", data.user.id);
+    return data.user;
+  } catch (error) {
+    console.error("auth-api: Error creating user account:", error);
+    throw error;
+  }
+};
+
+// Create an organization
+export const createOrganization = async (name: string): Promise<string> => {
+  try {
+    console.log("auth-api: Creating organization:", name);
+    
     const { data, error } = await supabase
       .from('organizations')
-      .insert(organizationData)
-      .select('id')
+      .insert([{ name }])
+      .select()
       .single();
       
     if (error) {
-      console.error("Organization creation error:", error);
-      console.error("Error details:", error.message, error.code, error.details);
+      console.error("auth-api: Error creating organization:", error);
       throw error;
     }
     
     if (!data || !data.id) {
-      throw new Error("Organization created but no ID returned");
+      console.error("auth-api: No organization ID returned after insert");
+      throw new Error("Failed to create organization");
     }
     
-    console.log("Organization created successfully with ID:", data.id);
+    console.log("auth-api: Organization created:", data.id);
     return data.id;
   } catch (error) {
-    console.error("Failed to create organization:", error);
+    console.error("auth-api: Error creating organization:", error);
     throw error;
   }
 };
 
-export const createUserRole = async (userId: string, orgId: string, role: string = "admin") => {
-  console.log("STEP 3: Creating user role for user", userId, "in organization", orgId);
-  
-  const roleData = {
-    user_id: userId,
-    organization_id: orgId,
-    role
-  };
-  
-  console.log("Role data being sent:", roleData);
-  
+// Create a user role (link user to organization)
+export const createUserRole = async (userId: string, organizationId: string, role: string = 'admin'): Promise<void> => {
   try {
+    console.log("auth-api: Creating user role for user:", userId, "in organization:", organizationId);
+    
     const { error } = await supabase
       .from('user_roles')
-      .insert([roleData]);
-
+      .insert([{
+        user_id: userId,
+        organization_id: organizationId,
+        role,
+      }]);
+      
     if (error) {
-      console.error("Error creating user role:", error);
-      console.error("Error details:", error.message, error.code, error.details);
+      console.error("auth-api: Error creating user role:", error);
       throw error;
     }
     
-    console.log("User role created successfully");
-    return true;
-  } catch (error: any) {
-    console.error("Exception in createUserRole:", error);
+    console.log("auth-api: User role created successfully");
+  } catch (error) {
+    console.error("auth-api: Error creating user role:", error);
     throw error;
   }
 };
 
-export const verifyUserProfile = async (userId: string, email: string) => {
-  console.log("STEP 4: Verifying user profile exists");
-  console.log("Profile check data:", { id: userId });
-  
-  const { data, error: profileCheckError } = await supabase
-    .from('profiles')
-    .select()
-    .eq('id', userId);
+// Verify and create user profile if needed
+export const verifyUserProfile = async (userId: string, email: string): Promise<void> => {
+  try {
+    console.log("auth-api: Verifying/creating profile for user:", userId);
     
-  if (profileCheckError) {
-    console.error("Error checking profile:", profileCheckError);
-  }
-  
-  if (!data || data.length === 0) {
-    console.log("Profile not found, creating manually");
-    
-    const profileData = {
-      id: userId,
-      email: email
-    };
-    
-    console.log("Profile data being sent:", profileData);
-    
-    const { error: profileError } = await supabase
+    // Check if profile exists
+    const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
-      .insert([profileData]);
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
       
-    if (profileError) {
-      console.error("Error creating profile:", profileError);
-      console.error("Error details:", profileError.message, profileError.code, profileError.details);
-      // Don't block the signup flow for this error since profile might be created via trigger
-    } else {
-      console.log("Profile created manually");
+    if (checkError) {
+      console.error("auth-api: Error checking profile:", checkError);
+      throw checkError;
     }
-  } else {
-    console.log("Profile already exists");
+    
+    // If profile doesn't exist, create it
+    if (!existingProfile) {
+      console.log("auth-api: Profile not found, creating new profile");
+      
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: userId,
+          email,
+        }]);
+        
+      if (insertError) {
+        console.error("auth-api: Error creating profile:", insertError);
+        throw insertError;
+      }
+      
+      console.log("auth-api: Profile created successfully");
+    } else {
+      console.log("auth-api: Profile already exists");
+    }
+  } catch (error) {
+    console.error("auth-api: Error verifying/creating profile:", error);
+    throw error;
   }
-  
-  return true;
 };
 
-export const createOrganizationSettings = async (orgId: string) => {
-  console.log("STEP 5: Creating organization settings");
-  
-  const settingsData = {
-    organization_id: orgId,
-    has_completed_onboarding: false
-  };
-  
-  console.log("Organization settings data being sent:", settingsData);
-  
+// Create organization settings
+export const createOrganizationSettings = async (organizationId: string): Promise<void> => {
   try {
-    // Check if settings already exist
+    console.log("auth-api: Creating settings for organization:", organizationId);
+    
+    // Check if settings exist
     const { data: existingSettings, error: checkError } = await supabase
       .from('organization_settings')
       .select('id')
-      .eq('organization_id', orgId);
+      .eq('organization_id', organizationId)
+      .maybeSingle();
       
     if (checkError) {
-      console.error("Error checking organization settings:", checkError);
+      console.error("auth-api: Error checking organization settings:", checkError);
+      throw checkError;
     }
     
-    // Only create settings if they don't exist
-    if (!existingSettings || existingSettings.length === 0) {
-      const { error } = await supabase
+    // If settings don't exist, create them
+    if (!existingSettings) {
+      console.log("auth-api: Settings not found, creating new settings record");
+      
+      const { error: insertError } = await supabase
         .from('organization_settings')
-        .insert([settingsData]);
+        .insert([{
+          organization_id: organizationId,
+          has_completed_onboarding: false,
+        }]);
         
-      if (error) {
-        console.error("Error creating organization settings:", error);
-        console.error("Error details:", error.message, error.code, error.details);
-        // Don't block signup for this error since settings might be created via trigger
-      } else {
-        console.log("Organization settings created successfully");
+      if (insertError) {
+        console.error("auth-api: Error creating organization settings:", insertError);
+        throw insertError;
       }
+      
+      console.log("auth-api: Organization settings created successfully");
     } else {
-      console.log("Organization settings already exist");
+      console.log("auth-api: Organization settings already exist");
     }
-    
-    return true;
   } catch (error) {
-    console.error("Exception in createOrganizationSettings:", error);
-    // Don't throw here as the trigger should handle this
-    return true;
-  }
-};
-
-export const getAuthSession = async () => {
-  try {
-    console.log("Checking for active session");
-    const { data } = await supabase.auth.getSession();
-    
-    if (data.session?.user) {
-      console.log("Active session found, user ID:", data.session.user.id);
-    } else {
-      console.log("No active session found");
-    }
-    
-    return data.session?.user ?? null;
-  } catch (error) {
-    console.error("Error checking auth session:", error);
-    return null;
+    console.error("auth-api: Error creating organization settings:", error);
+    throw error;
   }
 };

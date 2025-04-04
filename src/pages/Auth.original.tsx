@@ -1,62 +1,43 @@
 
 import { useState } from "react";
 import { AuthForm } from "@/components/auth/AuthForm";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useSearchParams, Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "react-router-dom";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [searchParams] = useSearchParams();
   const invitationToken = searchParams.get("token");
   const invitationEmail = searchParams.get("email");
-  const isInvitation = searchParams.get("invitation");
+  const isInvitation = searchParams.get("invitation") === "true";
+  const { signIn, signUp, isLoading } = useAuth();
 
-  const toggleAuthMode = () => {
-    setIsLogin(!isLogin);
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      console.log("Auth.original: handleLogin called with email:", email);
+      await signIn(email, password);
+    } catch (error) {
+      console.error("Login error in Auth.original component:", error);
+      // Error is handled in the useAuth hook and displayed in the UI
+    }
+  };
+
+  const handleSignUp = async (email: string, password: string, orgName: string) => {
+    try {
+      console.log("Auth.original: handleSignUp called with email:", email, "org:", orgName);
+      await signUp(email, password, orgName);
+    } catch (error) {
+      console.error("Sign up error in Auth.original component:", error);
+      // Error is handled in the useAuth hook and displayed in the UI
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">
-            {isLogin ? "Sign in to your account" : "Create a new account"}
-          </CardTitle>
-          <CardDescription>
-            {isLogin
-              ? "Enter your email and password to sign in"
-              : "Enter your details to create a new account"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthForm 
-            isLogin={isLogin} 
-            invitationToken={invitationToken}
-            invitationEmail={invitationEmail}
-            isInvitation={isInvitation === "true"}
-          />
-        </CardContent>
-        <CardFooter>
-          <div className="w-full text-center">
-            {isLogin ? (
-              <div className="text-sm">
-                Don't have an account?{" "}
-                <Button variant="link" className="p-0" onClick={toggleAuthMode}>
-                  Sign up
-                </Button>
-              </div>
-            ) : (
-              <div className="text-sm">
-                Already have an account?{" "}
-                <Button variant="link" className="p-0" onClick={toggleAuthMode}>
-                  Sign in
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardFooter>
-      </Card>
+      <AuthForm 
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+        isLoading={isLoading}
+      />
     </div>
   );
 };
