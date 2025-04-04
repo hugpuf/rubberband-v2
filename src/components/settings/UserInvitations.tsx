@@ -51,9 +51,11 @@ import {
   MailOpen,
   RefreshCcw,
   Copy,
+  AlertCircle
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useTeams } from "@/hooks/useTeams";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function UserInvitations() {
   const { organization, isAdmin } = useOrganization();
@@ -66,6 +68,7 @@ export function UserInvitations() {
   const [expiryHours, setExpiryHours] = useState(48);
   const [loading, setLoading] = useState(true);
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [emailServiceConfigured, setEmailServiceConfigured] = useState(true);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -118,24 +121,20 @@ export function UserInvitations() {
     setSendingInvite(true);
 
     try {
-      // Check if user already exists in profiles
       const { data: existingUser } = await supabase
         .from("profiles")
         .select("id")
         .eq("email", newUserEmail)
         .maybeSingle();
       
-      // Calculate expiry date
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + expiryHours);
       
-      // Generate a token
       const { data: tokenData, error: tokenError } = await supabase
         .rpc('generate_invitation_token');
         
       if (tokenError) throw tokenError;
       
-      // Create invitation
       const { data: inviteData, error: inviteError } = await supabase
         .from("invitations")
         .insert([
@@ -157,7 +156,6 @@ export function UserInvitations() {
         throw inviteError;
       }
 
-      // Send invitation email via edge function
       if (inviteData && inviteData.length > 0) {
         try {
           const { data: emailResult, error: emailError } = await supabase.functions.invoke(
@@ -175,18 +173,37 @@ export function UserInvitations() {
           
           if (emailError) {
             console.error("Error sending invitation email:", emailError);
+            toast({
+              variant: "destructive",
+              title: "Email delivery failed",
+              description: "Invitation created, but the email could not be sent. User can still access via the invitation link.",
+            });
           } else {
             console.log("Email function response:", emailResult);
+            
+            if (emailResult && emailResult.message === "Email service not configured. RESEND_API_KEY is missing.") {
+              setEmailServiceConfigured(false);
+              toast({
+                variant: "destructive",
+                title: "Email service not configured",
+                description: "The invitation was created but emails cannot be sent. Please configure Resend API key.",
+              });
+            } else {
+              toast({
+                title: "Invitation sent",
+                description: `Invitation sent to ${newUserEmail}`,
+              });
+            }
           }
         } catch (emailError) {
           console.error("Error calling send-invitation-email function:", emailError);
+          toast({
+            variant: "destructive",
+            title: "Email delivery failed",
+            description: "Invitation created, but there was an error sending the email.",
+          });
         }
       }
-
-      toast({
-        title: "Invitation sent",
-        description: `Invitation sent to ${newUserEmail}`,
-      });
       
       await fetchInvitations();
       setInviteDialogOpen(false);
@@ -206,17 +223,14 @@ export function UserInvitations() {
 
   const resendInvitation = async (invitation: any) => {
     try {
-      // Update expiry date
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 48);
       
-      // Generate a new token
       const { data: tokenData, error: tokenError } = await supabase
         .rpc('generate_invitation_token');
         
       if (tokenError) throw tokenError;
       
-      // Update invitation
       const { error } = await supabase
         .from("invitations")
         .update({
@@ -228,9 +242,8 @@ export function UserInvitations() {
 
       if (error) throw error;
 
-      // Resend invitation email
       try {
-        await supabase.functions.invoke(
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
           "send-invitation-email", 
           {
             body: {
@@ -242,14 +255,32 @@ export function UserInvitations() {
             }
           }
         );
+        
+        if (emailError) {
+          throw emailError;
+        }
+        
+        if (emailResult && emailResult.message === "Email service not configured. RESEND_API_KEY is missing.") {
+          setEmailServiceConfigured(false);
+          toast({
+            variant: "destructive",
+            title: "Email service not configured",
+            description: "The invitation was refreshed but emails cannot be sent. Please configure Resend API key.",
+          });
+        } else {
+          toast({
+            title: "Invitation resent",
+            description: `Invitation resent to ${invitation.email}`,
+          });
+        }
       } catch (emailError) {
         console.error("Error sending invitation email:", emailError);
+        toast({
+          variant: "destructive",
+          title: "Email delivery failed",
+          description: "Invitation was refreshed, but the email could not be sent.",
+        });
       }
-
-      toast({
-        title: "Invitation resent",
-        description: `Invitation resent to ${invitation.email}`,
-      });
       
       await fetchInvitations();
     } catch (error: any) {
@@ -326,6 +357,18 @@ export function UserInvitations() {
                   Send an invitation to join your organization
                 </DialogDescription>
               </DialogHeader>
+              
+              {!emailServiceConfigured && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Email Service Not Configured</AlertTitle>
+                  <AlertDescription>
+                    The email service is not properly configured. Invitations will be created but emails won't be sent. 
+                    You can still copy and share invitation links manually.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email address</Label>
@@ -411,6 +454,17 @@ export function UserInvitations() {
         </div>
       </CardHeader>
       <CardContent>
+        {!emailServiceConfigured && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Email Service Not Configured</AlertTitle>
+            <AlertDescription>
+              The email service is not properly configured. You need to add the RESEND_API_KEY in Supabase Edge Functions settings.
+              In the meantime, you can manually copy and share invitation links.
+            </AlertDescription>
+          </Alert>
+        )}
+      
         {loading ? (
           <div className="text-center py-4">Loading invitations...</div>
         ) : invitations.length === 0 ? (

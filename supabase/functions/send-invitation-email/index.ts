@@ -1,7 +1,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { Resend } from "npm:resend@1.0.0";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "http://localhost:5173";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,32 +55,55 @@ async function handler(req: Request): Promise<Response> {
     }
     
     console.log("Invitation link generated:", invitationLink);
-    console.log("Would send email to:", email);
+    console.log("Sending email to:", email);
     console.log("Organization:", organization_name);
     console.log("Role:", role);
     console.log("Teams to assign:", teams || "None");
     
-    /* In a production implementation, you'd use a service like Resend, SendGrid, etc.
-    Example with Resend:
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    await resend.emails.send({
-      from: "Organization <noreply@yourdomain.com>",
+    if (!RESEND_API_KEY) {
+      console.error("RESEND_API_KEY is not configured");
+      return new Response(JSON.stringify({ 
+        success: false,
+        message: "Email service not configured. RESEND_API_KEY is missing.",
+        link: invitationLink 
+      }), {
+        status: 200, // Still return 200 to not break the flow
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    // Initialize Resend with API key
+    const resend = new Resend(RESEND_API_KEY);
+    
+    // Send the actual email
+    const emailResult = await resend.emails.send({
+      from: "Rubberband <noreply@rubberband.app>",
       to: [email],
       subject: `You've been invited to join ${organization_name}`,
       html: `
-        <h1>You've been invited!</h1>
-        <p>You've been invited to join <strong>${organization_name}</strong> as a <strong>${role}</strong>.</p>
-        ${teams && teams.length > 0 ? `<p>You will be added to ${teams.length} team(s).</p>` : ''}
-        <p><a href="${invitationLink}">Click here to accept the invitation</a></p>
-        <p>This invitation link will expire in 48 hours.</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h1 style="color: #333;">You've been invited!</h1>
+          <p>You've been invited to join <strong>${organization_name}</strong> as a <strong>${role}</strong>.</p>
+          ${teams && teams.length > 0 ? `<p>You will be added to ${teams.length} team(s).</p>` : ''}
+          <p style="margin: 25px 0;">
+            <a href="${invitationLink}" style="background-color: #0070f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Accept Invitation
+            </a>
+          </p>
+          <p style="color: #666; font-size: 14px;">This invitation link will expire in 48 hours.</p>
+          <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;" />
+          <p style="color: #999; font-size: 12px;">If you were not expecting this invitation, you can safely ignore this email.</p>
+        </div>
       `,
     });
-    */
+    
+    console.log("Email sending result:", emailResult);
     
     return new Response(JSON.stringify({ 
       success: true,
-      message: "Invitation processed successfully",
-      link: invitationLink 
+      message: "Invitation sent successfully",
+      link: invitationLink,
+      emailResult 
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
