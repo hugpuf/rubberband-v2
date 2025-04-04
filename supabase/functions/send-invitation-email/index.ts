@@ -59,6 +59,7 @@ async function handler(req: Request): Promise<Response> {
     console.log("Organization:", organization_name);
     console.log("Role:", role);
     console.log("Teams to assign:", teams || "None");
+    console.log("RESEND_API_KEY configured:", !!RESEND_API_KEY);
     
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY is not configured");
