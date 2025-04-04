@@ -105,8 +105,18 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Create the onboardingActions object as required by OnboardingContextType
+  const onboardingActions = {
+    updateStep: goToStep,
+    setPrimaryUseCase: (value: string) => updateUseCaseDetails({ primaryUseCase: value }),
+    setBusinessType: (value: string) => updateUseCaseDetails({ businessType: value }),
+    setWorkflowStyle: (value: string) => updateUseCaseDetails({ workflowStyle: value }),
+    completeOnboarding: handleSaveOnboarding
+  };
+
   const contextValue: OnboardingContextType = {
     onboarding,
+    onboardingActions,
     currentStep: onboarding.step,
     isLoading,
     updatePersonalDetails,

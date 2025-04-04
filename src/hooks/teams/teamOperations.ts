@@ -37,28 +37,53 @@ export const fetchTeamMembers = async (teamId: string) => {
   try {
     console.log("Fetching team members for team:", teamId);
     
-    const { data, error } = await supabase
+    // First get the team_members
+    const { data: teamMembersData, error: teamMembersError } = await supabase
       .from('team_members')
-      .select(`
-        id,
-        team_id,
-        user_id,
-        role,
-        profiles (
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
+      .select('id, team_id, user_id, role')
       .eq('team_id', teamId);
       
-    if (error) {
-      console.error("Error fetching team members:", error);
-      throw error;
+    if (teamMembersError) {
+      console.error("Error fetching team members:", teamMembersError);
+      throw teamMembersError;
     }
     
-    console.log("Team members fetched:", data);
-    return data as TeamMember[];
+    // If no team members, return empty array
+    if (!teamMembersData || teamMembersData.length === 0) {
+      return [];
+    }
+    
+    // For each team member, fetch their profile separately
+    const teamMembers: TeamMember[] = await Promise.all(
+      teamMembersData.map(async (member) => {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('email, full_name, avatar_url')
+          .eq('id', member.user_id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile for user:", member.user_id, profileError);
+          // Provide default/placeholder profile data
+          return {
+            ...member,
+            profiles: {
+              email: "unknown@example.com",
+              full_name: null,
+              avatar_url: null
+            }
+          } as TeamMember;
+        }
+        
+        return {
+          ...member,
+          profiles: profileData
+        } as TeamMember;
+      })
+    );
+    
+    console.log("Team members with profiles fetched:", teamMembers);
+    return teamMembers;
   } catch (error: any) {
     console.error("Error fetching team members:", error);
     // Return empty array instead of throwing
