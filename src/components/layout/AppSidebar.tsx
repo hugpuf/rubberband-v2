@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Settings, 
@@ -35,9 +34,8 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { organization } = useOrganization();
-  const [userProfile, setUserProfile] = useState<{ first_name?: string; last_name?: string; full_name?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name?: string; last_name?: string; full_name?: string; avatar_url?: string } | null>(null);
 
-  // Fetch user profile to get full name
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
@@ -45,7 +43,7 @@ export function AppSidebar() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("first_name, last_name, full_name")
+          .select("first_name, last_name, full_name, avatar_url")
           .eq("id", user.id)
           .single();
           
@@ -116,24 +114,19 @@ export function AppSidebar() {
     return location.pathname.startsWith(url);
   };
 
-  // Get user display name from profile
   const getDisplayName = () => {
-    // If we have a full name, use that
     if (userProfile?.full_name) {
       return userProfile.full_name;
     }
     
-    // If we have first and last name, combine them
     if (userProfile?.first_name && userProfile?.last_name) {
       return `${userProfile.first_name} ${userProfile.last_name}`;
     }
     
-    // If we have just first name
     if (userProfile?.first_name) {
       return userProfile.first_name;
     }
     
-    // Fallback to email username
     return user?.email?.split("@")[0] || "User";
   };
 
@@ -234,7 +227,7 @@ export function AppSidebar() {
         <div className="flex items-center justify-between p-6">
           <div className="flex items-center">
             <Avatar className="h-8 w-8 mr-3">
-              <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
+              <AvatarImage src={userProfile?.avatar_url || ""} alt="User avatar" />
               <AvatarFallback className="bg-gray-50 text-gray-600">
                 {userInitials}
               </AvatarFallback>
