@@ -1,3 +1,4 @@
+
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Settings, 
@@ -136,22 +137,21 @@ export function AppSidebar() {
       ? user.email.substring(0, 2).toUpperCase() 
       : "RB";
 
+  const orgInitials = organization?.name?.substring(0, 2).toUpperCase() || "RB";
+
   return (
     <Sidebar className="backdrop-blur-lg bg-[rgba(250,250,252,0.8)] border-r border-gray-100">
       <SidebarHeader className="py-6 px-6">
         <div className="flex items-center space-x-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="" alt="Organization Logo" />
+            <AvatarImage src={organization?.logo_url || ""} alt="Organization Logo" />
             <AvatarFallback className="bg-gray-50 text-gray-600 font-medium">
-              {organization?.name?.substring(0, 2).toUpperCase() || "RB"}
+              {orgInitials}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <span className="font-medium text-[#1C1C1E] tracking-wide">
               {organization?.name || "Rubberband OS"}
-            </span>
-            <span className="text-xs text-[#636366] tracking-wide">
-              {user?.email || ""}
             </span>
           </div>
         </div>

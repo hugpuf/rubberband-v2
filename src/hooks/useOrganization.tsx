@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useAuth } from "./useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +7,7 @@ export type Organization = {
   id: string;
   name: string;
   created_at: string;
+  logo_url: string | null;
 };
 
 export type UserRole = {
@@ -54,7 +54,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
   
-  // Check if user has admin role
   const isAdmin = userRole === "admin";
 
   const fetchOrganization = async () => {
@@ -66,7 +65,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     try {
       console.log("Fetching organization data for user:", user.id);
       
-      // First get the user's role and organization ID - don't use single() to avoid 406 errors
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select("organization_id, role")
@@ -86,12 +84,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       console.log("Found user role:", roleData[0]);
       setUserRole(roleData[0].role);
       
-      // Then fetch the organization details
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select("*")
         .eq("id", roleData[0].organization_id)
-        .maybeSingle(); // Use maybeSingle() instead of single()
+        .maybeSingle();
         
       if (orgError) {
         console.error("Error fetching organization:", orgError);
@@ -105,8 +102,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         console.log("No organization found with ID:", roleData[0].organization_id);
       }
       
-      // Fetch all users in the organization with their roles and profiles
-      // Use the explicitly defined relationship between user_roles and profiles
       const { data: usersData, error: usersError } = await supabase
         .from('user_roles')
         .select(`
@@ -175,7 +170,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Helper function to find user by email
   const findUserByEmail = async (email: string) => {
     const { data, error } = await supabase
       .from('profiles')
@@ -187,19 +181,15 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
-  // Invite user to the organization
   const inviteUser = async (email: string, role: string, expiryHours: number = 48) => {
     if (!organization || !isAdmin || !user) return;
     
     try {
-      // Check if user already exists
       const userData = await findUserByEmail(email);
       
       if (userData) {
-        // User exists, add directly to organization
         console.log("Found existing user to add:", userData.id);
         
-        // Check if user is already in this organization
         const { data: existingRole, error: checkError } = await supabase
           .from('user_roles')
           .select('*')
@@ -213,7 +203,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           throw new Error("User is already a member of this organization");
         }
         
-        // Add user role
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert([{
@@ -233,20 +222,16 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           description: `${email} has been added to your organization.`,
         });
       } else {
-        // User doesn't exist, send invitation
         console.log("User not found, creating invitation for:", email);
         
-        // Calculate expiry date
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + expiryHours);
         
-        // Generate a token
         const { data: tokenData, error: tokenError } = await supabase
           .rpc('generate_invitation_token');
           
         if (tokenError) throw tokenError;
         
-        // Create invitation
         const { error: inviteError } = await supabase
           .from("invitations")
           .insert([
