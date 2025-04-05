@@ -30,6 +30,9 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Storage bucket name for profile avatars
+  const STORAGE_BUCKET = 'profiles';
+
   const getInitials = () => {
     const firstInitial = firstName.charAt(0);
     const lastInitial = lastName.charAt(0);
@@ -181,7 +184,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
         const filePath = `avatars/${userId}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
-          .from('profiles')
+          .from(STORAGE_BUCKET)
           .upload(filePath, avatarFile, { upsert: true });
         
         if (uploadError) {
@@ -190,7 +193,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
         } else {
           // Get the public URL for the avatar
           const { data: publicUrlData } = supabase.storage
-            .from('profiles')
+            .from(STORAGE_BUCKET)
             .getPublicUrl(filePath);
           
           if (publicUrlData) {
