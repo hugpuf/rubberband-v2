@@ -50,7 +50,7 @@ export function OrgLogoUpload() {
       const fileName = `${organization.id}.${fileExt}`;
       const filePath = `organizations/${fileName}`;
 
-      // Upload file to Supabase Storage
+      // Upload file to Supabase Storage using the "logos" bucket
       const { error: uploadError } = await supabase.storage
         .from('logos')
         .upload(filePath, file, {
