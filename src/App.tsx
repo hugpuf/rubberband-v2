@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -16,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
 import AcceptInvitation from "./pages/AcceptInvitation";
+import CreateProfile from "./pages/CreateProfile";
 import NotFound from "./pages/NotFound";
 import { Layout } from "./components/layout/Layout";
 import { useAuth } from "./hooks/useAuth";
@@ -83,6 +85,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/accept-invitation" element={<AcceptInvitation />} />
+      <Route path="/create-profile" element={<CreateProfile />} />
       
       <Route
         path="/onboarding"

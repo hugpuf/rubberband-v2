@@ -46,7 +46,8 @@ async function handler(req: Request): Promise<Response> {
     }
     
     // Generate invitation link with the token and teams information
-    let invitationLink = `${FRONTEND_URL}/auth?invitation=true&email=${encodeURIComponent(email)}&token=${token}`;
+    // Note: We now direct users to the dedicated create-profile page
+    let invitationLink = `${FRONTEND_URL}/create-profile?token=${token}`;
     
     // Add teams information if available
     if (teams && teams.length > 0) {
@@ -78,7 +79,7 @@ async function handler(req: Request): Promise<Response> {
     
     // Send the actual email
     const emailResult = await resend.emails.send({
-      from: "Rubberband <noreply@rubberband.app>",
+      from: "Rubberband <onboarding@resend.dev>", // Using Resend's default domain
       to: [email],
       subject: `You've been invited to join ${organization_name}`,
       html: `
@@ -88,7 +89,7 @@ async function handler(req: Request): Promise<Response> {
           ${teams && teams.length > 0 ? `<p>You will be added to ${teams.length} team(s).</p>` : ''}
           <p style="margin: 25px 0;">
             <a href="${invitationLink}" style="background-color: #0070f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Accept Invitation
+              Create Account & Join
             </a>
           </p>
           <p style="color: #666; font-size: 14px;">This invitation link will expire in 48 hours.</p>

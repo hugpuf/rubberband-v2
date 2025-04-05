@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InvitationForm } from "@/components/auth/InvitationForm";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -20,6 +21,8 @@ const Auth = () => {
     valid: boolean;
     organization_name?: string;
     role?: string;
+    invitation_id?: string;
+    email?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -43,7 +46,9 @@ const Auth = () => {
           setTokenValidation({
             valid: invitation.valid,
             organization_name: invitation.organization_name,
-            role: invitation.role
+            role: invitation.role,
+            invitation_id: invitation.invitation_id,
+            email: invitation.email
           });
           
           if (invitation.valid) {
@@ -51,6 +56,11 @@ const Auth = () => {
               title: "Valid invitation",
               description: `You've been invited to join ${invitation.organization_name} as a ${invitation.role}`,
             });
+            
+            // If the invitation is valid, direct the user to create their profile
+            if (!searchParams.get("profile")) {
+              navigate(`/create-profile?token=${invitationToken}`);
+            }
           } else {
             toast({
               variant: "destructive",
@@ -83,7 +93,7 @@ const Auth = () => {
     if (isInvitation && invitationToken) {
       validateInvitationToken();
     }
-  }, [invitationToken, isInvitation, toast]);
+  }, [invitationToken, isInvitation, toast, navigate, searchParams]);
 
   // Automatically check auth status and redirect if logged in
   useEffect(() => {
@@ -117,6 +127,21 @@ const Auth = () => {
     }
   };
 
+  // Show a special form for invited users with a valid token
+  if (isInvitation && tokenValidation?.valid) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
+        <InvitationForm 
+          email={tokenValidation.email || ""}
+          orgName={tokenValidation.organization_name || ""}
+          role={tokenValidation.role || ""}
+          invitationToken={invitationToken || ""}
+          isLoading={isLoading}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       {validatingToken ? (
@@ -128,7 +153,12 @@ const Auth = () => {
         </div>
       ) : (
         <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
-          <AuthForm onLogin={handleLogin} onSignUp={handleSignUp} isLoading={isLoading} />
+          <AuthForm 
+            onLogin={handleLogin} 
+            onSignUp={handleSignUp} 
+            isLoading={isLoading} 
+            initialEmail={invitationEmail || ""}
+          />
         </div>
       )}
     </>

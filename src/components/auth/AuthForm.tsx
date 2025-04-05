@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,15 +11,23 @@ type AuthFormProps = {
   onLogin: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string, orgName: string) => Promise<void>;
   isLoading: boolean;
+  initialEmail?: string;
 };
 
-export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
-  const [email, setEmail] = useState("");
+export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: AuthFormProps) {
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [orgName, setOrgName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (initialEmail) {
+      setEmail(initialEmail);
+      setActiveTab("login");
+    }
+  }, [initialEmail]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,12 +73,13 @@ export function AuthForm({ onLogin, onSignUp, isLoading }: AuthFormProps) {
     setShowPassword(!showPassword);
   };
 
-  // Clear form fields when switching tabs to prevent data leakage between forms
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setEmail("");
     setPassword("");
     setOrgName("");
+    if (!initialEmail) {
+      setEmail("");
+    }
   };
 
   return (

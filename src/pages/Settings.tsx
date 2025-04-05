@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrgProfile } from "@/components/settings/OrgProfile";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { DangerZone } from "@/components/settings/DangerZone";
+import { UserProfile } from "@/components/settings/UserProfile";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Separator } from "@/components/ui/separator";
 
@@ -58,6 +59,8 @@ const Settings = () => {
               Manage your personal account settings and preferences
             </p>
           </div>
+          
+          <UserProfile />
           
           <Separator className="my-6" />
           
