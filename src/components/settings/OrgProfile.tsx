@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Building, Save } from "lucide-react";
+import { OrgLogoUpload } from "./OrgLogoUpload";
+import { Separator } from "@/components/ui/separator";
 
 export function OrgProfile() {
   const { organization, isAdmin, updateOrganization } = useOrganization();
@@ -42,7 +44,15 @@ export function OrgProfile() {
         </div>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Organization Logo Upload Section */}
+          <div className="space-y-2">
+            <Label>Organization Logo</Label>
+            <OrgLogoUpload />
+          </div>
+          
+          <Separator className="my-2" />
+          
           <div className="space-y-2">
             <Label htmlFor="org-name">Organization Name</Label>
             <Input 
