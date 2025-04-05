@@ -28,11 +28,13 @@ const CreateProfile = () => {
 
       try {
         setLoading(true);
+        console.log("Validating invitation token:", token);
         
         // Check if user is already authenticated
         const { data: sessionData } = await supabase.auth.getSession();
         
         if (sessionData.session) {
+          console.log("User is already logged in, redirecting to accept invitation page");
           // User is already logged in, redirect to accept invitation page
           navigate(`/accept-invitation?token=${token}`);
           return;
@@ -42,8 +44,13 @@ const CreateProfile = () => {
         const { data, error } = await supabase
           .rpc('validate_invitation_token', { token_param: token });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error validating token:", error);
+          throw error;
+        }
 
+        console.log("Invitation validation result:", data);
+        
         if (!data || data.length === 0 || !data[0].valid) {
           toast({
             variant: "destructive",

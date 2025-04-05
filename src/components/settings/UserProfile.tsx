@@ -34,6 +34,7 @@ export function UserProfile() {
 
       try {
         setLoading(true);
+        console.log("Loading user profile for:", user.id);
         
         const { data, error } = await supabase
           .from("profiles")
@@ -41,8 +42,12 @@ export function UserProfile() {
           .eq("id", user.id)
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error loading profile:", error);
+          throw error;
+        }
         
+        console.log("Profile data loaded:", data);
         setFirstName(data.first_name || "");
         setLastName(data.last_name || "");
         setEmail(data.email || user.email || "");
@@ -83,6 +88,7 @@ export function UserProfile() {
     if (!user) return;
     
     setSaving(true);
+    console.log("Updating profile for user:", user.id);
     
     try {
       // Update profile information
@@ -96,10 +102,14 @@ export function UserProfile() {
         })
         .eq("id", user.id);
         
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Error updating profile:", profileError);
+        throw profileError;
+      }
       
       // Upload avatar if changed
       if (avatarFile) {
+        console.log("Uploading new avatar");
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `avatars/${user.id}.${fileExt}`;
         
@@ -107,7 +117,10 @@ export function UserProfile() {
           .from("profiles")
           .upload(filePath, avatarFile, { upsert: true });
           
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Error uploading avatar:", uploadError);
+          throw uploadError;
+        }
         
         // Get the public URL for the avatar
         const { data: publicUrlData } = supabase.storage
@@ -115,13 +128,17 @@ export function UserProfile() {
           .getPublicUrl(filePath);
         
         if (publicUrlData) {
+          console.log("Avatar uploaded, updating profile with URL:", publicUrlData.publicUrl);
           // Update user profile with avatar URL
           const { error: avatarError } = await supabase
             .from("profiles")
             .update({ avatar_url: publicUrlData.publicUrl })
             .eq("id", user.id);
             
-          if (avatarError) throw avatarError;
+          if (avatarError) {
+            console.error("Error updating avatar URL:", avatarError);
+            throw avatarError;
+          }
         }
       }
       

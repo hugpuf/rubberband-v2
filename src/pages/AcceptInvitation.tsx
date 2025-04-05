@@ -31,13 +31,15 @@ const AcceptInvitation = () => {
 
       try {
         setValidating(true);
+        console.log("Validating invitation token:", token);
         
         // Check if user is authenticated
         const { data: sessionData } = await supabase.auth.getSession();
         
         if (!sessionData.session) {
-          // Redirect to auth with the invitation token
-          navigate(`/auth?invitation=true&token=${token}`);
+          console.log("No authenticated user, redirecting to create profile");
+          // Redirect to create profile with the invitation token
+          navigate(`/create-profile?token=${token}`);
           return;
         }
 
@@ -45,8 +47,13 @@ const AcceptInvitation = () => {
         const { data, error } = await supabase
           .rpc('validate_invitation_token', { token_param: token });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error validating token:", error);
+          throw error;
+        }
 
+        console.log("Invitation validation result:", data);
+        
         if (!data || data.length === 0 || !data[0].valid) {
           toast({
             variant: "destructive",
@@ -61,6 +68,8 @@ const AcceptInvitation = () => {
         
         // Check if the user's email matches the invitation email
         const user = sessionData.session.user;
+        console.log("Comparing emails:", user.email, data[0].email);
+        
         if (user.email !== data[0].email) {
           toast({
             variant: "destructive",
@@ -92,12 +101,15 @@ const AcceptInvitation = () => {
 
     try {
       setAccepting(true);
+      console.log("Accepting invitation with token:", token);
       
       // Get current user
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
         throw new Error("No authenticated user found");
       }
+
+      console.log("Current user:", userData.user.id);
 
       // Accept the invitation
       const { data, error } = await supabase
@@ -106,8 +118,13 @@ const AcceptInvitation = () => {
           user_id_param: userData.user.id
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error accepting invitation:", error);
+        throw error;
+      }
 
+      console.log("Invitation acceptance result:", data);
+      
       if (!data) {
         throw new Error("Failed to accept invitation");
       }

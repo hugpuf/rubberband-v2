@@ -102,6 +102,8 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
     setSubmitting(true);
     
     try {
+      console.log("Step 1: Creating user account with email:", email);
+      
       // Step 1: Sign up the user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -117,26 +119,64 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
       
       if (authError) throw authError;
       
+      console.log("Auth data received:", authData);
       const userId = authData.user?.id;
       
       if (!userId) {
         throw new Error("Failed to create user account");
       }
+
+      console.log("Step 2: Ensuring profile exists for user:", userId);
       
-      // Step 2: Update the profile with name information
-      const { error: profileError } = await supabase
+      // Step 2: Make sure the profile exists
+      const { data: existingProfile, error: profileCheckError } = await supabase
         .from('profiles')
-        .update({
-          first_name: firstName,
-          last_name: lastName,
-          full_name: `${firstName} ${lastName}`,
-        })
-        .eq('id', userId);
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+        
+      if (profileCheckError) {
+        console.error("Error checking for existing profile:", profileCheckError);
+      }
       
-      if (profileError) throw profileError;
+      if (!existingProfile) {
+        console.log("Profile doesn't exist, creating one");
+        // Create profile if it doesn't exist
+        const { error: createProfileError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: userId,
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName} ${lastName}`,
+          }]);
+        
+        if (createProfileError) {
+          console.error("Error creating profile:", createProfileError);
+          throw createProfileError;
+        }
+      } else {
+        console.log("Profile exists, updating it");
+        // Update existing profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName} ${lastName}`,
+          })
+          .eq('id', userId);
+        
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+          throw profileError;
+        }
+      }
       
       // Step 3: Upload avatar if provided
       if (avatarFile) {
+        console.log("Step 3: Uploading avatar for user:", userId);
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `avatars/${userId}.${fileExt}`;
         
@@ -144,7 +184,10 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
           .from('profiles')
           .upload(filePath, avatarFile, { upsert: true });
         
-        if (!uploadError) {
+        if (uploadError) {
+          console.error("Error uploading avatar:", uploadError);
+          // Non-critical error, continue
+        } else {
           // Get the public URL for the avatar
           const { data: publicUrlData } = supabase.storage
             .from('profiles')
@@ -160,14 +203,21 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
         }
       }
       
+      console.log("Step 4: Accepting invitation with token:", invitationToken);
+      
       // Step 4: Accept the invitation
-      const { error: acceptError } = await supabase
+      const { data: acceptData, error: acceptError } = await supabase
         .rpc('accept_invitation', {
           token_param: invitationToken,
           user_id_param: userId,
         });
       
-      if (acceptError) throw acceptError;
+      if (acceptError) {
+        console.error("Error accepting invitation:", acceptError);
+        throw acceptError;
+      }
+      
+      console.log("Invitation accepted:", acceptData);
       
       toast({
         title: "Account created!",
@@ -175,14 +225,19 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
       });
       
       // Sign in the user
+      console.log("Step 5: Signing in the new user");
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (signInError) throw signInError;
+      if (signInError) {
+        console.error("Error signing in:", signInError);
+        throw signInError;
+      }
       
       // Navigate to dashboard
+      console.log("Success! Redirecting to dashboard");
       navigate('/dashboard');
       
     } catch (error: any) {
