@@ -1,3 +1,4 @@
+
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Settings, 
@@ -26,12 +27,41 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { organization } = useOrganization();
+  const [userProfile, setUserProfile] = useState<{ first_name?: string; last_name?: string; full_name?: string } | null>(null);
+
+  // Fetch user profile to get full name
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("first_name, last_name, full_name")
+          .eq("id", user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching user profile:", error);
+          return;
+        }
+        
+        setUserProfile(data);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user]);
 
   const handleSignOut = () => {
     console.log("Sign out button clicked");
@@ -86,7 +116,32 @@ export function AppSidebar() {
     return location.pathname.startsWith(url);
   };
 
-  const userInitials = user?.email ? user.email.substring(0, 2).toUpperCase() : "RB";
+  // Get user display name from profile
+  const getDisplayName = () => {
+    // If we have a full name, use that
+    if (userProfile?.full_name) {
+      return userProfile.full_name;
+    }
+    
+    // If we have first and last name, combine them
+    if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    }
+    
+    // If we have just first name
+    if (userProfile?.first_name) {
+      return userProfile.first_name;
+    }
+    
+    // Fallback to email username
+    return user?.email?.split("@")[0] || "User";
+  };
+
+  const userInitials = userProfile?.first_name && userProfile?.last_name 
+    ? `${userProfile.first_name[0]}${userProfile.last_name[0]}`.toUpperCase()
+    : user?.email 
+      ? user.email.substring(0, 2).toUpperCase() 
+      : "RB";
 
   return (
     <Sidebar className="backdrop-blur-lg bg-[rgba(250,250,252,0.8)] border-r border-gray-100">
@@ -185,7 +240,7 @@ export function AppSidebar() {
               </AvatarFallback>
             </Avatar>
             <div className="text-sm font-normal text-[#1C1C1E]">
-              {user?.email?.split("@")[0] || "User"}
+              {getDisplayName()}
             </div>
           </div>
           <Button 
