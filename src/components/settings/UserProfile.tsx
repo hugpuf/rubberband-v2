@@ -17,6 +17,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+// Storage bucket name for profile avatars
+const STORAGE_BUCKET = 'profiles';
+
 export function UserProfile() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -98,7 +101,7 @@ export function UserProfile() {
           first_name: firstName,
           last_name: lastName,
           full_name: `${firstName} ${lastName}`,
-          updated_at: new Date().toISOString(), // Convert Date to ISO string
+          updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
         
@@ -109,12 +112,12 @@ export function UserProfile() {
       
       // Upload avatar if changed
       if (avatarFile) {
-        console.log("Uploading new avatar");
+        console.log("Uploading new avatar to bucket:", STORAGE_BUCKET);
         const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `avatars/${user.id}.${fileExt}`;
+        const filePath = `${user.id}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
-          .from("profiles")
+          .from(STORAGE_BUCKET)
           .upload(filePath, avatarFile, { upsert: true });
           
         if (uploadError) {
@@ -124,7 +127,7 @@ export function UserProfile() {
         
         // Get the public URL for the avatar
         const { data: publicUrlData } = supabase.storage
-          .from("profiles")
+          .from(STORAGE_BUCKET)
           .getPublicUrl(filePath);
         
         if (publicUrlData) {

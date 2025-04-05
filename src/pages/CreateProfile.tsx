@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { InvitationForm } from "@/components/auth/InvitationForm";
 import { Loader2 } from "lucide-react";
 
+// Storage bucket name for profile avatars
+const STORAGE_BUCKET = 'profiles';
+
 const CreateProfile = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -103,6 +106,7 @@ const CreateProfile = () => {
         role={invitation.role}
         invitationToken={token || ""}
         isLoading={false}
+        storageBucket={STORAGE_BUCKET}
       />
     </div>
   );

@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
+// Storage bucket name for profile avatars
+const STORAGE_BUCKET = 'profiles';
+
 export function PersonalDetailsStep() {
   const { onboarding, updatePersonalDetails } = useOnboarding();
   const { user } = useAuth();
@@ -31,18 +34,20 @@ export function PersonalDetailsStep() {
       
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}.${fileExt}`;
+      
+      console.log("Uploading avatar to bucket:", STORAGE_BUCKET);
       
       // Upload image to storage
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
+        .from(STORAGE_BUCKET)
+        .upload(filePath, file, { upsert: true });
         
       if (uploadError) throw uploadError;
       
       // Get public URL
       const { data } = supabase.storage
-        .from('avatars')
+        .from(STORAGE_BUCKET)
         .getPublicUrl(filePath);
         
       if (data) {
