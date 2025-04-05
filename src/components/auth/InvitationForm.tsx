@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, CheckCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// Storage bucket name for profile avatars
+const STORAGE_BUCKET = 'profiles';
 
 type InvitationFormProps = {
   email: string;
@@ -29,9 +31,6 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Storage bucket name for profile avatars
-  const STORAGE_BUCKET = 'profiles';
 
   const getInitials = () => {
     const firstInitial = firstName.charAt(0);
@@ -181,7 +180,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
       if (avatarFile) {
         console.log("Step 3: Uploading avatar for user:", userId);
         const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `avatars/${userId}.${fileExt}`;
+        const filePath = `${userId}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from(STORAGE_BUCKET)
