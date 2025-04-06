@@ -13,26 +13,45 @@ export default function Onboarding() {
   const { user, isLoading: authLoading, sessionChecked } = useAuth();
   const { onboarding, isLoading: onboardingLoading, dataFetched } = useOnboarding();
   
-  // Handle all loading states
-  if (authLoading || !sessionChecked || (user && !dataFetched) || (user && onboardingLoading)) {
+  // Determine if we're still validating the session or loading onboarding data
+  const isValidatingSession = authLoading || !sessionChecked;
+  const isLoadingOnboardingData = user && (!dataFetched || onboardingLoading);
+  const isLoading = isValidatingSession || isLoadingOnboardingData;
+  
+  // Show loading state when necessary
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7]">
         <div className="text-center">
           <Loader2 className="h-10 w-10 animate-spin text-[#007AFF] mx-auto mb-4" />
-          <p className="text-lg font-medium text-gray-700">Preparing your onboarding experience...</p>
+          <p className="text-lg font-medium text-gray-700">
+            {isValidatingSession ? "Verifying your session..." : "Preparing your onboarding experience..."}
+          </p>
         </div>
       </div>
     );
   }
   
-  // If user completes onboarding or is not authenticated, redirect
+  // Once loading is complete, handle redirects before rendering onboarding content
+  
+  // Redirect completed users to dashboard
   if (onboarding.isCompleted) {
+    console.log("Onboarding completed, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
   
+  // Redirect unauthenticated users to auth page
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+  
+  // Log essential information for debugging
+  console.log("Onboarding page - User:", user.id);
+  console.log("Onboarding page - Auth loading:", authLoading);
+  console.log("Onboarding page - Onboarding loading:", onboardingLoading);
+  console.log("Onboarding state:", onboarding);
+  console.log("Onboarding step:", onboarding.step);
+  console.log("Onboarding completion status:", onboarding.isCompleted);
   
   // Show the appropriate onboarding step based on the current step
   const renderStep = () => {

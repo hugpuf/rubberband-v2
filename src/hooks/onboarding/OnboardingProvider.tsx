@@ -1,3 +1,4 @@
+
 import { useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -16,10 +17,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load any existing onboarding data from the database
-    // Only fetch if we have a user and haven't already fetched data
+    // Only fetch if we have a user, session is checked, and data hasn't been fetched yet
     const loadOnboardingData = async () => {
-      if (!user || dataFetched) return;
+      if (!user || dataFetched || !sessionChecked) return;
       
       setIsLoading(true);
       try {
@@ -32,10 +32,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       }
     };
     
-    if (sessionChecked && user) {
-      loadOnboardingData();
-    }
+    loadOnboardingData();
   }, [user, dataFetched, sessionChecked]);
+  
+  // Reset data fetched state when user changes or logs out
+  useEffect(() => {
+    if (!user) {
+      setDataFetched(false);
+    }
+  }, [user]);
   
   const updatePersonalDetails = (details: Partial<typeof onboarding.personalDetails>) => {
     setOnboarding(prev => ({

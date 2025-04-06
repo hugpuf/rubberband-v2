@@ -68,73 +68,74 @@ export const fetchOnboardingData = async (
       return;
     }
     
-    console.log("User role found");
+    if (!roleData.organization_id) {
+      console.log("No organization ID found for user role");
+      return;
+    }
     
-    if (roleData.organization_id) {
-      // Get organization details
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', roleData.organization_id)
-        .maybeSingle();
+    // Get organization details
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', roleData.organization_id)
+      .maybeSingle();
 
-      if (orgError) {
-        console.error("Error fetching organization data:", orgError);
-        return;
-      }
+    if (orgError) {
+      console.error("Error fetching organization data:", orgError);
+      return;
+    }
 
-      if (orgData) {
-        console.log("Organization data found");
-        setOnboarding(prev => ({
-          ...prev,
-          organizationDetails: {
-            name: orgData.name || '',
-            workspaceHandle: orgData.workspace_handle || '',
-            logoUrl: orgData.logo_url,
-            country: orgData.country || '',
-            referralSource: orgData.referral_source
-          }
-        }));
-      }
-
-      // Get organization settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('organization_settings')
-        .select('*')
-        .eq('organization_id', roleData.organization_id)
-        .maybeSingle();
-
-      if (settingsError) {
-        console.error("Error fetching organization settings:", settingsError);
-        return;
-      }
-
-      if (settingsData) {
-        console.log("Organization settings found, onboarding complete:", !!settingsData.has_completed_onboarding);
-        setOnboarding(prev => ({
-          ...prev,
-          useCaseDetails: {
-            primaryUseCase: settingsData.primary_use_case,
-            businessType: settingsData.business_type,
-            workflowStyle: settingsData.workflow_style
-          },
-          isCompleted: !!settingsData.has_completed_onboarding
-        }));
-      } else {
-        console.log("No organization settings found, creating default settings");
-        // Create settings if they don't exist
-        const { error: createSettingsError } = await supabase
-          .from('organization_settings')
-          .insert([
-            {
-              organization_id: roleData.organization_id,
-              has_completed_onboarding: false
-            },
-          ]);
-          
-        if (createSettingsError) {
-          console.error("Error creating organization settings:", createSettingsError);
+    if (orgData) {
+      console.log("Organization data found");
+      setOnboarding(prev => ({
+        ...prev,
+        organizationDetails: {
+          name: orgData.name || '',
+          workspaceHandle: orgData.workspace_handle || '',
+          logoUrl: orgData.logo_url,
+          country: orgData.country || '',
+          referralSource: orgData.referral_source
         }
+      }));
+    }
+
+    // Get organization settings
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('organization_settings')
+      .select('*')
+      .eq('organization_id', roleData.organization_id)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.error("Error fetching organization settings:", settingsError);
+      return;
+    }
+
+    if (settingsData) {
+      console.log("Organization settings found:", settingsData);
+      setOnboarding(prev => ({
+        ...prev,
+        useCaseDetails: {
+          primaryUseCase: settingsData.primary_use_case,
+          businessType: settingsData.business_type,
+          workflowStyle: settingsData.workflow_style
+        },
+        isCompleted: !!settingsData.has_completed_onboarding
+      }));
+    } else {
+      console.log("No organization settings found, creating default settings");
+      // Create settings if they don't exist
+      const { error: createSettingsError } = await supabase
+        .from('organization_settings')
+        .insert([
+          {
+            organization_id: roleData.organization_id,
+            has_completed_onboarding: false
+          },
+        ]);
+        
+      if (createSettingsError) {
+        console.error("Error creating organization settings:", createSettingsError);
       }
     }
   } catch (error) {
