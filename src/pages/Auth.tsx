@@ -130,7 +130,7 @@ const Auth = () => {
   // Show a special form for invited users with a valid token
   if (isInvitation && tokenValidation?.valid) {
     return (
-      <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center p-4">
         <InvitationForm 
           email={tokenValidation.email || ""}
           orgName={tokenValidation.organization_name || ""}
@@ -145,14 +145,14 @@ const Auth = () => {
   return (
     <>
       {validatingToken ? (
-        <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
+        <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-xl font-semibold mb-2">Validating invitation</h2>
             <p className="text-gray-500">Please wait while we validate your invitation...</p>
           </div>
         </div>
       ) : (
-        <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center p-4">
           <AuthForm 
             onLogin={handleLogin} 
             onSignUp={handleSignUp} 

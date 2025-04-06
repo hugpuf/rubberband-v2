@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -255,7 +256,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
   };
 
   return (
-    <Card className="w-full max-w-md shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-0 bg-white rounded-2xl overflow-hidden">
+    <Card className="w-full max-w-md shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-gray-100 bg-white rounded-2xl overflow-hidden">
       <CardHeader className="text-center space-y-1">
         <CardTitle className="text-2xl font-semibold text-[#1C1C1E]">Create Your Profile</CardTitle>
         <CardDescription className="text-[#636366]">
@@ -269,7 +270,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
             <div className="relative">
               <Avatar className="w-24 h-24 border-2 border-primary/20">
                 <AvatarImage src={avatarUrl || undefined} />
-                <AvatarFallback className="text-lg bg-primary/10 text-primary">
+                <AvatarFallback className="text-lg bg-gray-100 text-gray-600">
                   {firstName || lastName ? getInitials() : "?"}
                 </AvatarFallback>
               </Avatar>
@@ -277,7 +278,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
                 type="button"
                 size="sm"
                 variant="outline"
-                className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
+                className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0 bg-white border border-gray-200"
                 onClick={() => document.getElementById('avatar-upload')?.click()}
               >
                 +
@@ -301,6 +302,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="John"
                 required
+                className="border-gray-200 focus:border-gray-300"
               />
             </div>
             <div className="space-y-2">
@@ -311,6 +313,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Doe"
                 required
+                className="border-gray-200 focus:border-gray-300"
               />
             </div>
           </div>
@@ -323,7 +326,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
               value={email}
               readOnly
               disabled
-              className="bg-gray-100"
+              className="bg-gray-100 border-gray-200"
             />
           </div>
           
@@ -336,6 +339,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              className="border-gray-200 focus:border-gray-300"
             />
           </div>
           
@@ -348,6 +352,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
+              className="border-gray-200 focus:border-gray-300"
             />
           </div>
         </CardContent>
@@ -355,7 +360,7 @@ export function InvitationForm({ email, orgName, role, invitationToken, isLoadin
         <CardFooter>
           <Button 
             type="submit" 
-            className="w-full flex items-center gap-2"
+            className="w-full bg-[#007AFF] hover:bg-[#0062CC] text-white font-medium py-2 rounded-xl flex items-center gap-2"
             disabled={submitting}
           >
             {submitting ? (

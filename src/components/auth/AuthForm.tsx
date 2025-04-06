@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +84,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
   };
 
   return (
-    <Card className="w-full max-w-md shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-0 bg-white rounded-2xl overflow-hidden">
+    <Card className="w-full max-w-md shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-gray-100 bg-white rounded-2xl overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle className="text-center text-2xl font-semibold text-[#1C1C1E]">Rubberband OS</CardTitle>
         <CardDescription className="text-center text-[#636366]">Enterprise resource planning, reimagined.</CardDescription>
@@ -95,7 +96,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
         onValueChange={handleTabChange}
       >
         <div className="flex justify-center px-6 mb-5">
-          <TabsList className="grid w-[70%] grid-cols-2 bg-[#F0F0F2] rounded-full p-0.5">
+          <TabsList className="grid w-[70%] grid-cols-2 bg-[#F2F2F7] rounded-full p-0.5">
             <TabsTrigger 
               value="login" 
               className="rounded-full text-sm px-3 py-1 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1C1C1E] transition-all"
@@ -125,7 +126,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
                   required
                   disabled={isLoading}
                   autoComplete="email"
-                  className="apple-input"
+                  className="border-gray-200 focus:border-gray-300"
                 />
               </div>
               <div className="space-y-2">
@@ -139,7 +140,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
                     required
                     disabled={isLoading}
                     autoComplete="current-password"
-                    className="apple-input pr-10"
+                    className="border-gray-200 focus:border-gray-300 pr-10"
                   />
                   <Button
                     type="button"
@@ -156,7 +157,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
             <CardFooter className="pt-2">
               <Button 
                 type="submit" 
-                className="w-full apple-button apple-button-primary py-6" 
+                className="w-full bg-[#007AFF] hover:bg-[#0062CC] text-white font-medium py-2 rounded-xl" 
                 disabled={isLoading}
               >
                 {isLoading ? "Logging in..." : "Login"}
@@ -178,7 +179,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
                   required
                   disabled={isLoading}
                   autoComplete="email"
-                  className="apple-input"
+                  className="border-gray-200 focus:border-gray-300"
                 />
               </div>
               <div className="space-y-2">
@@ -193,7 +194,7 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
                     disabled={isLoading}
                     autoComplete="new-password"
                     minLength={6}
-                    className="apple-input pr-10"
+                    className="border-gray-200 focus:border-gray-300 pr-10"
                   />
                   <Button
                     type="button"
@@ -216,14 +217,14 @@ export function AuthForm({ onLogin, onSignUp, isLoading, initialEmail = "" }: Au
                   onChange={(e) => setOrgName(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="apple-input"
+                  className="border-gray-200 focus:border-gray-300"
                 />
               </div>
             </CardContent>
             <CardFooter className="pt-2">
               <Button 
                 type="submit" 
-                className="w-full apple-button apple-button-primary py-6" 
+                className="w-full bg-[#007AFF] hover:bg-[#0062CC] text-white font-medium py-2 rounded-xl" 
                 disabled={isLoading}
               >
                 {isLoading ? "Creating account..." : "Create Account"}
