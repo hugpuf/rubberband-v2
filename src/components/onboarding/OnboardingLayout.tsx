@@ -1,3 +1,4 @@
+
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/hooks/onboarding";
@@ -30,8 +31,8 @@ export function OnboardingLayout({
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-rubberband-dark to-rubberband-secondary p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-8">
+    <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7] p-4">
+      <div className="bg-white rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] w-full max-w-2xl p-8 border border-gray-50">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-muted-foreground">
@@ -51,7 +52,7 @@ export function OnboardingLayout({
           
           <div className="w-full bg-gray-200 h-1 rounded-full overflow-hidden mb-6">
             <div 
-              className="bg-rubberband-primary h-full transition-all duration-300 ease-in-out" 
+              className="bg-[#007AFF] h-full transition-all duration-300 ease-in-out" 
               style={{ width: `${(onboarding.step / onboarding.totalSteps) * 100}%` }}
             />
           </div>
@@ -67,6 +68,7 @@ export function OnboardingLayout({
               variant="outline"
               onClick={prevStep}
               disabled={isLoading}
+              className="border-gray-200 text-gray-700 hover:bg-gray-50"
             >
               Back
             </Button>
@@ -76,6 +78,7 @@ export function OnboardingLayout({
             <Button 
               onClick={handleNext}
               disabled={disableNextButton || isLoading}
+              className="bg-[#007AFF] hover:bg-[#0062CC] text-white"
             >
               {isLoading ? "Saving..." : nextButtonText}
             </Button>
