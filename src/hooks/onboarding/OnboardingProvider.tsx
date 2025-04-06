@@ -1,4 +1,3 @@
-
 import { useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -11,14 +10,32 @@ import { saveOnboarding, skipOnboarding } from "./onboardingOperations";
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [onboarding, setOnboarding] = useState(initialOnboardingState);
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const [dataFetched, setDataFetched] = useState(false);
+  const { user, sessionChecked } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     // Load any existing onboarding data from the database
-    fetchOnboardingData(user, setOnboarding);
-  }, [user]);
+    // Only fetch if we have a user and haven't already fetched data
+    const loadOnboardingData = async () => {
+      if (!user || dataFetched) return;
+      
+      setIsLoading(true);
+      try {
+        await fetchOnboardingData(user, setOnboarding);
+        setDataFetched(true);
+      } catch (error) {
+        console.error("Error fetching onboarding data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (sessionChecked && user) {
+      loadOnboardingData();
+    }
+  }, [user, dataFetched, sessionChecked]);
   
   const updatePersonalDetails = (details: Partial<typeof onboarding.personalDetails>) => {
     setOnboarding(prev => ({
@@ -119,6 +136,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     onboardingActions,
     currentStep: onboarding.step,
     isLoading,
+    dataFetched,
     updatePersonalDetails,
     updateOrganizationDetails,
     updateUseCaseDetails,

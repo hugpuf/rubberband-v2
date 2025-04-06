@@ -16,21 +16,22 @@ export const fetchOnboardingData = async (
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('first_name, last_name, avatar_url, email')
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .maybeSingle();
 
     if (profileError) {
       console.error("Error fetching profile:", profileError);
       return;
     }
 
-    if (profileData && profileData.length > 0) {
-      console.log("Profile data found:", profileData[0]);
+    if (profileData) {
+      console.log("Profile data found");
       setOnboarding(prev => ({
         ...prev,
         personalDetails: {
-          firstName: profileData[0].first_name || '',
-          lastName: profileData[0].last_name || '',
-          avatarUrl: profileData[0].avatar_url
+          firstName: profileData.first_name || '',
+          lastName: profileData.last_name || '',
+          avatarUrl: profileData.avatar_url
         }
       }));
     } else {
@@ -50,46 +51,48 @@ export const fetchOnboardingData = async (
       }
     }
 
-    // Get user's organization - don't use single() to avoid 406 errors
+    // Get user's organization
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('organization_id, role')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     if (roleError) {
       console.error("Error fetching role data:", roleError);
       return;
     }
 
-    if (!roleData || roleData.length === 0) {
+    if (!roleData) {
       console.log("No organization role found for user");
       return;
     }
     
-    console.log("User role found:", roleData[0]);
+    console.log("User role found");
     
-    if (roleData[0].organization_id) {
+    if (roleData.organization_id) {
       // Get organization details
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select('*')
-        .eq('id', roleData[0].organization_id);
+        .eq('id', roleData.organization_id)
+        .maybeSingle();
 
       if (orgError) {
         console.error("Error fetching organization data:", orgError);
         return;
       }
 
-      if (orgData && orgData.length > 0) {
-        console.log("Organization data found:", orgData[0]);
+      if (orgData) {
+        console.log("Organization data found");
         setOnboarding(prev => ({
           ...prev,
           organizationDetails: {
-            name: orgData[0].name || '',
-            workspaceHandle: orgData[0].workspace_handle || '',
-            logoUrl: orgData[0].logo_url,
-            country: orgData[0].country || '',
-            referralSource: orgData[0].referral_source
+            name: orgData.name || '',
+            workspaceHandle: orgData.workspace_handle || '',
+            logoUrl: orgData.logo_url,
+            country: orgData.country || '',
+            referralSource: orgData.referral_source
           }
         }));
       }
@@ -98,23 +101,24 @@ export const fetchOnboardingData = async (
       const { data: settingsData, error: settingsError } = await supabase
         .from('organization_settings')
         .select('*')
-        .eq('organization_id', roleData[0].organization_id);
+        .eq('organization_id', roleData.organization_id)
+        .maybeSingle();
 
       if (settingsError) {
         console.error("Error fetching organization settings:", settingsError);
         return;
       }
 
-      if (settingsData && settingsData.length > 0) {
-        console.log("Organization settings found:", settingsData[0]);
+      if (settingsData) {
+        console.log("Organization settings found, onboarding complete:", !!settingsData.has_completed_onboarding);
         setOnboarding(prev => ({
           ...prev,
           useCaseDetails: {
-            primaryUseCase: settingsData[0].primary_use_case,
-            businessType: settingsData[0].business_type,
-            workflowStyle: settingsData[0].workflow_style
+            primaryUseCase: settingsData.primary_use_case,
+            businessType: settingsData.business_type,
+            workflowStyle: settingsData.workflow_style
           },
-          isCompleted: !!settingsData[0].has_completed_onboarding
+          isCompleted: !!settingsData.has_completed_onboarding
         }));
       } else {
         console.log("No organization settings found, creating default settings");
@@ -123,7 +127,7 @@ export const fetchOnboardingData = async (
           .from('organization_settings')
           .insert([
             {
-              organization_id: roleData[0].organization_id,
+              organization_id: roleData.organization_id,
               has_completed_onboarding: false
             },
           ]);

@@ -1,5 +1,32 @@
 
-export type OnboardingState = {
+import { User } from "@supabase/supabase-js";
+
+export interface PersonalDetails {
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+}
+
+export interface OrganizationDetails {
+  name: string;
+  workspaceHandle: string;
+  logoUrl: string | null;
+  country: string;
+  referralSource: string | null;
+}
+
+export interface UseCaseDetails {
+  primaryUseCase: string | null;
+  businessType: string | null;
+  workflowStyle: string | null;
+}
+
+export interface IntegrationsState {
+  googleConnected: boolean;
+  microsoftConnected: boolean;
+}
+
+export interface OnboardingState {
   step: number;
   primaryUseCase: string | null;
   businessType: string | null;
@@ -7,29 +34,12 @@ export type OnboardingState = {
   isCompleted: boolean;
   isLoading: boolean;
   error: string | null;
-  personalDetails: {
-    firstName: string;
-    lastName: string;
-    avatarUrl: string | null;
-  };
-  organizationDetails: {
-    name: string;
-    workspaceHandle: string;
-    logoUrl: string | null;
-    country: string;
-    referralSource: string | null;
-  };
-  useCaseDetails: {
-    primaryUseCase: string | null;
-    businessType: string | null;
-    workflowStyle: string | null;
-  };
-  integrations: {
-    googleConnected: boolean;
-    microsoftConnected: boolean;
-  };
+  personalDetails: PersonalDetails;
+  organizationDetails: OrganizationDetails;
+  useCaseDetails: UseCaseDetails;
+  integrations: IntegrationsState;
   totalSteps: number;
-};
+}
 
 export const initialOnboardingState: OnboardingState = {
   step: 1,
@@ -40,15 +50,15 @@ export const initialOnboardingState: OnboardingState = {
   isLoading: false,
   error: null,
   personalDetails: {
-    firstName: '',
-    lastName: '',
+    firstName: "",
+    lastName: "",
     avatarUrl: null
   },
   organizationDetails: {
-    name: '',
-    workspaceHandle: '',
+    name: "",
+    workspaceHandle: "",
     logoUrl: null,
-    country: '',
+    country: "",
     referralSource: null
   },
   useCaseDetails: {
@@ -63,22 +73,23 @@ export const initialOnboardingState: OnboardingState = {
   totalSteps: 5
 };
 
-export type OnboardingAction = {
+export interface OnboardingActions {
   updateStep: (step: number) => void;
   setPrimaryUseCase: (value: string) => void;
   setBusinessType: (value: string) => void;
   setWorkflowStyle: (value: string) => void;
   completeOnboarding: () => Promise<void>;
-};
+}
 
 export type OnboardingContextType = {
   onboarding: OnboardingState;
-  onboardingActions: OnboardingAction;
+  onboardingActions: OnboardingActions;
   currentStep: number;
   isLoading: boolean;
-  updatePersonalDetails: (details: Partial<typeof initialOnboardingState.personalDetails>) => void;
-  updateOrganizationDetails: (details: Partial<typeof initialOnboardingState.organizationDetails>) => void;
-  updateUseCaseDetails: (details: Partial<typeof initialOnboardingState.useCaseDetails>) => void;
+  dataFetched: boolean;
+  updatePersonalDetails: (details: Partial<PersonalDetails>) => void;
+  updateOrganizationDetails: (details: Partial<OrganizationDetails>) => void;
+  updateUseCaseDetails: (details: Partial<UseCaseDetails>) => void;
   connectIntegration: (provider: "google" | "microsoft", connected: boolean) => void;
   nextStep: () => void;
   prevStep: () => void;

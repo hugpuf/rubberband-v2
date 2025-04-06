@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboarding } from "@/hooks/onboarding";
@@ -7,39 +7,35 @@ import { CompanyDetailsStep } from "@/components/onboarding/CompanyDetailsStep";
 import { UseCaseStep } from "@/components/onboarding/UseCaseStep";
 import { IntegrationsStep } from "@/components/onboarding/IntegrationsStep";
 import { FinishStep } from "@/components/onboarding/FinishStep";
+import { Loader2 } from "lucide-react";
 
 export default function Onboarding() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { onboarding, isLoading: onboardingLoading } = useOnboarding();
+  const { user, isLoading: authLoading, sessionChecked } = useAuth();
+  const { onboarding, isLoading: onboardingLoading, dataFetched } = useOnboarding();
   
-  useEffect(() => {
-    // Log current state for debugging
-    console.log("Onboarding page - User:", user?.id);
-    console.log("Onboarding page - Auth loading:", authLoading);
-    console.log("Onboarding page - Onboarding loading:", onboardingLoading);
-    console.log("Onboarding state:", onboarding);
-    console.log("Onboarding step:", onboarding.step);
-    console.log("Onboarding completion status:", onboarding.isCompleted);
-    
-    // Trigger console trace to see call stack
-    console.trace("Onboarding page render trace");
-  }, [user, authLoading, onboardingLoading, onboarding]);
+  // Handle all loading states
+  if (authLoading || !sessionChecked || (user && !dataFetched) || (user && onboardingLoading)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7]">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-[#007AFF] mx-auto mb-4" />
+          <p className="text-lg font-medium text-gray-700">Preparing your onboarding experience...</p>
+        </div>
+      </div>
+    );
+  }
   
   // If user completes onboarding or is not authenticated, redirect
   if (onboarding.isCompleted) {
-    console.log("Onboarding completed, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
   
-  if (!authLoading && !user) {
-    console.log("User not authenticated, redirecting to auth");
+  if (!user) {
     return <Navigate to="/auth" replace />;
   }
   
   // Show the appropriate onboarding step based on the current step
   const renderStep = () => {
-    console.log("Rendering onboarding step:", onboarding.step);
-    
     switch (onboarding.step) {
       case 1:
         return <PersonalDetailsStep />;
@@ -52,20 +48,9 @@ export default function Onboarding() {
       case 5:
         return <FinishStep />;
       default:
-        console.log("No matching step found, defaulting to PersonalDetailsStep");
         return <PersonalDetailsStep />;
     }
   };
-  
-  if (authLoading || onboardingLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-rubberband-dark to-rubberband-secondary">
-        <div className="animate-pulse text-white text-center">
-          <p className="text-lg font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
   
   return renderStep();
 }

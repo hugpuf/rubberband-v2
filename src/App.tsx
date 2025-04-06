@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/auth/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OnboardingProvider } from "@/hooks/onboarding";
 import { TeamProvider } from "@/hooks/teams";
+import { Loader2 } from "lucide-react";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -23,36 +24,37 @@ import { Layout } from "./components/layout/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { useOnboarding } from "./hooks/onboarding";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      cacheTime: 1000 * 60 * 30, // 30 minutes
+      retry: 1,
+    },
+  },
+});
 
 const ProtectedDashboardRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
-  const { onboarding } = useOnboarding();
+  const { user, isLoading: authLoading, sessionChecked } = useAuth();
+  const { onboarding, isLoading: onboardingLoading, dataFetched } = useOnboarding();
   
-  useEffect(() => {
-    if (user) {
-      console.log("ProtectedDashboardRoute - User:", user.id);
-      console.log("ProtectedDashboardRoute - Onboarding completed:", onboarding.isCompleted);
-    }
-  }, [user, onboarding]);
-  
-  if (isLoading) {
+  // Show loading state when checking session or fetching onboarding data
+  if (authLoading || !sessionChecked || (user && !dataFetched) || (user && onboardingLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-center">
-          <p className="text-lg font-medium">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7]">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-[#007AFF] mx-auto mb-4" />
+          <p className="text-lg font-medium text-gray-700">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
   
   if (!user) {
-    console.log("User not authenticated, redirecting to auth");
     return <Navigate to="/auth" replace />;
   }
   
   if (!onboarding.isCompleted) {
-    console.log("Onboarding not completed, redirecting to onboarding");
     return <Navigate to="/onboarding" replace />;
   }
   
@@ -60,13 +62,14 @@ const ProtectedDashboardRoute = ({ children }: { children: React.ReactNode }) =>
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, sessionChecked } = useAuth();
   
-  if (isLoading) {
+  if (isLoading || !sessionChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-center">
-          <p className="text-lg font-medium">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7]">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-[#007AFF] mx-auto mb-4" />
+          <p className="text-lg font-medium text-gray-700">Verifying your account...</p>
         </div>
       </div>
     );

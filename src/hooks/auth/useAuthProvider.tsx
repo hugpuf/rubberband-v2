@@ -21,6 +21,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("AuthProvider: Error checking session:", error);
       } finally {
         setIsLoading(false);
+        setSessionChecked(true);
       }
     };
 
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("AuthProvider: Auth state changed:", event, session?.user?.id);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        setSessionChecked(true);
       }
     );
 
@@ -257,7 +260,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, authError, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoading, 
+      authError, 
+      signIn, 
+      signUp, 
+      signOut, 
+      sessionChecked 
+    }}>
       {children}
     </AuthContext.Provider>
   );
