@@ -1,12 +1,23 @@
 
+import { useEffect } from "react";
 import { BusinessPerformanceWidget } from "@/components/dashboard/BusinessPerformanceWidget";
 import { NotificationsWidget } from "@/components/dashboard/NotificationsWidget";
 import { InsightsWidget } from "@/components/dashboard/InsightsWidget";
 import { AICopilot } from "@/components/dashboard/AICopilot";
 import { useOrganization } from "@/hooks/useOrganization";
+import { logUserAction } from "@/services/userLogs";
 
 const Dashboard = () => {
   const { organization } = useOrganization();
+  
+  useEffect(() => {
+    // Log dashboard view
+    logUserAction({
+      module: "Dashboard",
+      action: "view",
+      metadata: { organizationId: organization?.id }
+    });
+  }, [organization]);
   
   return (
     <div className="space-y-8">

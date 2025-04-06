@@ -1,10 +1,12 @@
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "react-router-dom";
+import { logUserAction } from "@/services/userLogs";
 
 type LayoutProps = {
   children: ReactNode;
@@ -13,6 +15,30 @@ type LayoutProps = {
 export function Layout({ children }: LayoutProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const location = useLocation();
+
+  // Log navigation events
+  useEffect(() => {
+    if (user) {
+      const path = location.pathname;
+      const module = getModuleFromPath(path);
+      
+      logUserAction({
+        module,
+        action: "navigate",
+        metadata: { path, previousPath: document.referrer }
+      });
+    }
+  }, [location.pathname, user]);
+  
+  // Helper to determine module from path
+  const getModuleFromPath = (path: string): string => {
+    if (path.startsWith("/dashboard")) return "Dashboard";
+    if (path.startsWith("/settings")) return "Settings";
+    if (path.startsWith("/user-management")) return "User Management";
+    if (path.startsWith("/onboarding")) return "Onboarding";
+    return "Application";
+  };
 
   // If no user, don't show the layout
   if (!user) {

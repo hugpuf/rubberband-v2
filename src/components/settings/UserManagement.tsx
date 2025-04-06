@@ -1,6 +1,7 @@
-
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/hooks/useOrganization";
+import { inviteUser, removeUser, updateUserRole } from "@/integrations/supabase/user-management";
 import {
   Card,
   CardContent,
@@ -8,72 +9,264 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { UsersList } from "@/components/settings/UsersList";
-import { UserInvitations } from "@/components/settings/UserInvitations";
-import { TeamManagementSection } from "@/components/settings/TeamManagementSection";
-import { Users, Mail, UserPlus, Users2 } from "lucide-react";
-import { TeamProvider } from "@/hooks/teams";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PlusCircle, Loader2, Trash2, UserCog } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { logUserAction } from "@/services/userLogs";
 
-export function UserManagement() {
-  const [activeTab, setActiveTab] = useState("users");
-  
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="rounded-full bg-rubberband-light p-2">
-          <Users className="h-5 w-5 text-rubberband-primary" />
-        </div>
-        <div>
-          <h2 className="text-xl font-medium text-[#1C1C1E]">User Management</h2>
-          <p className="text-[#636366]">
-            Manage users, invitations, and teams in your organization
-          </p>
-        </div>
-      </div>
+const roles = [
+  {
+    label: "Admin",
+    value: "admin",
+  },
+  {
+    label: "Member",
+    value: "member",
+  },
+];
+
+const inviteFormSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["admin", "member"]).default("member"),
+});
+
+export const UserManagement = () => {
+  const { toast } = useToast();
+  const { organization, users, isLoading, refreshUsers } = useOrganization();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+
+  const form = useForm<z.infer<typeof inviteFormSchema>>({
+    resolver: zodResolver(inviteFormSchema),
+    defaultValues: {
+      email: "",
+      role: "member",
+    },
+  });
+
+  const handleInviteUser = async (data: z.infer<typeof inviteFormSchema>) => {
+    setIsSubmitting(true);
+    try {
+      await inviteUser(data.email, data.role);
       
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4 bg-[#F5F5F7] p-1 rounded-lg">
-          <TabsTrigger 
-            value="users" 
-            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal flex items-center gap-2"
-          >
-            <Users className="h-4 w-4" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger 
-            value="invitations"
-            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal flex items-center gap-2"
-          >
-            <Mail className="h-4 w-4" />
-            Invitations
-          </TabsTrigger>
-          <TabsTrigger 
-            value="teams"
-            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal flex items-center gap-2"
-          >
-            <Users2 className="h-4 w-4" />
-            Teams
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="users">
-          <UsersList />
-        </TabsContent>
-        
-        <TabsContent value="invitations">
-          <TeamProvider>
-            <UserInvitations />
-          </TeamProvider>
-        </TabsContent>
-        
-        <TabsContent value="teams">
-          <TeamProvider>
-            <TeamManagementSection />
-          </TeamProvider>
-        </TabsContent>
-      </Tabs>
-    </div>
+      // Log the user invitation
+      logUserAction({
+        module: "User Management",
+        action: "invite",
+        metadata: { 
+          email: data.email,
+          role: data.role
+        }
+      });
+      
+      form.reset();
+      setIsInviteDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to invite user"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    try {
+      await updateUserRole(userId, newRole);
+      
+      // Log the role update
+      logUserAction({
+        module: "User Management",
+        action: "update",
+        recordId: userId,
+        metadata: { 
+          userId,
+          newRole
+        }
+      });
+      
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update user role"
+      });
+    }
+  };
+
+  const handleRemoveUser = async (userId: string) => {
+    try {
+      await removeUser(userId);
+      
+      // Log the user removal
+      logUserAction({
+        module: "User Management",
+        action: "delete",
+        recordId: userId,
+        metadata: { userId }
+      });
+      
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to remove user"
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>User Management</CardTitle>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Invite User
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Invite a new user</DialogTitle>
+              <DialogDescription>
+                Enter the user's email address to send them an invitation.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={form.handleSubmit(handleInviteUser)} className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="example@example.com"
+                  {...form.register("email")}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="role">Role</Label>
+                <Select
+                  onValueChange={(value) => form.setValue("role", value)}
+                  defaultValue={form.getValue("role")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Invite user
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableCaption>A list of users in your organization.</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users?.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.profiles?.full_name}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <Select
+                    onValueChange={async (value) => {
+                      await handleUpdateUserRole(user.id, value);
+                      refreshUsers();
+                    }}
+                    defaultValue={user.role}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    onClick={async () => {
+                      await handleRemoveUser(user.id);
+                      refreshUsers();
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Remove
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={3}>Total</TableCell>
+              <TableCell className="text-right">{users?.length}</TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </CardContent>
+    </Card>
   );
-}
+};

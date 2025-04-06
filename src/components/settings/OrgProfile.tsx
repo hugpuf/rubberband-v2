@@ -1,118 +1,151 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useOrganization } from "@/hooks/useOrganization";
-import { Building, Save } from "lucide-react";
-import { OrgLogoUpload } from "./OrgLogoUpload";
-import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { logUserAction } from "@/services/userLogs";
+
+const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "Organization name must be at least 2 characters.",
+  }),
+  logo_url: z.string().url({
+    message: "Please enter a valid URL.",
+  }).optional().nullable(),
+  country: z.string().optional().nullable(),
+  workspace_handle: z.string().optional().nullable(),
+  timezone: z.string().optional().nullable(),
+});
 
 export function OrgProfile() {
-  const { organization, isAdmin, updateOrganization } = useOrganization();
+  const { organization, updateOrganization } = useOrganization();
+  const { toast } = useToast();
   
-  const [name, setName] = useState(organization?.name || "");
-  const [timezone, setTimezone] = useState("UTC");
-  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: organization?.name || "",
+      logo_url: organization?.logo_url || "",
+      country: organization?.country || "",
+      workspace_handle: organization?.workspace_handle || "",
+      timezone: organization?.timezone || "",
+    },
+    mode: "onChange",
+  });
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isAdmin) return;
-    
-    setIsSubmitting(true);
-    await updateOrganization({
-      name,
-      // In a real app, these would be columns in your organization table
-      // timezone,
-      // subscription_plan: subscriptionPlan
-    });
-    setIsSubmitting(false);
+  const isLoading = !organization;
+
+  const handleSubmit = async (data: z.infer<typeof formSchema>) => {
+    try {
+      await updateOrganization(data);
+      
+      // Log the organization update
+      logUserAction({
+        module: "Settings",
+        action: "update",
+        metadata: { 
+          section: "Organization Profile",
+          changes: Object.keys(data)
+        }
+      });
+      
+      toast({
+        title: "Organization updated",
+        description: "Your organization profile has been updated successfully."
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update organization profile"
+      });
+    }
   };
-  
+
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center space-x-4">
-        <div className="rounded-full bg-rubberband-light p-2">
-          <Building className="h-5 w-5 text-rubberband-primary" />
-        </div>
-        <div>
-          <CardTitle>Organization Profile</CardTitle>
-          <CardDescription>Manage your organization's details</CardDescription>
-        </div>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-6">
-          {/* Organization Logo Upload Section */}
-          <div className="space-y-2">
-            <Label>Organization Logo</Label>
-            <OrgLogoUpload />
-          </div>
-          
-          <Separator className="my-2" />
-          
-          <div className="space-y-2">
-            <Label htmlFor="org-name">Organization Name</Label>
-            <Input 
-              id="org-name"
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              placeholder="Enter your organization name"
-              disabled={!isAdmin}
-              required
-            />
-            {!isAdmin && (
-              <p className="text-xs text-muted-foreground">
-                Only administrators can change the organization name
-              </p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="timezone">Timezone</Label>
-            <Select value={timezone} onValueChange={setTimezone} disabled={!isAdmin}>
-              <SelectTrigger id="timezone">
-                <SelectValue placeholder="Select timezone" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
-                <SelectItem value="EST">EST (Eastern Standard Time)</SelectItem>
-                <SelectItem value="CST">CST (Central Standard Time)</SelectItem>
-                <SelectItem value="PST">PST (Pacific Standard Time)</SelectItem>
-                <SelectItem value="GMT">GMT (Greenwich Mean Time)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="subscription">Subscription Plan</Label>
-            <Select value={subscriptionPlan} onValueChange={setSubscriptionPlan} disabled={!isAdmin}>
-              <SelectTrigger id="subscription">
-                <SelectValue placeholder="Select subscription plan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="free">Free Tier</SelectItem>
-                <SelectItem value="basic">Basic ($10/month)</SelectItem>
-                <SelectItem value="premium">Premium ($29/month)</SelectItem>
-                <SelectItem value="enterprise">Enterprise ($99/month)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-        
-        <CardFooter>
-          <Button 
-            type="submit" 
-            disabled={!isAdmin || isSubmitting}
-            className="ml-auto flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            Save Changes
-          </Button>
-        </CardFooter>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Organization name</FormLabel>
+              <FormControl>
+                <Input placeholder="Acme Corp" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="logo_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Logo URL</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com/logo.png" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="country"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Country</FormLabel>
+              <FormControl>
+                <Input placeholder="United States" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="workspace_handle"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Workspace Handle</FormLabel>
+              <FormControl>
+                <Input placeholder="acme-corp" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="timezone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Timezone</FormLabel>
+              <FormControl>
+                <Input placeholder="America/Los_Angeles" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={isLoading}>
+          Update organization
+        </Button>
       </form>
-    </Card>
+    </Form>
   );
 }

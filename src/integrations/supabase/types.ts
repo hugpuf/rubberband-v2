@@ -286,6 +286,57 @@ export type Database = {
           },
         ]
       }
+      user_logs: {
+        Row: {
+          action: string | null
+          id: string
+          metadata: Json | null
+          module: string | null
+          organization_id: string | null
+          record_id: string | null
+          team_id: string | null
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          id?: string
+          metadata?: Json | null
+          module?: string | null
+          organization_id?: string | null
+          record_id?: string | null
+          team_id?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          id?: string
+          metadata?: Json | null
+          module?: string | null
+          organization_id?: string | null
+          record_id?: string | null
+          team_id?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_logs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -350,6 +401,14 @@ export type Database = {
           p_team_id?: string
         }
         Returns: string
+      }
+      get_organization_logs_count: {
+        Args: {
+          org_id: string
+          start_date?: string
+          end_date?: string
+        }
+        Returns: number
       }
       get_user_teams: {
         Args: {
