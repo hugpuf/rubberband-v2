@@ -7,7 +7,10 @@ export const fetchOnboardingData = async (
   user: User | null, 
   setOnboarding: React.Dispatch<React.SetStateAction<OnboardingState>>
 ) => {
-  if (!user) return;
+  if (!user) {
+    console.error("Cannot fetch onboarding data: No user provided");
+    return;
+  }
   
   try {
     console.log("Fetching onboarding data for user:", user.id);
@@ -63,13 +66,73 @@ export const fetchOnboardingData = async (
       return;
     }
 
-    if (!roleData) {
-      console.log("No organization role found for user");
-      return;
-    }
-    
-    if (!roleData.organization_id) {
-      console.log("No organization ID found for user role");
+    if (!roleData || !roleData.organization_id) {
+      console.log("No organization role found for user, creating default organization");
+      
+      // Create a new organization for the user if none exists
+      const { data: newOrg, error: orgCreateError } = await supabase
+        .from('organizations')
+        .insert([
+          {
+            name: user.email?.split('@')[0] || 'My Organization',
+            workspace_handle: `org-${Date.now().toString().substring(7)}`,
+            created_by: user.id
+          }
+        ])
+        .select()
+        .single();
+        
+      if (orgCreateError) {
+        console.error("Error creating organization:", orgCreateError);
+        return;
+      }
+      
+      if (newOrg) {
+        // Assign user as admin in the new organization
+        const { error: roleCreateError } = await supabase
+          .from('user_roles')
+          .insert([
+            {
+              user_id: user.id,
+              organization_id: newOrg.id,
+              role: 'admin'
+            }
+          ]);
+          
+        if (roleCreateError) {
+          console.error("Error creating user role:", roleCreateError);
+          return;
+        }
+        
+        // Create organization settings
+        const { error: settingsCreateError } = await supabase
+          .from('organization_settings')
+          .insert([
+            {
+              organization_id: newOrg.id,
+              has_completed_onboarding: false
+            }
+          ]);
+          
+        if (settingsCreateError) {
+          console.error("Error creating organization settings:", settingsCreateError);
+        }
+        
+        // Update the onboarding state with the new organization
+        setOnboarding(prev => ({
+          ...prev,
+          organizationDetails: {
+            name: newOrg.name || '',
+            workspaceHandle: newOrg.workspace_handle || '',
+            logoUrl: null,
+            country: '',
+            referralSource: null
+          }
+        }));
+        
+        return;
+      }
+      
       return;
     }
     

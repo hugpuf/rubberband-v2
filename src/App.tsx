@@ -83,6 +83,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
+  console.log("Initializing routes");
   return (
     <Routes>
       <Route path="/" element={<Index />} />
@@ -130,12 +131,14 @@ const AppRoutes = () => {
         }
       />
       
+      {/* Add a catch-all route at the end */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
 
 const App = () => {
+  console.log("App rendering");
   return (
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>

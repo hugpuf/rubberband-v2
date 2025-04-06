@@ -1,4 +1,3 @@
-
 import { useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -16,31 +15,47 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  console.log("OnboardingProvider - User:", user?.id, "Session checked:", sessionChecked, "Data fetched:", dataFetched);
+
   useEffect(() => {
     // Only fetch if we have a user, session is checked, and data hasn't been fetched yet
     const loadOnboardingData = async () => {
-      if (!user || dataFetched || !sessionChecked) return;
+      if (!user || dataFetched || !sessionChecked) {
+        console.log("OnboardingProvider - Skipping data fetch:", 
+          !user ? "no user" : !sessionChecked ? "session not checked" : "data already fetched");
+        return;
+      }
       
+      console.log("OnboardingProvider - Fetching onboarding data for user:", user.id);
       setIsLoading(true);
       try {
         await fetchOnboardingData(user, setOnboarding);
         setDataFetched(true);
+        console.log("OnboardingProvider - Data fetch complete");
       } catch (error) {
         console.error("Error fetching onboarding data:", error);
+        // Add a toast notification for the error
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load your onboarding data. Please try refreshing the page.",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
     loadOnboardingData();
-  }, [user, dataFetched, sessionChecked]);
+  }, [user, dataFetched, sessionChecked, toast]);
   
   // Reset data fetched state when user changes or logs out
   useEffect(() => {
-    if (!user) {
+    if (!user && dataFetched) {
+      console.log("OnboardingProvider - User logged out, resetting data fetched state");
       setDataFetched(false);
+      setOnboarding(initialOnboardingState);
     }
-  }, [user]);
+  }, [user, dataFetched]);
   
   const updatePersonalDetails = (details: Partial<typeof onboarding.personalDetails>) => {
     setOnboarding(prev => ({

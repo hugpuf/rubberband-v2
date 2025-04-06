@@ -13,6 +13,9 @@ export default function Onboarding() {
   const { user, isLoading: authLoading, sessionChecked } = useAuth();
   const { onboarding, isLoading: onboardingLoading, dataFetched } = useOnboarding();
   
+  console.log("Onboarding page - Auth status:", sessionChecked ? "checked" : "checking", "User:", user?.id);
+  console.log("Onboarding page - Onboarding status:", dataFetched ? "loaded" : "loading", "Step:", onboarding.step);
+  
   // Determine if we're still validating the session or loading onboarding data
   const isValidatingSession = authLoading || !sessionChecked;
   const isLoadingOnboardingData = user && (!dataFetched || onboardingLoading);
@@ -34,24 +37,19 @@ export default function Onboarding() {
   
   // Once loading is complete, handle redirects before rendering onboarding content
   
-  // Redirect completed users to dashboard
-  if (onboarding.isCompleted) {
-    console.log("Onboarding completed, redirecting to dashboard");
-    return <Navigate to="/dashboard" replace />;
-  }
-  
   // Redirect unauthenticated users to auth page
   if (!user) {
+    console.log("Onboarding page - No user found, redirecting to auth");
     return <Navigate to="/auth" replace />;
   }
   
-  // Log essential information for debugging
-  console.log("Onboarding page - User:", user.id);
-  console.log("Onboarding page - Auth loading:", authLoading);
-  console.log("Onboarding page - Onboarding loading:", onboardingLoading);
-  console.log("Onboarding state:", onboarding);
-  console.log("Onboarding step:", onboarding.step);
-  console.log("Onboarding completion status:", onboarding.isCompleted);
+  // Redirect completed users to dashboard
+  if (onboarding.isCompleted) {
+    console.log("Onboarding page - Onboarding completed, redirecting to dashboard");
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  console.log("Onboarding page - Rendering step:", onboarding.step);
   
   // Show the appropriate onboarding step based on the current step
   const renderStep = () => {
