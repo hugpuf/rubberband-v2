@@ -402,6 +402,20 @@ export type Database = {
         }
         Returns: string
       }
+      get_organization_logs: {
+        Args: {
+          org_id_param: string
+        }
+        Returns: {
+          id: string
+          user_id: string
+          module: string
+          action: string
+          timestamp: string
+          metadata: Json
+          profiles: Json
+        }[]
+      }
       get_organization_logs_count: {
         Args: {
           org_id: string

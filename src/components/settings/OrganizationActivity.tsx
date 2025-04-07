@@ -30,7 +30,7 @@ export function OrganizationActivity() {
       try {
         setIsLoading(true);
         
-        // Call RPC function instead of direct query to avoid join issues
+        // Call the get_organization_logs function
         const { data, error } = await supabase
           .rpc('get_organization_logs', { 
             org_id_param: organization.id 
@@ -38,18 +38,23 @@ export function OrganizationActivity() {
 
         if (error) throw error;
         
-        // Convert the returned data to the expected format
-        const formattedLogs: OrganizationLogType[] = (data || []).map((log: any) => ({
-          id: log.id,
-          user_id: log.user_id,
-          module: log.module,
-          action: log.action,
-          timestamp: log.timestamp,
-          metadata: log.metadata,
-          profiles: log.profiles
-        }));
-        
-        setLogs(formattedLogs);
+        if (Array.isArray(data)) {
+          // Convert the returned data to the expected format
+          const formattedLogs: OrganizationLogType[] = data.map((log: any) => ({
+            id: log.id,
+            user_id: log.user_id,
+            module: log.module,
+            action: log.action,
+            timestamp: log.timestamp,
+            metadata: log.metadata,
+            profiles: log.profiles
+          }));
+          
+          setLogs(formattedLogs);
+        } else {
+          console.error("Unexpected data format returned:", data);
+          setLogs([]);
+        }
       } catch (error) {
         console.error("Error fetching organization logs:", error);
       } finally {

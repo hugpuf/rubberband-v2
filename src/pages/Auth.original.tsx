@@ -15,8 +15,8 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
-  const handleLogin = async (credentials: { email: string; password: string }) => {
-    return login(credentials);
+  const handleLogin = async (email: string, password: string) => {
+    return login({ email, password });
   };
 
   return (
@@ -27,7 +27,7 @@ export default function Auth() {
           <p className="text-sm text-muted-foreground">Please sign in to continue</p>
         </CardHeader>
         <CardContent>
-          <AuthForm onLogin={handleLogin} onSignUp={() => {}} isLoading={false} />
+          <AuthForm onLogin={handleLogin} onSignUp={(email, password, orgName) => Promise.resolve()} isLoading={false} />
         </CardContent>
         <CardFooter className="flex justify-center text-sm">
           <p className="text-muted-foreground">
