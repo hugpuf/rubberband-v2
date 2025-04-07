@@ -25,12 +25,15 @@ export const getAccountingConfig = async (organizationId: string): Promise<Accou
     
     if (!data) return null;
     
+    // Fix: Type-safe access to JSON data
+    const configData = data.config as Record<string, any>;
+    
     // Convert from database format to our type
     return {
-      defaultCurrency: data.config.default_currency || 'USD',
-      fiscalYearStart: data.config.fiscal_year_start || '01-01',
-      taxRate: data.config.tax_rate || 0,
-      isEnabled: data.is_enabled
+      defaultCurrency: configData?.default_currency || 'USD',
+      fiscalYearStart: configData?.fiscal_year_start || '01-01',
+      taxRate: Number(configData?.tax_rate || 0),
+      isEnabled: Boolean(data.is_enabled)
     };
   } catch (error) {
     console.error('Error fetching accounting config:', error);
@@ -61,18 +64,26 @@ export const updateAccountingConfig = async (
       .eq('module_name', 'accounting')
       .maybeSingle();
       
+    // Fix: Type-safe merge with existing config
+    const existingConfig = (existingData?.config as Record<string, any>) || {};
+    
     // Merge with existing config
     const mergedConfig = {
-      ...(existingData?.config || {}),
+      ...existingConfig,
       ...dbConfig
     };
+    
+    // Fix: Safely handle is_enabled property
+    const isEnabledValue = config.isEnabled !== undefined 
+      ? config.isEnabled 
+      : Boolean(existingData && 'is_enabled' in existingData ? existingData.is_enabled : true);
     
     // Update the registry
     const { error } = await supabase
       .from('module_registry')
       .update({ 
         config: mergedConfig,
-        is_enabled: config.isEnabled !== undefined ? config.isEnabled : existingData?.is_enabled 
+        is_enabled: isEnabledValue
       })
       .eq('organization_id', organizationId)
       .eq('module_name', 'accounting');

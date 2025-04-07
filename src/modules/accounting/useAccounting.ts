@@ -1,4 +1,5 @@
 
 import { useAccounting as useAccountingContext } from "./accountingContext";
 
-export const useAccounting = useAccountingContext;
+// Export with a different name to avoid conflict
+export const useAccountingHook = useAccountingContext;

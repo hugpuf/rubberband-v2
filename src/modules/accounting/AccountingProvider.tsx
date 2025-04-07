@@ -3,7 +3,16 @@ import { ReactNode, useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
 import { AccountingContext } from "./accountingContext";
-import { AccountingModuleState, AccountingModuleConfig, Account, Transaction, Invoice, Bill } from "./types";
+import { 
+  AccountingModuleState, 
+  AccountingModuleConfig, 
+  Account, 
+  Transaction, 
+  Invoice, 
+  Bill,
+  InvoiceItem,
+  BillItem
+} from "./types";
 import * as accountingApi from "./api";
 
 const initialState: AccountingModuleState = {
@@ -155,7 +164,8 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   
   const updateInvoice = async (id: string, updates: Partial<Invoice>) => {
     // Placeholder - will be implemented in Phase 4
-    return {
+    // Fix: Explicitly cast the status to the correct type
+    const updatedInvoice: Invoice = {
       id,
       invoiceNumber: '',
       customerId: '',
@@ -165,11 +175,13 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       subtotal: 0,
       taxAmount: 0,
       total: 0,
-      status: 'draft',
+      status: 'draft', // Explicitly use a valid status value
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       ...updates
     };
+    
+    return updatedInvoice;
   };
   
   // Bill operations - placeholders for Phase 4 implementation
@@ -192,7 +204,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   
   const updateBill = async (id: string, updates: Partial<Bill>) => {
     // Placeholder - will be implemented in Phase 4
-    return {
+    const updatedBill: Bill = {
       id,
       billNumber: '',
       vendorId: '',
@@ -202,11 +214,13 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       subtotal: 0,
       taxAmount: 0,
       total: 0,
-      status: 'draft',
+      status: 'draft', // Explicitly use a valid status value
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       ...updates
     };
+    
+    return updatedBill;
   };
   
   // Cross-module integration
