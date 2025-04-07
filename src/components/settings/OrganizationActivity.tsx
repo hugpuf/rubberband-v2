@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,31 +78,26 @@ export const OrganizationActivity = () => {
       try {
         const fromDate = getDateRange();
         
+        // Using RPC to work around the TypeScript issue
         const { data, error } = await supabase
-          .from('user_logs')
-          .select(`
-            *,
-            profiles (
-              full_name,
-              email
-            )
-          `)
-          .eq('organization_id', organization.id)
-          .gte('timestamp', fromDate.toISOString())
-          .order('timestamp', { ascending: false })
-          .limit(100);
+          .rpc('get_organization_logs', {
+            org_id_param: organization.id,
+            from_date: fromDate.toISOString()
+          });
           
         if (error) throw error;
         
-        setLogs(data || []);
+        // Type assertion to work around the TypeScript issue
+        setLogs(data as OrganizationLogType[] || []);
         
         // Extract unique modules, actions, and users for filters
         if (data) {
-          const modules = [...new Set(data.map(log => log.module))];
-          const actions = [...new Set(data.map(log => log.action))];
+          const typedData = data as OrganizationLogType[];
+          const modules = [...new Set(typedData.map(log => log.module))];
+          const actions = [...new Set(typedData.map(log => log.action))];
           
           // Create a unique list of users
-          const users = data.reduce((acc, log) => {
+          const users = typedData.reduce((acc, log) => {
             const userId = log.user_id;
             const profile = log.profiles;
             

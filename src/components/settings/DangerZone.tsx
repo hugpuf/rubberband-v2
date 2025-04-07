@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 export function DangerZone() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signOut } = useAuth();
+  const { logout } = useAuth();
   const { organization, organizationUsers } = useOrganization();
   
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -82,7 +82,7 @@ export function DangerZone() {
       });
 
       // Sign the user out
-      await signOut();
+      await logout();
       
       // Redirect to home page
       navigate("/");

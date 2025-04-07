@@ -1,11 +1,10 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { logUserAction } from "@/services/userLogs";
-
-const supabase = createClientComponentClient<Database>();
 
 type AuthContextType = {
   user: any | null;

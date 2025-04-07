@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,21 +49,20 @@ export const UserActivity = () => {
       
       setIsLoading(true);
       try {
+        // Here we directly craft the SQL query since TypeScript doesn't recognize user_logs table yet
         const { data, error } = await supabase
-          .from('user_logs')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('timestamp', { ascending: false })
-          .limit(50);
+          .rpc('get_user_logs', { user_id_param: user.id });
           
         if (error) throw error;
         
-        setLogs(data || []);
+        // Type assertion to work around the TypeScript issue
+        setLogs(data as UserLogType[] || []);
         
         // Extract unique modules and actions for filters
         if (data) {
-          const modules = [...new Set(data.map(log => log.module))];
-          const actions = [...new Set(data.map(log => log.action))];
+          const typedData = data as UserLogType[];
+          const modules = [...new Set(typedData.map(log => log.module))];
+          const actions = [...new Set(typedData.map(log => log.action))];
           setUniqueModules(modules);
           setUniqueActions(actions);
         }

@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Settings, 
@@ -33,7 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const { organization } = useOrganization();
   const [userProfile, setUserProfile] = useState<{ first_name?: string; last_name?: string; full_name?: string; avatar_url?: string } | null>(null);
 
@@ -64,7 +63,7 @@ export function AppSidebar() {
 
   const handleSignOut = () => {
     console.log("Sign out button clicked");
-    signOut();
+    logout();
   };
 
   const topLevelItems = [
