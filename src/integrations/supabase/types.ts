@@ -106,6 +106,47 @@ export type Database = {
           },
         ]
       }
+      module_registry: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_enabled: boolean | null
+          module_name: string
+          module_version: string
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_name: string
+          module_version: string
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module_name?: string
+          module_version?: string
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_registry_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           business_type: string | null
