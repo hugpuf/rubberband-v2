@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganization } from "@/hooks/useOrganization";
+import { inviteUser, removeUser, updateUserRole } from "@/integrations/supabase/user-management";
 import {
   Card,
   CardContent,
@@ -33,7 +34,6 @@ import {
   PlusCircle,
   Loader2,
   Trash2,
-  UserCog,
 } from "lucide-react";
 import {
   Dialog,
@@ -51,12 +51,12 @@ import { logUserAction } from "@/services/userLogs";
 const roles = [
   {
     label: "Admin",
-    value: "admin",
+    value: "admin"
   },
   {
     label: "Member",
-    value: "member",
-  },
+    value: "member"
+  }
 ];
 
 const inviteFormSchema = z.object({
@@ -66,7 +66,7 @@ const inviteFormSchema = z.object({
 
 export const UserManagement = () => {
   const { toast } = useToast();
-  const { organization, isAdmin, inviteUser, updateUserRole, removeUser, organizationUsers } = useOrganization();
+  const { organization, isAdmin, inviteUser: orgInviteUser, updateUserRole: orgUpdateUserRole, removeUser: orgRemoveUser, organizationUsers } = useOrganization();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
@@ -81,7 +81,12 @@ export const UserManagement = () => {
   const handleInviteUser = async (data: z.infer<typeof inviteFormSchema>) => {
     setIsSubmitting(true);
     try {
-      await inviteUser(data.email, data.role);
+      // Use the inviteUser function from the context if available, otherwise fall back to direct API call
+      if (orgInviteUser) {
+        await orgInviteUser(data.email, data.role as "admin" | "member");
+      } else {
+        await inviteUser(data.email, data.role as "admin" | "member");
+      }
       
       // Log the user invitation
       logUserAction({
@@ -95,6 +100,10 @@ export const UserManagement = () => {
       
       form.reset();
       setIsInviteDialogOpen(false);
+      toast({
+        title: "Invitation sent",
+        description: `User ${data.email} has been invited.`,
+      });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -106,9 +115,14 @@ export const UserManagement = () => {
     }
   };
 
-  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+  const handleUpdateUserRole = async (userId: string, newRole: "admin" | "member") => {
     try {
-      await updateUserRole(userId, newRole as "admin" | "member");
+      // Use the updateUserRole function from the context if available, otherwise fall back to direct API call
+      if (orgUpdateUserRole) {
+        await orgUpdateUserRole(userId, newRole);
+      } else {
+        await updateUserRole(userId, newRole);
+      }
       
       // Log the role update
       logUserAction({
@@ -121,6 +135,10 @@ export const UserManagement = () => {
         }
       });
       
+      toast({
+        title: "Role updated",
+        description: "User role has been updated successfully.",
+      });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -132,7 +150,12 @@ export const UserManagement = () => {
 
   const handleRemoveUser = async (userId: string) => {
     try {
-      await removeUser(userId);
+      // Use the removeUser function from the context if available, otherwise fall back to direct API call
+      if (orgRemoveUser) {
+        await orgRemoveUser(userId);
+      } else {
+        await removeUser(userId);
+      }
       
       // Log the user removal
       logUserAction({
@@ -142,6 +165,10 @@ export const UserManagement = () => {
         metadata: { userId }
       });
       
+      toast({
+        title: "User removed",
+        description: "User has been removed from the organization.",
+      });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -151,9 +178,7 @@ export const UserManagement = () => {
     }
   };
 
-  const isLoading = !organizationUsers;
-
-  if (isLoading) {
+  if (!organizationUsers) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
@@ -234,7 +259,7 @@ export const UserManagement = () => {
                 <TableCell>
                   <Select
                     onValueChange={async (value) => {
-                      await handleUpdateUserRole(user.user_id, value);
+                      await handleUpdateUserRole(user.user_id, value as "admin" | "member");
                     }}
                     defaultValue={user.role}
                   >

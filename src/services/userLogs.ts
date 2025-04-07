@@ -1,109 +1,145 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
 
-export type UserLogAction = 
-  | "login" 
-  | "logout" 
-  | "create" 
-  | "update" 
-  | "delete" 
-  | "view" 
-  | "navigate" 
-  | "export" 
-  | "import" 
-  | "download"
-  | "upload"
-  | "share"
-  | "invite";
-
-export type UserLogMetadata = {
-  [key: string]: any;
-};
-
-export type UserLogPayload = {
+export interface UserLogParams {
   module: string;
-  action: UserLogAction | string;
+  action: string;
   recordId?: string;
-  metadata?: UserLogMetadata;
+  metadata?: Record<string, any>;
   teamId?: string;
-};
+}
 
 /**
- * Log a user action without blocking the UI
+ * Logs a user action to the database
  */
-export const logUserAction = async ({
-  module,
-  action,
-  recordId,
-  metadata = {},
-  teamId,
-}: UserLogPayload): Promise<void> => {
+export const logUserAction = async (params: UserLogParams): Promise<boolean> => {
   try {
-    // Get user session
+    // Get current user
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
-      console.warn("Cannot log user action: No active user session");
-      return;
+    if (!session?.user) {
+      console.warn('No authenticated user found when trying to log action');
+      return false;
     }
 
-    // Get organization from user roles
-    const { data: roleData } = await supabase
+    // Get user's organization
+    const { data: userRole } = await supabase
       .from('user_roles')
-      .select("organization_id")
-      .eq("user_id", session.user.id)
+      .select('organization_id')
+      .eq('user_id', session.user.id)
       .maybeSingle();
+    
+    const organizationId = userRole?.organization_id;
+    
+    // Create log entry
+    const { error } = await supabase
+      .from('user_logs')
+      .insert({
+        user_id: session.user.id,
+        module: params.module,
+        action: params.action,
+        record_id: params.recordId,
+        metadata: params.metadata || {},
+        organization_id: organizationId,
+        team_id: params.teamId,
+      });
 
-    if (!roleData?.organization_id) {
-      console.warn("Cannot log user action: No organization found for user");
-      return;
+    if (error) {
+      console.error('Error logging user action:', error);
+      return false;
     }
 
-    // Enhanced metadata with MCP context
-    const enhancedMetadata = {
-      ...metadata,
-      userAgent: navigator.userAgent,
-      url: window.location.pathname,
-      timestamp: new Date().toISOString(),
-    };
-
-    // Log the action
-    await supabase.from('user_logs').insert({
-      user_id: session.user.id,
-      organization_id: roleData.organization_id,
-      team_id: teamId || null,
-      module,
-      action,
-      record_id: recordId,
-      metadata: enhancedMetadata,
-    });
-
-    console.debug(`[LOG] ${module}:${action}`, { recordId, metadata });
+    return true;
   } catch (error) {
-    // Never block the UI flow due to logging errors
-    console.error("Failed to log user action:", error);
+    console.error('Error in logUserAction:', error);
+    return false;
   }
 };
 
 /**
- * Hook for logging user actions
+ * Get audit logs for the current user
  */
-export const useUserLogger = () => {
-  const { toast } = useToast();
-
-  const logAction = async (payload: UserLogPayload) => {
-    try {
-      await logUserAction(payload);
-    } catch (error) {
-      console.error("Error logging user action:", error);
-      // Optionally notify on critical logging failures
-      // toast({
-      //   variant: "destructive",
-      //   title: "Logging Error",
-      //   description: "Failed to record your activity",
-      // });
+export const getUserLogs = async (limit = 50): Promise<any[]> => {
+  try {
+    // Get current user
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.warn('No authenticated user found when trying to get user logs');
+      return [];
     }
-  };
 
-  return { logAction };
+    // Get user logs
+    const { data, error } = await supabase
+      .from('user_logs')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('timestamp', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching user logs:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getUserLogs:', error);
+    return [];
+  }
+};
+
+/**
+ * Get audit logs for the current user's organization
+ * Only for admins and managers
+ */
+export const getOrganizationLogs = async (limit = 100): Promise<any[]> => {
+  try {
+    // Get current user
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.warn('No authenticated user found when trying to get organization logs');
+      return [];
+    }
+
+    // Get user's organization and role
+    const { data: userRole } = await supabase
+      .from('user_roles')
+      .select('organization_id, role')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    
+    if (!userRole?.organization_id) {
+      console.warn('No organization found for user');
+      return [];
+    }
+    
+    // Check if user is an admin or manager
+    if (userRole.role !== 'admin' && userRole.role !== 'manager') {
+      console.warn('User does not have permission to view organization logs');
+      return [];
+    }
+    
+    // Get organization logs with user profiles
+    const { data, error } = await supabase
+      .from('user_logs')
+      .select(`
+        *,
+        profiles (
+          full_name,
+          email
+        )
+      `)
+      .eq('organization_id', userRole.organization_id)
+      .order('timestamp', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching organization logs:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getOrganizationLogs:', error);
+    return [];
+  }
 };

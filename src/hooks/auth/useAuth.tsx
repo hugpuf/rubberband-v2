@@ -1,38 +1,27 @@
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { logUserAction } from "@/services/userLogs";
+import { User, Session } from '@supabase/supabase-js';
 
 type AuthContextType = {
-  user: any | null;
-  session: any | null;
+  user: User | null;
+  session: Session | null;
   isLoading: boolean;
   error: string | null;
   sessionChecked: boolean;
-  login: (credentials: LoginCredentials) => Promise<any | null>;
+  login: (credentials: { email: string; password: string }) => Promise<any>;
   logout: () => Promise<void>;
-  signUp: (credentials: SignUpCredentials) => Promise<any | null>;
-  updateUser: (updates: any) => Promise<any | null>;
-  resetPassword: (email: string) => Promise<any>;
-};
-
-type LoginCredentials = {
-  email: string;
-  password: string;
-};
-
-type SignUpCredentials = {
-  email: string;
-  password: string;
-  fullName?: string;
+  signUp: (credentials: { email: string; password: string; fullName?: string }) => Promise<any>;
+  updateUser: (updates: any) => Promise<any>;
+  resetPassword: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function useAuth(): AuthContextType {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
@@ -40,15 +29,15 @@ export function useAuth(): AuthContextType {
   return context;
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
-  const [session, setSession] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sessionChecked, setSessionChecked] = useState<boolean>(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   useEffect(() => {
     const getSession = async () => {
       setIsLoading(true);
@@ -64,36 +53,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSessionChecked(true);
       }
     };
-    
+
     getSession();
-    
+
     supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state change:", event);
       setSession(session);
       setUser(session?.user || null);
     });
   }, []);
-  
-  const login = async (credentials: LoginCredentials) => {
+
+  const login = async (credentials: { email: string; password: string }) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword(credentials);
-
       if (error) {
         throw error;
       }
-
       setUser(data.user);
-      
+
       // Log the login action
       logUserAction({
         module: "Auth",
         action: "login",
         metadata: { email: credentials.email }
       });
-      
+
       return data;
     } catch (err: any) {
       console.error("Login error:", err);
@@ -115,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           metadata: { userId: user.id }
         });
       }
-      
+
       const { error } = await supabase.auth.signOut();
       if (error) {
         throw error;
@@ -129,30 +115,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (credentials: SignUpCredentials) => {
+  const signUp = async (credentials: { email: string; password: string; fullName?: string }) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const { data, error } = await supabase.auth.signUp({
         email: credentials.email,
         password: credentials.password,
         options: {
           data: {
-            full_name: credentials.fullName,
-          },
-        },
+            full_name: credentials.fullName
+          }
+        }
       });
 
       if (error) {
         throw error;
       }
-      
+
       toast({
         title: "Account created",
         description: "Please check your email to verify your account.",
       });
-      
+
       navigate("/auth");
       return data;
     } catch (err: any) {
@@ -167,14 +152,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = async (updates: any) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const { data, error } = await supabase.auth.updateUser(updates);
-
       if (error) {
         throw error;
       }
-
       setUser(data.user);
       return data;
     } catch (err: any) {
@@ -185,20 +167,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   };
-  
+
   const resetPassword = async (email: string) => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${window.location.origin}/auth/update-password`
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       toast({
         title: "Password reset email sent",
         description: "Please check your email to reset your password.",
@@ -221,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     signUp,
     updateUser,
-    resetPassword,
+    resetPassword
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

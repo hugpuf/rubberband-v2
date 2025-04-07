@@ -1,168 +1,155 @@
 
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { AuthForm } from "@/components/auth/AuthForm";
+import { useState, FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { InvitationForm } from "@/components/auth/InvitationForm";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
-const Auth = () => {
-  const [searchParams] = useSearchParams();
-  const invitationEmail = searchParams.get("email");
-  const invitationToken = searchParams.get("token");
-  const isInvitation = searchParams.get("invitation") === "true";
+export default function Auth() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { signIn, signUp, isLoading, authError } = useAuth();
-  const [validatingToken, setValidatingToken] = useState(false);
-  const [tokenValidation, setTokenValidation] = useState<{
-    valid: boolean;
-    organization_name?: string;
-    role?: string;
-    invitation_id?: string;
-    email?: string;
-  } | null>(null);
+  const { login, signUp, user } = useAuth();
 
-  useEffect(() => {
-    // If we have an invitation token, validate it
-    const validateInvitationToken = async () => {
-      if (!invitationToken) return;
-      
-      setValidatingToken(true);
-      try {
-        console.log("Validating invitation token:", invitationToken);
-        
-        const { data, error } = await supabase
-          .rpc('validate_invitation_token', { token_param: invitationToken });
-          
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          const invitation = data[0];
-          console.log("Invitation validation result:", invitation);
-          
-          setTokenValidation({
-            valid: invitation.valid,
-            organization_name: invitation.organization_name,
-            role: invitation.role,
-            invitation_id: invitation.invitation_id,
-            email: invitation.email
-          });
-          
-          if (invitation.valid) {
-            toast({
-              title: "Valid invitation",
-              description: `You've been invited to join ${invitation.organization_name} as a ${invitation.role}`,
-            });
-            
-            // If the invitation is valid, direct the user to create their profile
-            if (!searchParams.get("profile")) {
-              navigate(`/create-profile?token=${invitationToken}`);
-            }
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Invalid invitation",
-              description: "This invitation has expired or has already been used",
-            });
-          }
-        } else {
-          console.error("No data returned from invitation validation");
-          setTokenValidation({ valid: false });
-          toast({
-            variant: "destructive",
-            title: "Invalid invitation",
-            description: "This invitation link is not valid",
-          });
-        }
-      } catch (error: any) {
-        console.error("Error validating invitation token:", error);
-        setTokenValidation({ valid: false });
-        toast({
-          variant: "destructive",
-          title: "Error validating invitation",
-          description: error.message || "An error occurred validating your invitation",
-        });
-      } finally {
-        setValidatingToken(false);
-      }
-    };
-
-    if (isInvitation && invitationToken) {
-      validateInvitationToken();
-    }
-  }, [invitationToken, isInvitation, toast, navigate, searchParams]);
-
-  // Automatically check auth status and redirect if logged in
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        // Already logged in, redirect
-        navigate('/dashboard');
-      }
-    };
-    checkAuthStatus();
-  }, [navigate]);
-
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      console.log("Auth page: handleLogin called with email:", email);
-      await signIn(email, password);
-    } catch (error) {
-      console.error("Login error in Auth component:", error);
-      // Error is shown through the authError state from useAuth
-    }
-  };
-
-  const handleSignUp = async (email: string, password: string, orgName: string) => {
-    try {
-      console.log("Auth page: handleSignUp called with email:", email, "org:", orgName);
-      await signUp(email, password, orgName);
-    } catch (error) {
-      console.error("Sign up error in Auth component:", error);
-      // Error is shown through the authError state from useAuth
-    }
-  };
-
-  // Show a special form for invited users with a valid token
-  if (isInvitation && tokenValidation?.valid) {
-    return (
-      <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center p-4">
-        <InvitationForm 
-          email={tokenValidation.email || ""}
-          orgName={tokenValidation.organization_name || ""}
-          role={tokenValidation.role || ""}
-          invitationToken={invitationToken || ""}
-          isLoading={isLoading}
-        />
-      </div>
-    );
+  // Redirect if already logged in
+  if (user) {
+    navigate("/");
+    return null;
   }
 
-  return (
-    <>
-      {validatingToken ? (
-        <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold mb-2">Validating invitation</h2>
-            <p className="text-gray-500">Please wait while we validate your invitation...</p>
-          </div>
-        </div>
-      ) : (
-        <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center p-4">
-          <AuthForm 
-            onLogin={handleLogin} 
-            onSignUp={handleSignUp} 
-            isLoading={isLoading} 
-            initialEmail={invitationEmail || ""}
-          />
-        </div>
-      )}
-    </>
-  );
-};
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
 
-export default Auth;
+    try {
+      if (isSignUp) {
+        await signUp({ email, password, fullName });
+      } else {
+        const result = await login({ email, password });
+        if (result?.user) {
+          navigate("/");
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during authentication");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl font-bold">Welcome</h1>
+          <p className="text-gray-500 mt-2">Sign in to your account or create a new one</p>
+        </div>
+
+        <Tabs defaultValue="login" onValueChange={(value) => setIsSignUp(value === "signup")}>
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="login">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <a href="#" className="text-sm text-blue-600 hover:text-blue-800">
+                    Forgot password?
+                  </a>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              {error && <div className="p-3 text-sm text-red-500 bg-red-50 rounded">{error}</div>}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing In..." : "Sign In"}
+              </Button>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="signup">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email-signup">Email</Label>
+                <Input
+                  id="email-signup"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password-signup">Password</Label>
+                <Input
+                  id="password-signup"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              {error && <div className="p-3 text-sm text-red-500 bg-red-50 rounded">{error}</div>}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Create Account"}
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
+
+        <div className={cn("mt-6 text-center text-sm text-gray-500", { hidden: !isSignUp })}>
+          By signing up, you agree to our{" "}
+          <a href="#" className="text-blue-600 hover:text-blue-800">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="#" className="text-blue-600 hover:text-blue-800">
+            Privacy Policy
+          </a>
+          .
+        </div>
+      </div>
+    </div>
+  );
+}

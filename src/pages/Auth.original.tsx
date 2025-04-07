@@ -1,45 +1,43 @@
 
-import { useState } from "react";
-import { AuthForm } from "@/components/auth/AuthForm";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useSearchParams } from "react-router-dom";
+import { AuthForm } from "@/components/auth/AuthForm";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 
-const Auth = () => {
-  const [searchParams] = useSearchParams();
-  const invitationToken = searchParams.get("token");
-  const invitationEmail = searchParams.get("email");
-  const isInvitation = searchParams.get("invitation") === "true";
-  const { signIn, signUp, isLoading } = useAuth();
+export default function Auth() {
+  const navigate = useNavigate();
+  const { login, user } = useAuth();
 
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      console.log("Auth.original: handleLogin called with email:", email);
-      await signIn(email, password);
-    } catch (error) {
-      console.error("Login error in Auth.original component:", error);
-      // Error is handled in the useAuth hook and displayed in the UI
+  useEffect(() => {
+    if (user) {
+      navigate("/");
     }
-  };
+  }, [user, navigate]);
 
-  const handleSignUp = async (email: string, password: string, orgName: string) => {
-    try {
-      console.log("Auth.original: handleSignUp called with email:", email, "org:", orgName);
-      await signUp(email, password, orgName);
-    } catch (error) {
-      console.error("Sign up error in Auth.original component:", error);
-      // Error is handled in the useAuth hook and displayed in the UI
-    }
+  const handleLogin = async (credentials: { email: string; password: string }) => {
+    return login(credentials);
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
-      <AuthForm 
-        onLogin={handleLogin}
-        onSignUp={handleSignUp}
-        isLoading={isLoading}
-      />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <h1 className="text-2xl font-bold">Welcome Back</h1>
+          <p className="text-sm text-muted-foreground">Please sign in to continue</p>
+        </CardHeader>
+        <CardContent>
+          <AuthForm onSubmit={handleLogin} />
+        </CardContent>
+        <CardFooter className="flex justify-center text-sm">
+          <p className="text-muted-foreground">
+            Don't have an account?{" "}
+            <a href="/signup" className="text-primary hover:underline">
+              Sign up
+            </a>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
-};
-
-export default Auth;
+}
