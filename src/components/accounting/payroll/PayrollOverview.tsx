@@ -8,13 +8,14 @@ import { useState } from "react";
 import { Plus, Download, Filter, Calendar, Search } from "lucide-react";
 import { PayrollStatusBadge } from "./PayrollStatusBadge";
 import { CurrencyDisplay } from "../CurrencyDisplay";
+import { PayrollRun } from "@/modules/accounting/types";
 
 export function PayrollOverview() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   
   // This would come from your payroll module in a real implementation
-  const payrollData = [
+  const payrollData: PayrollRun[] = [
     {
       id: "pr-001",
       name: "Monthly Payroll - March",
@@ -23,7 +24,9 @@ export function PayrollOverview() {
       employeeCount: 12,
       grossAmount: 45000,
       netAmount: 36000,
-      paymentDate: "2025-03-31"
+      paymentDate: "2025-03-31",
+      createdAt: "2025-03-01",
+      updatedAt: "2025-03-31"
     },
     {
       id: "pr-002",
@@ -33,7 +36,9 @@ export function PayrollOverview() {
       employeeCount: 12,
       grossAmount: 44500,
       netAmount: 35600,
-      paymentDate: "2025-02-28"
+      paymentDate: "2025-02-28",
+      createdAt: "2025-02-01",
+      updatedAt: "2025-02-28"
     },
     {
       id: "pr-003",
@@ -43,7 +48,9 @@ export function PayrollOverview() {
       employeeCount: 11,
       grossAmount: 41000,
       netAmount: 32800,
-      paymentDate: "2025-01-31"
+      paymentDate: "2025-01-31",
+      createdAt: "2025-01-01",
+      updatedAt: "2025-01-31"
     },
     {
       id: "pr-004",
@@ -53,7 +60,9 @@ export function PayrollOverview() {
       employeeCount: 12,
       grossAmount: 45500,
       netAmount: 36400,
-      paymentDate: "2025-04-30"
+      paymentDate: "2025-04-30",
+      createdAt: "2025-04-01",
+      updatedAt: "2025-04-01"
     }
   ];
 

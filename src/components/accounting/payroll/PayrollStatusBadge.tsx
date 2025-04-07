@@ -1,8 +1,9 @@
 
 import { Badge } from "@/components/ui/badge";
+import { PayrollRun } from "@/modules/accounting/types";
 
 interface PayrollStatusBadgeProps {
-  status: "draft" | "processing" | "completed" | "error";
+  status: PayrollRun['status'];
 }
 
 export function PayrollStatusBadge({ status }: PayrollStatusBadgeProps) {
