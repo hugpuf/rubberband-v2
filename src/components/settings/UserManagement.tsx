@@ -1,7 +1,7 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganization } from "@/hooks/useOrganization";
-import { inviteUser, removeUser, updateUserRole } from "@/integrations/supabase/user-management";
 import {
   Card,
   CardContent,
@@ -29,7 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle, Loader2, Trash2, UserCog } from "lucide-react";
+import {
+  PlusCircle,
+  Loader2,
+  Trash2,
+  UserCog,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +66,7 @@ const inviteFormSchema = z.object({
 
 export const UserManagement = () => {
   const { toast } = useToast();
-  const { organization, users, isLoading, refreshUsers } = useOrganization();
+  const { organization, isAdmin, inviteUser, updateUserRole, removeUser, organizationUsers } = useOrganization();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
@@ -103,7 +108,7 @@ export const UserManagement = () => {
 
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
     try {
-      await updateUserRole(userId, newRole);
+      await updateUserRole(userId, newRole as "admin" | "member");
       
       // Log the role update
       logUserAction({
@@ -146,6 +151,8 @@ export const UserManagement = () => {
     }
   };
 
+  const isLoading = !organizationUsers;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -158,7 +165,7 @@ export const UserManagement = () => {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>User Management</CardTitle>
-        <Dialog>
+        <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -185,8 +192,8 @@ export const UserManagement = () => {
               <div className="grid gap-2">
                 <Label htmlFor="role">Role</Label>
                 <Select
-                  onValueChange={(value) => form.setValue("role", value)}
-                  defaultValue={form.getValue("role")}
+                  onValueChange={(value: "admin" | "member") => form.setValue("role", value)}
+                  defaultValue={form.getValues("role")}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a role" />
@@ -220,15 +227,14 @@ export const UserManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users?.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.profiles?.full_name}</TableCell>
-                <TableCell>{user.email}</TableCell>
+            {organizationUsers?.map((user) => (
+              <TableRow key={user.user_id}>
+                <TableCell className="font-medium">{user.profiles.full_name}</TableCell>
+                <TableCell>{user.profiles.email}</TableCell>
                 <TableCell>
                   <Select
                     onValueChange={async (value) => {
-                      await handleUpdateUserRole(user.id, value);
-                      refreshUsers();
+                      await handleUpdateUserRole(user.user_id, value);
                     }}
                     defaultValue={user.role}
                   >
@@ -248,8 +254,7 @@ export const UserManagement = () => {
                   <Button
                     variant="ghost"
                     onClick={async () => {
-                      await handleRemoveUser(user.id);
-                      refreshUsers();
+                      await handleRemoveUser(user.user_id);
                     }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
@@ -262,7 +267,7 @@ export const UserManagement = () => {
           <TableFooter>
             <TableRow>
               <TableCell colSpan={3}>Total</TableCell>
-              <TableCell className="text-right">{users?.length}</TableCell>
+              <TableCell className="text-right">{organizationUsers?.length}</TableCell>
             </TableRow>
           </TableFooter>
         </Table>

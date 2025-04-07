@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useAuth } from "./useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +9,9 @@ export type Organization = {
   name: string;
   created_at: string;
   logo_url: string | null;
+  country: string | null;
+  timezone: string | null;
+  workspace_handle: string | null;
 };
 
 export type UserRole = {
