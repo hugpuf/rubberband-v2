@@ -29,6 +29,11 @@ interface NewInvoiceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Define a new interface that extends InvoiceItem but adds the tempId property
+interface TempInvoiceItem extends Omit<InvoiceItem, "id"> {
+  tempId: string;
+}
+
 export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) {
   const { createInvoice } = useAccounting();
   const { toast } = useToast();
@@ -44,9 +49,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
       .toISOString()
       .substring(0, 10)
   );
-  const [items, setItems] = useState<
-    Array<Omit<InvoiceItem, "id">> & { tempId?: string }
-  >([
+  const [items, setItems] = useState<TempInvoiceItem[]>([
     {
       tempId: "temp-1",
       description: "",
@@ -140,7 +143,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
         dueDate,
         items: items.map(({ tempId, ...item }) => ({
           ...item,
-          id: tempId || `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         })),
         subtotal,
         taxAmount,
@@ -262,7 +265,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
                         placeholder="Item description"
                         value={item.description}
                         onChange={(e) =>
-                          updateItem(item.tempId!, "description", e.target.value)
+                          updateItem(item.tempId, "description", e.target.value)
                         }
                         className="resize-none h-10"
                         required
@@ -281,7 +284,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
                         value={item.quantity}
                         onChange={(e) =>
                           updateItem(
-                            item.tempId!,
+                            item.tempId,
                             "quantity",
                             parseInt(e.target.value)
                           )
@@ -302,7 +305,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
                         value={item.unitPrice}
                         onChange={(e) =>
                           updateItem(
-                            item.tempId!,
+                            item.tempId,
                             "unitPrice",
                             parseFloat(e.target.value)
                           )
@@ -323,7 +326,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
                         value={item.taxRate}
                         onChange={(e) =>
                           updateItem(
-                            item.tempId!,
+                            item.tempId,
                             "taxRate",
                             parseFloat(e.target.value)
                           )
@@ -336,7 +339,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeItem(item.tempId!)}
+                        onClick={() => removeItem(item.tempId)}
                         disabled={items.length <= 1}
                         className="h-10 w-10 p-0"
                       >
