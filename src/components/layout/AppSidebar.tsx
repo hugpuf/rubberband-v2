@@ -7,7 +7,8 @@ import {
   Lightbulb,
   BarChart2,
   Users,
-  UserPlus
+  UserPlus,
+  DollarSign
 } from "lucide-react";
 
 import {
@@ -72,6 +73,11 @@ export function AppSidebar() {
       icon: BarChart3,
       url: "/dashboard",
     },
+    {
+      title: "accounting",
+      icon: DollarSign,
+      url: "/accounting",
+    }
   ];
 
   const settingsItems = [

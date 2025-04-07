@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/auth/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OnboardingProvider } from "@/hooks/onboarding";
 import { TeamProvider } from "@/hooks/teams";
+import { AccountingProvider } from "@/modules/accounting";
 import { Loader2 } from "lucide-react";
 
 import Index from "./pages/Index";
@@ -20,6 +21,7 @@ import UserManagement from "./pages/UserManagement";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import CreateProfile from "./pages/CreateProfile";
 import NotFound from "./pages/NotFound";
+import Accounting from "./pages/Accounting";
 import { Layout } from "./components/layout/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { useOnboarding } from "./hooks/onboarding";
@@ -130,6 +132,16 @@ const AppRoutes = () => {
           </ProtectedDashboardRoute>
         }
       />
+      <Route
+        path="/accounting"
+        element={
+          <ProtectedDashboardRoute>
+            <Layout>
+              <Accounting />
+            </Layout>
+          </ProtectedDashboardRoute>
+        }
+      />
       
       {/* Add a catch-all route at the end */}
       <Route path="*" element={<NotFound />} />
@@ -147,11 +159,13 @@ const App = () => {
             <OnboardingProvider>
               <OrganizationProvider>
                 <TeamProvider>
-                  <TooltipProvider>
-                    <Toaster />
-                    <Sonner />
-                    <AppRoutes />
-                  </TooltipProvider>
+                  <AccountingProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <Sonner />
+                      <AppRoutes />
+                    </TooltipProvider>
+                  </AccountingProvider>
                 </TeamProvider>
               </OrganizationProvider>
             </OnboardingProvider>
