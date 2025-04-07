@@ -1,10 +1,10 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountingDashboard } from "@/components/accounting/AccountingDashboard";
-import { AccountingSettings } from "@/components/accounting/AccountingSettings";
 import { ChartOfAccounts } from "@/components/accounting/ChartOfAccounts";
 import { BillsOverview } from "@/components/accounting/bills/BillsOverview";
 import { InvoicesOverview } from "@/components/accounting/invoices/InvoicesOverview";
+import { AccountingMetrics } from "@/components/accounting/AccountingMetrics";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useState } from "react";
 import { logUserAction } from "@/services/userLogs";
@@ -26,11 +26,14 @@ const Accounting = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-normal tracking-tight text-[#1C1C1E]">Accounting</h1>
+        <h1 className="text-2xl font-normal tracking-tight text-[#1C1C1E]">Accounts</h1>
         <p className="text-[#636366] mt-2 tracking-wide">
-          Manage your organization's finances
+          Manage your financial operations
         </p>
       </div>
+      
+      {/* Key Metrics Dashboard */}
+      <AccountingMetrics />
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="mb-4 bg-[#F5F5F7] p-1 rounded-lg">
@@ -64,14 +67,6 @@ const Accounting = () => {
           >
             Reports
           </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger 
-              value="settings"
-              className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
-            >
-              Settings
-            </TabsTrigger>
-          )}
         </TabsList>
         <TabsContent value="dashboard">
           <AccountingDashboard />
@@ -90,11 +85,6 @@ const Accounting = () => {
             <p className="text-muted-foreground">Financial reports coming soon</p>
           </div>
         </TabsContent>
-        {isAdmin && (
-          <TabsContent value="settings">
-            <AccountingSettings />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );
