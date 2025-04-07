@@ -9,7 +9,19 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, AlertCircle, DollarSign, FileText, CreditCard } from "lucide-react";
+import { 
+  Loader2, 
+  AlertCircle, 
+  DollarSign, 
+  FileText, 
+  CreditCard, 
+  BarChart2, 
+  PieChart,
+  ArrowUpRight,
+  ArrowDownRight
+} from "lucide-react";
+import { CurrencyDisplay } from "./CurrencyDisplay";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 export function AccountingDashboard() {
   const { state } = useAccounting();
@@ -58,39 +70,101 @@ export function AccountingDashboard() {
   
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium flex justify-between items-center">
+              <span>Revenue</span>
+              <DollarSign className="h-4 w-4 text-green-500" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${50000}</div>
-            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+            <div className="text-2xl font-bold"><CurrencyDisplay amount={50000} /></div>
+            <div className="flex items-center mt-1">
+              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1">
+                <ArrowUpRight className="h-3 w-3"/> 
+                <span>20.1%</span>
+              </Badge>
+              <span className="text-xs text-muted-foreground ml-2">from last month</span>
+            </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium flex justify-between items-center">
+              <span>Expenses</span>
+              <CreditCard className="h-4 w-4 text-red-500" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${20000}</div>
-            <p className="text-xs text-muted-foreground">+12.5% from last month</p>
+            <div className="text-2xl font-bold"><CurrencyDisplay amount={20000} /></div>
+            <div className="flex items-center mt-1">
+              <Badge className="bg-red-100 text-red-800 hover:bg-red-100 flex items-center gap-1">
+                <ArrowDownRight className="h-3 w-3"/> 
+                <span>12.5%</span>
+              </Badge>
+              <span className="text-xs text-muted-foreground ml-2">from last month</span>
+            </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+            <CardTitle className="text-sm font-medium flex justify-between items-center">
+              <span>Net Profit</span>
+              <BarChart2 className="h-4 w-4 text-blue-500" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${30000}</div>
-            <p className="text-xs text-muted-foreground">+15.3% from last month</p>
+            <div className="text-2xl font-bold"><CurrencyDisplay amount={30000} /></div>
+            <div className="flex items-center mt-1">
+              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center gap-1">
+                <ArrowUpRight className="h-3 w-3"/> 
+                <span>15.3%</span>
+              </Badge>
+              <span className="text-xs text-muted-foreground ml-2">from last month</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex justify-between items-center">
+              <span>Tax Liability</span>
+              <PieChart className="h-4 w-4 text-amber-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold"><CurrencyDisplay amount={7500} /></div>
+            <div className="flex items-center mt-1">
+              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 flex items-center gap-1">
+                <ArrowUpRight className="h-3 w-3"/> 
+                <span>8.4%</span>
+              </Badge>
+              <span className="text-xs text-muted-foreground ml-2">from last quarter</span>
+            </div>
           </CardContent>
         </Card>
       </div>
       
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <Card className="col-span-2">
+          <CardHeader>
+            <CardTitle>Financial Overview</CardTitle>
+            <CardDescription>
+              Revenue and expense trends over the last 6 months
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AspectRatio ratio={16 / 6} className="bg-slate-50 rounded-md">
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">Financial chart coming soon</p>
+              </div>
+            </AspectRatio>
+          </CardContent>
+        </Card>
+        
         <Card>
           <CardHeader>
             <CardTitle>Recent Invoices</CardTitle>
@@ -101,13 +175,13 @@ export function AccountingDashboard() {
           <CardContent>
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center justify-between p-2 border rounded">
+                <div key={i} className="flex items-center justify-between p-2 border rounded hover:bg-slate-50 transition-colors cursor-pointer">
                   <div>
                     <p className="font-medium">Invoice #{1000 + i}</p>
                     <p className="text-sm text-muted-foreground">Customer {i}</p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <p className="font-medium">${1000 * i}</p>
+                    <p className="font-medium"><CurrencyDisplay amount={1000 * i} /></p>
                     <Badge variant={i === 3 ? "destructive" : i === 2 ? "secondary" : "default"}>
                       {i === 3 ? "Overdue" : i === 2 ? "Pending" : "Paid"}
                     </Badge>
@@ -132,13 +206,13 @@ export function AccountingDashboard() {
           <CardContent>
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center justify-between p-2 border rounded">
+                <div key={i} className="flex items-center justify-between p-2 border rounded hover:bg-slate-50 transition-colors cursor-pointer">
                   <div>
                     <p className="font-medium">Bill #{2000 + i}</p>
                     <p className="text-sm text-muted-foreground">Vendor {i}</p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <p className="font-medium">${500 * i}</p>
+                    <p className="font-medium"><CurrencyDisplay amount={500 * i} /></p>
                     <Badge variant={i === 1 ? "destructive" : i === 2 ? "secondary" : "default"}>
                       {i === 1 ? "Overdue" : i === 2 ? "Pending" : "Paid"}
                     </Badge>

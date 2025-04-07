@@ -44,6 +44,24 @@ const Accounting = () => {
           >
             Chart of Accounts
           </TabsTrigger>
+          <TabsTrigger 
+            value="invoices" 
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
+          >
+            Invoices
+          </TabsTrigger>
+          <TabsTrigger 
+            value="bills" 
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
+          >
+            Bills
+          </TabsTrigger>
+          <TabsTrigger 
+            value="reports" 
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
+          >
+            Reports
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger 
               value="settings"
@@ -58,6 +76,21 @@ const Accounting = () => {
         </TabsContent>
         <TabsContent value="accounts">
           <ChartOfAccounts />
+        </TabsContent>
+        <TabsContent value="invoices">
+          <div className="flex items-center justify-center h-64 bg-white rounded-lg border p-6">
+            <p className="text-muted-foreground">Invoice management coming soon</p>
+          </div>
+        </TabsContent>
+        <TabsContent value="bills">
+          <div className="flex items-center justify-center h-64 bg-white rounded-lg border p-6">
+            <p className="text-muted-foreground">Bill management coming soon</p>
+          </div>
+        </TabsContent>
+        <TabsContent value="reports">
+          <div className="flex items-center justify-center h-64 bg-white rounded-lg border p-6">
+            <p className="text-muted-foreground">Financial reports coming soon</p>
+          </div>
         </TabsContent>
         {isAdmin && (
           <TabsContent value="settings">

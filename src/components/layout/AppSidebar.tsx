@@ -1,3 +1,4 @@
+
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Settings, 
@@ -69,12 +70,15 @@ export function AppSidebar() {
 
   const topLevelItems = [
     {
-      title: "pilot's chair",
+      title: "Pilot's Chair",
       icon: BarChart3,
       url: "/dashboard",
-    },
+    }
+  ];
+
+  const managementItems = [
     {
-      title: "accounting",
+      title: "Accounting",
       icon: DollarSign,
       url: "/accounting",
     }
@@ -82,37 +86,14 @@ export function AppSidebar() {
 
   const settingsItems = [
     {
-      title: "settings",
+      title: "Settings",
       icon: Settings,
       url: "/settings",
     },
     {
-      title: "ideas",
+      title: "Ideas",
       icon: Lightbulb,
       url: "/ideas",
-    },
-  ];
-
-  const sidebarLinks = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: BarChart2,
-    },
-    {
-      name: 'Settings',
-      href: '/settings',
-      icon: Settings,
-    },
-    {
-      name: 'User Management',
-      href: '/settings/users',
-      icon: Users,
-    },
-    {
-      name: 'Team Management',
-      href: '/settings/teams',
-      icon: UserPlus,
     },
   ];
 
@@ -190,18 +171,35 @@ export function AppSidebar() {
         
         <SidebarGroup className="mt-8">
           <SidebarGroupLabel className="text-xs uppercase font-normal tracking-wider text-[#8E9196] px-2 mb-2">
-            management
+            Management
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <div className="h-1"></div>
+              {managementItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <Button
+                      variant="ghost"
+                      className={`w-full justify-start rounded-lg text-[#1C1C1E] px-3 py-2 hover:bg-[#EAEAEC] hover:text-[#1C1C1E] font-normal transition-all ${
+                        isActive(item.url) 
+                          ? 'bg-white shadow-[0_2px_5px_rgba(0,0,0,0.08)] hover:bg-white' 
+                          : ''
+                      }`}
+                      onClick={() => navigate(item.url)}
+                    >
+                      <item.icon className="mr-2 h-4 w-4 stroke-[1.5px]" />
+                      <span className="font-normal text-sm">{item.title}</span>
+                    </Button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         
         <SidebarGroup className="mt-8">
           <SidebarGroupLabel className="text-xs uppercase font-normal tracking-wider text-[#8E9196] px-2 mb-2">
-            settings
+            Settings
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
