@@ -1,8 +1,7 @@
 
 -- Function to get organization logs with proper security checks
 CREATE OR REPLACE FUNCTION public.get_organization_logs(
-  org_id_param UUID,
-  from_date TIMESTAMPTZ DEFAULT NULL
+  org_id_param UUID
 )
 RETURNS TABLE (
   id UUID,
@@ -11,7 +10,7 @@ RETURNS TABLE (
   action TEXT, 
   timestamp TIMESTAMPTZ,
   metadata JSONB,
-  profiles JSON
+  profiles JSONB
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -22,7 +21,7 @@ BEGIN
     SELECT 1 FROM user_roles
     WHERE user_id = auth.uid() 
     AND organization_id = org_id_param
-    AND role = 'admin'
+    AND role IN ('admin', 'manager')
   ) THEN
     RAISE EXCEPTION 'Only organization admins can view organization logs';
   END IF;
@@ -35,14 +34,13 @@ BEGIN
     ul.action,
     ul.timestamp,
     ul.metadata,
-    json_build_object(
+    jsonb_build_object(
       'full_name', p.full_name,
       'email', p.email
     ) as profiles
   FROM public.user_logs ul
   LEFT JOIN profiles p ON ul.user_id = p.id
   WHERE ul.organization_id = org_id_param
-  AND (from_date IS NULL OR ul.timestamp >= from_date)
   ORDER BY ul.timestamp DESC
   LIMIT 200;
 END;

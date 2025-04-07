@@ -15,7 +15,7 @@ type OrganizationLogType = {
   profiles?: {
     full_name: string | null;
     email: string;
-  };
+  } | null;
 };
 
 export function OrganizationActivity() {
@@ -29,21 +29,27 @@ export function OrganizationActivity() {
 
       try {
         setIsLoading(true);
+        
+        // Call RPC function instead of direct query to avoid join issues
         const { data, error } = await supabase
-          .from('user_logs')
-          .select(`
-            *,
-            profiles (
-              full_name,
-              email
-            )
-          `)
-          .eq('organization_id', organization.id)
-          .order('timestamp', { ascending: false })
-          .limit(100);
+          .rpc('get_organization_logs', { 
+            org_id_param: organization.id 
+          });
 
         if (error) throw error;
-        setLogs(data as OrganizationLogType[]);
+        
+        // Convert the returned data to the expected format
+        const formattedLogs: OrganizationLogType[] = (data || []).map((log: any) => ({
+          id: log.id,
+          user_id: log.user_id,
+          module: log.module,
+          action: log.action,
+          timestamp: log.timestamp,
+          metadata: log.metadata,
+          profiles: log.profiles
+        }));
+        
+        setLogs(formattedLogs);
       } catch (error) {
         console.error("Error fetching organization logs:", error);
       } finally {

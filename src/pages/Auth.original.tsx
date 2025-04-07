@@ -27,7 +27,7 @@ export default function Auth() {
           <p className="text-sm text-muted-foreground">Please sign in to continue</p>
         </CardHeader>
         <CardContent>
-          <AuthForm onSubmit={handleLogin} />
+          <AuthForm onLogin={handleLogin} onSignUp={() => {}} isLoading={false} />
         </CardContent>
         <CardFooter className="flex justify-center text-sm">
           <p className="text-muted-foreground">
