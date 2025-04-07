@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountingDashboard } from "@/components/accounting/AccountingDashboard";
 import { AccountingSettings } from "@/components/accounting/AccountingSettings";
 import { ChartOfAccounts } from "@/components/accounting/ChartOfAccounts";
+import { BillsOverview } from "@/components/accounting/bills/BillsOverview";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useState } from "react";
 import { logUserAction } from "@/services/userLogs";
@@ -83,9 +84,7 @@ const Accounting = () => {
           </div>
         </TabsContent>
         <TabsContent value="bills">
-          <div className="flex items-center justify-center h-64 bg-white rounded-lg border p-6">
-            <p className="text-muted-foreground">Bill management coming soon</p>
-          </div>
+          <BillsOverview />
         </TabsContent>
         <TabsContent value="reports">
           <div className="flex items-center justify-center h-64 bg-white rounded-lg border p-6">
