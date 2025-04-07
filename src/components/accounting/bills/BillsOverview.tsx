@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { Bill } from "@/modules/accounting/types";
 import { Button } from "@/components/ui/button";
@@ -35,12 +34,10 @@ export function BillsOverview() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
-  // This would be replaced with a useEffect to fetch real data
-  useState(() => {
+  useEffect(() => {
     setIsLoading(true);
     getBills()
       .then((fetchedBills) => {
-        // For now, we're using sample data since our API returns an empty array
         const sampleBills: Bill[] = [
           {
             id: "1",
@@ -149,14 +146,11 @@ export function BillsOverview() {
       });
   }, []);
 
-  // Filter bills based on status and search query
   const filteredBills = bills.filter((bill) => {
-    // First apply status filter if active
     if (activeFilter && bill.status !== activeFilter) {
       return false;
     }
     
-    // Then apply search query if present
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -169,7 +163,6 @@ export function BillsOverview() {
     return true;
   });
 
-  // Status count calculation
   const statusCounts = bills.reduce(
     (acc, bill) => {
       acc[bill.status] = (acc[bill.status] || 0) + 1;
@@ -178,7 +171,6 @@ export function BillsOverview() {
     {} as Record<string, number>
   );
 
-  // Calculate pagination
   const itemsPerPage = 10;
   const totalPages = Math.ceil(filteredBills.length / itemsPerPage);
   const paginatedBills = filteredBills.slice(
@@ -200,7 +192,6 @@ export function BillsOverview() {
         </Button>
       </div>
 
-      {/* Status filters */}
       <div className="flex space-x-2 pb-2 border-b">
         <Button
           variant={activeFilter === null ? "default" : "outline"}
@@ -239,7 +230,6 @@ export function BillsOverview() {
         </Button>
       </div>
 
-      {/* Search and filters */}
       <div className="flex justify-between">
         <div className="relative w-64">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -256,7 +246,6 @@ export function BillsOverview() {
         </Button>
       </div>
 
-      {/* Bills table */}
       {isLoading ? (
         <div className="h-64 flex items-center justify-center">
           <p>Loading bills...</p>
@@ -297,7 +286,6 @@ export function BillsOverview() {
             </TableBody>
           </Table>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="p-4 border-t">
               <Pagination>
@@ -331,7 +319,6 @@ export function BillsOverview() {
         </div>
       )}
 
-      {/* New Bill Dialog */}
       <NewBillDialog
         open={showNewBillDialog}
         onOpenChange={setShowNewBillDialog}
