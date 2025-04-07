@@ -5,6 +5,7 @@ import { ChartOfAccounts } from "@/components/accounting/ChartOfAccounts";
 import { BillsOverview } from "@/components/accounting/bills/BillsOverview";
 import { InvoicesOverview } from "@/components/accounting/invoices/InvoicesOverview";
 import { AccountingMetrics } from "@/components/accounting/AccountingMetrics";
+import { PayrollOverview } from "@/components/accounting/payroll/PayrollOverview";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useState } from "react";
 import { logUserAction } from "@/services/userLogs";
@@ -62,6 +63,12 @@ const Accounting = () => {
             Bills
           </TabsTrigger>
           <TabsTrigger 
+            value="payroll" 
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
+          >
+            Payroll
+          </TabsTrigger>
+          <TabsTrigger 
             value="reports" 
             className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
           >
@@ -79,6 +86,9 @@ const Accounting = () => {
         </TabsContent>
         <TabsContent value="bills">
           <BillsOverview />
+        </TabsContent>
+        <TabsContent value="payroll">
+          <PayrollOverview />
         </TabsContent>
         <TabsContent value="reports">
           <div className="flex items-center justify-center h-64 bg-white rounded-lg border p-6">

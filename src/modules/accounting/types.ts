@@ -43,7 +43,7 @@ export type Invoice = {
   subtotal: number;
   taxAmount: number;
   total: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'partially_paid';
   createdAt: string;
   updatedAt: string;
 };
@@ -79,6 +79,35 @@ export type BillItem = {
   unitPrice: number;
   taxRate: number;
   amount: number;
+};
+
+export type PayrollRun = {
+  id: string;
+  name: string;
+  period: string;
+  status: 'draft' | 'processing' | 'completed' | 'error';
+  employeeCount: number;
+  grossAmount: number;
+  netAmount: number;
+  paymentDate: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Employee = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  position: string;
+  department: string;
+  employmentType: 'full-time' | 'part-time' | 'contractor';
+  salary: number;
+  hourlyRate?: number;
+  startDate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AccountingModuleState = {
