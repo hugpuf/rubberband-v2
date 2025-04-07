@@ -2,6 +2,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountingDashboard } from "@/components/accounting/AccountingDashboard";
 import { AccountingSettings } from "@/components/accounting/AccountingSettings";
+import { ChartOfAccounts } from "@/components/accounting/ChartOfAccounts";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useState } from "react";
 import { logUserAction } from "@/services/userLogs";
@@ -37,6 +38,12 @@ const Accounting = () => {
           >
             Dashboard
           </TabsTrigger>
+          <TabsTrigger 
+            value="accounts" 
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
+          >
+            Chart of Accounts
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger 
               value="settings"
@@ -48,6 +55,9 @@ const Accounting = () => {
         </TabsList>
         <TabsContent value="dashboard">
           <AccountingDashboard />
+        </TabsContent>
+        <TabsContent value="accounts">
+          <ChartOfAccounts />
         </TabsContent>
         {isAdmin && (
           <TabsContent value="settings">
