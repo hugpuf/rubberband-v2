@@ -31,10 +31,9 @@ export function OrganizationActivity() {
         setIsLoading(true);
         
         // Call the get_organization_logs function
-        const { data, error } = await supabase
-          .rpc('get_organization_logs', { 
-            org_id_param: organization.id 
-          });
+        const { data, error } = await supabase.rpc('get_organization_logs', { 
+          org_id_param: organization.id 
+        });
 
         if (error) throw error;
         
