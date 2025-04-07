@@ -4,6 +4,7 @@ import { AccountingDashboard } from "@/components/accounting/AccountingDashboard
 import { AccountingSettings } from "@/components/accounting/AccountingSettings";
 import { ChartOfAccounts } from "@/components/accounting/ChartOfAccounts";
 import { BillsOverview } from "@/components/accounting/bills/BillsOverview";
+import { InvoicesOverview } from "@/components/accounting/invoices/InvoicesOverview";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useState } from "react";
 import { logUserAction } from "@/services/userLogs";
@@ -79,9 +80,7 @@ const Accounting = () => {
           <ChartOfAccounts />
         </TabsContent>
         <TabsContent value="invoices">
-          <div className="flex items-center justify-center h-64 bg-white rounded-lg border p-6">
-            <p className="text-muted-foreground">Invoice management coming soon</p>
-          </div>
+          <InvoicesOverview />
         </TabsContent>
         <TabsContent value="bills">
           <BillsOverview />
