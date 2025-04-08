@@ -764,4 +764,4 @@ export const updateInvoice = async (id: string, updates: Partial<Invoice>): Prom
       issueDate: updates.issueDate || new Date().toISOString().slice(0, 10),
       dueDate: updates.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().slice(0, 10),
       subtotal: updates.subtotal || 0,
-      taxAmount: updates.
+      taxAmount
