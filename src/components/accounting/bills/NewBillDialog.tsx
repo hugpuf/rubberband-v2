@@ -44,7 +44,6 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
   const [isLoadingVendors, setIsLoadingVendors] = useState(false);
   const [showVendorPopover, setShowVendorPopover] = useState(false);
 
-  // Initialize with one empty item
   const [items, setItems] = useState<Partial<BillItem>[]>([
     { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0, accountId: "6" },
   ]);
@@ -62,7 +61,6 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
     },
   });
 
-  // Reset form when dialog opens/closes
   useEffect(() => {
     if (open) {
       form.reset({
@@ -78,7 +76,6 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
       setItems([
         { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0, accountId: "6" },
       ]);
-      // Load vendors when dialog opens
       fetchVendors();
     }
   }, [open, form.reset]);
@@ -121,7 +118,6 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
 
-    // Calculate amount
     if (field === "quantity" || field === "unitPrice") {
       const quantity = field === "quantity" ? value : newItems[index].quantity || 0;
       const unitPrice = field === "unitPrice" ? value : newItems[index].unitPrice || 0;
@@ -162,7 +158,6 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
     setIsSubmitting(true);
 
     try {
-      // Validate required fields
       if (!data.vendorName) {
         toast({
           variant: "destructive",
@@ -173,7 +168,6 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
         return;
       }
 
-      // Convert items to the required format
       const billItems = items.map((item, index) => ({
         id: `temp-${index}`,
         description: item.description || "",
@@ -184,7 +178,6 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
         accountId: item.accountId || "6"
       }));
 
-      // Create a new vendor if needed
       let vendorId = data.vendorId;
       
       if (!vendorId && organization?.id) {
@@ -203,11 +196,10 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
           vendorId = vendorData.id;
         } catch (error) {
           console.error("Error creating vendor:", error);
-          // Continue with just the name
         }
       }
 
-      const billData: Omit<Bill, "id" | "createdAt" | "updatedAt"> = {
+      const billData: Omit<Bill, "id" | "createdAt" | "updatedAt"> & { organization_id: string } = {
         billNumber: data.billNumber || `BILL-${Date.now().toString().substring(7)}`,
         vendorId: vendorId || 'temp-vendor',
         vendorName: data.vendorName,
@@ -219,8 +211,10 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
         total,
         notes: data.notes || undefined,
         status: "draft",
+        organization_id: organization?.id || ""
       };
 
+      console.log("Creating bill with data:", billData);
       const newBill = await createBill(billData);
 
       toast({
