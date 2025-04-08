@@ -382,10 +382,18 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const getBills = async () => {
-    if (!organization?.id) return [];
+    if (!organization?.id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Organization not found. Please refresh the page or contact support."
+      });
+      return [];
+    }
     
     try {
-      return await accountingApi.getBills();
+      const bills = await accountingApi.getBills();
+      return bills;
     } catch (error) {
       console.error("Error fetching bills:", error);
       toast({
@@ -398,8 +406,20 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!organization?.id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Organization not found. Please refresh the page or contact support."
+      });
+      throw new Error("Organization not found");
+    }
+    
     try {
-      const newBill = await accountingApi.createBill(bill);
+      const newBill = await accountingApi.createBill({
+        ...bill,
+        organization_id: organization.id
+      });
       
       toast({
         title: "Bill created",
