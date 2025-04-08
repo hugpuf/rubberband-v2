@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { logUserAction } from "@/services/userLogs";
 import { 
@@ -232,7 +231,7 @@ export const createAccount = async (
       id: data.id,
       code: data.code,
       name: data.name,
-      type: data.type,
+      type: data.type as Account['type'],
       description: data.description || undefined,
       isActive: data.is_active,
       balance: 0, // New account has zero balance
@@ -293,7 +292,7 @@ export const updateAccount = async (
       id: data.id,
       code: data.code,
       name: data.name,
-      type: data.type,
+      type: data.type as Account['type'],
       description: data.description || undefined,
       isActive: data.is_active,
       balance: balanceData?.balance || 0,
@@ -445,34 +444,48 @@ export const createTransaction = async (
   }
 ): Promise<Transaction | null> => {
   try {
-    // Start a Supabase transaction
-    const { data, error } = await supabase.rpc('create_transaction', {
-      org_id: organizationId,
-      user_id: userId,
-      transaction_date: transactionData.date,
-      description_text: transactionData.description,
-      reference_number: transactionData.referenceNumber || null,
-      status_text: transactionData.status,
-      transaction_lines: transactionData.lines.map(line => ({
-        account_id: line.accountId,
-        description: line.description || null,
-        debit_amount: line.debitAmount,
-        credit_amount: line.creditAmount
-      }))
-    });
+    // Instead of using rpc, let's create the transaction manually
+    // First, create the transaction record
+    const { data: transactionData, error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        organization_id: organizationId,
+        created_by: userId,
+        transaction_date: transactionData.date,
+        description: transactionData.description,
+        reference_number: transactionData.referenceNumber || null,
+        status: transactionData.status
+      })
+      .select()
+      .single();
+      
+    if (transactionError) throw transactionError;
     
-    if (error) throw error;
+    // Then, create the transaction lines
+    const transactionLines = transactionData.lines.map(line => ({
+      transaction_id: transactionData.id,
+      account_id: line.accountId,
+      description: line.description || null,
+      debit_amount: line.debitAmount,
+      credit_amount: line.creditAmount
+    }));
+    
+    const { error: linesError } = await supabase
+      .from('transaction_lines')
+      .insert(transactionLines);
+      
+    if (linesError) throw linesError;
     
     // Log the action
     await logUserAction({
       module: 'accounting',
       action: 'create_transaction',
-      recordId: data.id,
+      recordId: transactionData.id,
       metadata: { description: transactionData.description, status: transactionData.status }
     });
     
     // Fetch the created transaction with its lines
-    return await getTransactionById(data.id);
+    return await getTransactionById(transactionData.id);
   } catch (error) {
     console.error('Error creating transaction:', error);
     return null;
@@ -809,15 +822,26 @@ export const fetchPayrollRuns = async (
  */
 export const getCustomerBalance = async (customerId: string): Promise<number> => {
   try {
-    // This is a placeholder for future implementation
-    // This would typically query the database to calculate the customer's outstanding balance
-    const { data, error } = await supabase.rpc('get_customer_balance', {
-      customer_id: customerId
-    });
-    
+    // This is a placeholder implementation rather than using RPC
+    // Calculate balance from invoices
+    const { data: invoices, error } = await supabase
+      .from('invoices')
+      .select('total, status')
+      .eq('contact_id', customerId);
+      
     if (error) throw error;
     
-    return data || 0;
+    if (!invoices) return 0;
+    
+    // Calculate outstanding balance
+    const balance = invoices.reduce((total, invoice) => {
+      if (invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'partially_paid') {
+        return total + invoice.total;
+      }
+      return total;
+    }, 0);
+    
+    return balance;
   } catch (error) {
     console.error('Error getting customer balance:', error);
     return 0;
@@ -829,15 +853,26 @@ export const getCustomerBalance = async (customerId: string): Promise<number> =>
  */
 export const getVendorBalance = async (vendorId: string): Promise<number> => {
   try {
-    // This is a placeholder for future implementation
-    // This would typically query the database to calculate the vendor's outstanding balance
-    const { data, error } = await supabase.rpc('get_vendor_balance', {
-      vendor_id: vendorId
-    });
-    
+    // This is a placeholder implementation rather than using RPC
+    // Calculate balance from bills
+    const { data: bills, error } = await supabase
+      .from('bills')
+      .select('total, status')
+      .eq('contact_id', vendorId);
+      
     if (error) throw error;
     
-    return data || 0;
+    if (!bills) return 0;
+    
+    // Calculate outstanding balance
+    const balance = bills.reduce((total, bill) => {
+      if (bill.status === 'pending' || bill.status === 'overdue' || bill.status === 'partially_paid') {
+        return total + bill.total;
+      }
+      return total;
+    }, 0);
+    
+    return balance;
   } catch (error) {
     console.error('Error getting vendor balance:', error);
     return 0;

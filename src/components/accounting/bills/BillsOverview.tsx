@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { Bill } from "@/modules/accounting/types";
@@ -43,6 +44,7 @@ export function BillsOverview() {
             id: "1",
             billNumber: "BILL-001",
             vendorId: "vendor-1",
+            vendorName: "Acme Supplies",
             issueDate: "2025-03-01",
             dueDate: "2025-04-01",
             items: [
@@ -66,6 +68,7 @@ export function BillsOverview() {
             id: "2",
             billNumber: "BILL-002",
             vendorId: "vendor-2",
+            vendorName: "Tech Solutions Inc.",
             issueDate: "2025-03-05",
             dueDate: "2025-04-05",
             items: [
@@ -89,6 +92,7 @@ export function BillsOverview() {
             id: "3",
             billNumber: "BILL-003",
             vendorId: "vendor-3",
+            vendorName: "Consulting Partners LLC",
             issueDate: "2025-03-10",
             dueDate: "2025-04-10",
             items: [
@@ -112,6 +116,7 @@ export function BillsOverview() {
             id: "4",
             billNumber: "BILL-004",
             vendorId: "vendor-1",
+            vendorName: "Acme Supplies",
             issueDate: "2025-03-15",
             dueDate: "2025-04-15",
             items: [

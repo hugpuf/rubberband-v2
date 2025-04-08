@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { Bill, BillItem } from "@/modules/accounting/types";
@@ -109,6 +108,7 @@ export function NewBillDialog({ open, onOpenChange }: NewBillDialogProps) {
       const billData: Omit<Bill, "id" | "createdAt" | "updatedAt"> = {
         billNumber: data.billNumber,
         vendorId: data.vendorId,
+        vendorName: "Vendor Name",
         issueDate: data.issueDate,
         dueDate: data.dueDate,
         items: billItems,

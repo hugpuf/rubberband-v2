@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +28,6 @@ interface NewInvoiceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Define a new interface that extends InvoiceItem but adds the tempId property
 interface TempInvoiceItem extends Omit<InvoiceItem, "id"> {
   tempId: string;
 }
@@ -77,7 +75,6 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
         if (item.tempId === tempId) {
           const updatedItem = { ...item, [field]: value };
 
-          // Update amount when quantity or unitPrice changes
           if (field === "quantity" || field === "unitPrice") {
             updatedItem.amount = calculateItemAmount(
               field === "quantity" ? value : item.quantity,
@@ -139,6 +136,7 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
       const invoiceToCreate = {
         invoiceNumber,
         customerId,
+        customerName: "Acme Corp",
         issueDate,
         dueDate,
         items: items.map(({ tempId, ...item }) => ({
@@ -159,7 +157,6 @@ export function NewInvoiceDialog({ open, onOpenChange }: NewInvoiceDialogProps) 
       });
 
       onOpenChange(false);
-      // Here we would typically refresh the invoices list
     } catch (error) {
       console.error("Error creating invoice:", error);
       toast({

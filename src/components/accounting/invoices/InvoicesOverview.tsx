@@ -44,6 +44,7 @@ export function InvoicesOverview() {
             id: "1",
             invoiceNumber: "INV-001",
             customerId: "customer-1",
+            customerName: "Acme Corp",
             issueDate: "2025-03-01",
             dueDate: "2025-04-01",
             items: [
@@ -67,6 +68,7 @@ export function InvoicesOverview() {
             id: "2",
             invoiceNumber: "INV-002",
             customerId: "customer-2",
+            customerName: "Globex Inc",
             issueDate: "2025-03-05",
             dueDate: "2025-04-05",
             items: [
@@ -90,6 +92,7 @@ export function InvoicesOverview() {
             id: "3",
             invoiceNumber: "INV-003",
             customerId: "customer-3",
+            customerName: "ABC Enterprises",
             issueDate: "2025-03-10",
             dueDate: "2025-04-10",
             items: [
@@ -113,6 +116,7 @@ export function InvoicesOverview() {
             id: "4",
             invoiceNumber: "INV-004",
             customerId: "customer-1",
+            customerName: "Acme Corp",
             issueDate: "2025-03-15",
             dueDate: "2025-04-15",
             items: [
