@@ -131,11 +131,6 @@ const mapBillFromApi = (data: any): Bill => {
 
 // --- Account API ---
 export const getAccounts = async (): Promise<Account[]> => {
-  // const res = await fetch(`${API_BASE_URL}/api/accounts`);
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return data.map(mapAccountFromApi);
-
   // Mock data
   return Promise.resolve([
     {
@@ -262,17 +257,6 @@ export const getAccounts = async (): Promise<Account[]> => {
 };
 
 export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>): Promise<Account> => {
-  // const res = await fetch(`${API_BASE_URL}/api/accounts`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify(mapAccountToApiFormat(account)),
-  // });
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return mapAccountFromApi(data);
-
   // Mock data
   return Promise.resolve({
     id: Math.random().toString(36).substring(7),
@@ -289,17 +273,6 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
 };
 
 export const updateAccount = async (id: string, updates: Partial<Account>): Promise<Account> => {
-  // const res = await fetch(`${API_BASE_URL}/api/accounts/${id}`, {
-  //   method: 'PUT',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify(updates),
-  // });
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return mapAccountFromApi(data);
-
   // Mock data
   return Promise.resolve({
     id,
@@ -316,28 +289,12 @@ export const updateAccount = async (id: string, updates: Partial<Account>): Prom
 };
 
 export const deleteAccount = async (id: string): Promise<void> => {
-  // const res = await fetch(`${API_BASE_URL}/api/accounts/${id}`, {
-  //   method: 'DELETE',
-  // });
-  // await handleApiError(res);
-
   // Mock data
   return Promise.resolve();
 };
 
 // --- Transaction API ---
 export const createTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Transaction> => {
-  // const res = await fetch(`${API_BASE_URL}/api/transactions`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify(mapTransactionToApiFormat(transaction)),
-  // });
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return mapTransactionFromApi(data);
-
   // Mock data
   return Promise.resolve({
     id: Math.random().toString(36).substring(7),
@@ -360,21 +317,6 @@ export const createTransaction = async (transaction: Omit<Transaction, 'id' | 'c
 };
 
 export const fetchTransactions = async (filters?: { startDate?: string; endDate?: string; status?: string; search?: string; }): Promise<Transaction[]> => {
-  // Build query parameters based on filters
-  // let queryParams = new URLSearchParams();
-  // if (filters?.startDate) queryParams.append('startDate', filters.startDate);
-  // if (filters?.endDate) queryParams.append('endDate', filters.endDate);
-  // if (filters?.status) queryParams.append('status', filters.status);
-  // if (filters?.search) queryParams.append('search', filters.search);
-
-  // Construct the URL with query parameters
-  // const url = `${API_BASE_URL}/api/transactions?${queryParams.toString()}`;
-
-  // const res = await fetch(url);
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return data.map(mapTransactionFromApi);
-
   // Mock data
   return Promise.resolve([
     {
@@ -526,28 +468,12 @@ export const fetchTransactions = async (filters?: { startDate?: string; endDate?
 };
 
 export const getTransactionById = async (id: string): Promise<Transaction | null> => {
-  // const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`);
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return mapTransactionFromApi(data);
-
   // Mock data
   const transactions = await fetchTransactions();
   return Promise.resolve(transactions.find(transaction => transaction.id === id) || null);
 };
 
 export const updateTransaction = async (id: string, updates: Partial<Transaction>): Promise<Transaction | null> => {
-  // const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`, {
-  //   method: 'PUT',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify(updates),
-  // });
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return mapTransactionFromApi(data);
-
   // Mock data
   const transactions = await fetchTransactions();
   const transaction = transactions.find(transaction => transaction.id === id);
@@ -562,23 +488,12 @@ export const updateTransaction = async (id: string, updates: Partial<Transaction
 };
 
 export const deleteTransaction = async (id: string): Promise<boolean> => {
-  // const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`, {
-  //   method: 'DELETE',
-  // });
-  // await handleApiError(res);
-  // return res.ok;
-
   // Mock data
   return Promise.resolve(true);
 };
 
 // --- Invoice API ---
 export const getInvoices = async (): Promise<Invoice[]> => {
-  // const res = await fetch(`${API_BASE_URL}/api/invoices`);
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return data.map(mapInvoiceFromApi);
-
   // Mock data
   return Promise.resolve([
     {
@@ -660,17 +575,6 @@ export const getInvoices = async (): Promise<Invoice[]> => {
 };
 
 export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>): Promise<Invoice> => {
-  // const res = await fetch(`${API_BASE_URL}/api/invoices`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify(invoice),
-  // });
-  // await handleApiError(res);
-  // const data = await res.json();
-  // return mapInvoiceFromApi(data);
-
   // Mock data
   return Promise.resolve({
     id: Math.random().toString(36).substring(7),
@@ -764,4 +668,29 @@ export const updateInvoice = async (id: string, updates: Partial<Invoice>): Prom
       issueDate: updates.issueDate || new Date().toISOString().slice(0, 10),
       dueDate: updates.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().slice(0, 10),
       subtotal: updates.subtotal || 0,
-      taxAmount
+      taxAmount: updates.taxAmount || 0,
+      total: updates.total || 0,
+      items: updates.items || [],
+      createdAt: updates.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: updates.notes || ""
+    } as Invoice;
+  } catch (error) {
+    console.error(`Error updating invoice ${id}:`, error);
+    throw error;
+  }
+};
+
+export const deleteInvoice = async (id: string): Promise<void> => {
+  try {
+    // Simulation of API call to delete an invoice
+    console.log(`Deleting invoice ${id}`);
+    
+    // In a real implementation, we would use Supabase or another API
+    // For now, simulate a successful deletion
+    return Promise.resolve();
+  } catch (error) {
+    console.error(`Error deleting invoice ${id}:`, error);
+    throw error;
+  }
+};
