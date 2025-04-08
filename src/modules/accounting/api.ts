@@ -439,22 +439,21 @@ export const fetchTransactions = async (
 export const createTransaction = async (
   organizationId: string,
   userId: string,
-  transactionData: Omit<Transaction, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'> & {
+  transaction: Omit<Transaction, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'> & {
     lines: Omit<TransactionLine, 'id' | 'createdAt' | 'updatedAt'>[]
   }
 ): Promise<Transaction | null> => {
   try {
-    // Instead of using rpc, let's create the transaction manually
     // First, create the transaction record
-    const { data: transactionData, error: transactionError } = await supabase
+    const { data: createdTransaction, error: transactionError } = await supabase
       .from('transactions')
       .insert({
         organization_id: organizationId,
         created_by: userId,
-        transaction_date: transactionData.date,
-        description: transactionData.description,
-        reference_number: transactionData.referenceNumber || null,
-        status: transactionData.status
+        transaction_date: transaction.date,
+        description: transaction.description,
+        reference_number: transaction.referenceNumber || null,
+        status: transaction.status
       })
       .select()
       .single();
@@ -462,8 +461,8 @@ export const createTransaction = async (
     if (transactionError) throw transactionError;
     
     // Then, create the transaction lines
-    const transactionLines = transactionData.lines.map(line => ({
-      transaction_id: transactionData.id,
+    const transactionLines = transaction.lines.map(line => ({
+      transaction_id: createdTransaction.id,
       account_id: line.accountId,
       description: line.description || null,
       debit_amount: line.debitAmount,
@@ -480,12 +479,12 @@ export const createTransaction = async (
     await logUserAction({
       module: 'accounting',
       action: 'create_transaction',
-      recordId: transactionData.id,
-      metadata: { description: transactionData.description, status: transactionData.status }
+      recordId: createdTransaction.id,
+      metadata: { description: createdTransaction.description, status: createdTransaction.status }
     });
     
     // Fetch the created transaction with its lines
-    return await getTransactionById(transactionData.id);
+    return await getTransactionById(createdTransaction.id);
   } catch (error) {
     console.error('Error creating transaction:', error);
     return null;
@@ -753,6 +752,167 @@ export const fetchInvoices = async (
   }
 };
 
+// BILLS API
+
+/**
+ * Fetches bills from the database
+ */
+export const fetchBills = async (
+  organizationId: string,
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    status?: Bill['status'];
+    search?: string;
+  }
+): Promise<Bill[]> => {
+  try {
+    let query = supabase
+      .from('bills')
+      .select(`
+        *,
+        contacts:contact_id(*),
+        bill_items:bill_items(*)
+      `)
+      .eq('organization_id', organizationId);
+    
+    // Apply filters
+    if (filters?.startDate) {
+      query = query.gte('issue_date', filters.startDate);
+    }
+    
+    if (filters?.endDate) {
+      query = query.lte('issue_date', filters.endDate);
+    }
+    
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    
+    if (filters?.search) {
+      query = query.or(`bill_number.ilike.%${filters.search}%,contacts.name.ilike.%${filters.search}%`);
+    }
+    
+    const { data, error } = await query.order('issue_date', { ascending: false });
+      
+    if (error) throw error;
+    
+    if (!data) return [];
+    
+    // Map database bills to our Bill type
+    return data.map(bill => {
+      const billItems = bill.bill_items as any[];
+      const contact = bill.contacts as any;
+      
+      return {
+        id: bill.id,
+        billNumber: bill.bill_number,
+        vendorId: bill.contact_id,
+        vendorName: contact?.name || 'Unknown Vendor',
+        issueDate: bill.issue_date,
+        dueDate: bill.due_date,
+        items: billItems.map(item => ({
+          id: item.id,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          taxRate: item.tax_rate,
+          amount: item.amount
+        })),
+        subtotal: bill.subtotal,
+        taxAmount: bill.tax_amount,
+        total: bill.total,
+        status: bill.status as Bill['status'],
+        notes: bill.notes || undefined,
+        createdAt: bill.created_at,
+        updatedAt: bill.updated_at
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching bills:', error);
+    return [];
+  }
+};
+
+/**
+ * Creates a new bill
+ */
+export const createBill = async (
+  organizationId: string,
+  billData: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Bill | null> => {
+  try {
+    // First, ensure the vendor exists
+    const vendorId = await createOrUpdateContact(
+      organizationId,
+      {
+        name: billData.vendorName,
+        type: 'vendor'
+      }
+    );
+    
+    if (!vendorId) {
+      throw new Error('Failed to create or update vendor contact');
+    }
+    
+    // Create the bill
+    const { data: bill, error } = await supabase
+      .from('bills')
+      .insert({
+        organization_id: organizationId,
+        contact_id: vendorId,
+        bill_number: billData.billNumber,
+        issue_date: billData.issueDate,
+        due_date: billData.dueDate,
+        subtotal: billData.subtotal,
+        tax_amount: billData.taxAmount,
+        total: billData.total,
+        status: billData.status,
+        notes: billData.notes || null
+      })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    // Create bill items
+    const billItems = billData.items.map(item => ({
+      bill_id: bill.id,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      tax_rate: item.taxRate,
+      amount: item.amount
+    }));
+    
+    const { error: itemsError } = await supabase
+      .from('bill_items')
+      .insert(billItems);
+      
+    if (itemsError) throw itemsError;
+    
+    return {
+      id: bill.id,
+      billNumber: bill.bill_number,
+      vendorId: bill.contact_id,
+      vendorName: billData.vendorName,
+      issueDate: bill.issue_date,
+      dueDate: bill.due_date,
+      subtotal: bill.subtotal,
+      taxAmount: bill.tax_amount,
+      total: bill.total,
+      status: bill.status as Bill['status'],
+      notes: bill.notes || undefined,
+      items: billData.items,
+      createdAt: bill.created_at,
+      updatedAt: bill.updated_at
+    };
+  } catch (error) {
+    console.error('Error creating bill:', error);
+    return null;
+  }
+};
+
 // PAYROLL API
 
 /**
@@ -822,7 +982,6 @@ export const fetchPayrollRuns = async (
  */
 export const getCustomerBalance = async (customerId: string): Promise<number> => {
   try {
-    // This is a placeholder implementation rather than using RPC
     // Calculate balance from invoices
     const { data: invoices, error } = await supabase
       .from('invoices')
@@ -853,7 +1012,6 @@ export const getCustomerBalance = async (customerId: string): Promise<number> =>
  */
 export const getVendorBalance = async (vendorId: string): Promise<number> => {
   try {
-    // This is a placeholder implementation rather than using RPC
     // Calculate balance from bills
     const { data: bills, error } = await supabase
       .from('bills')

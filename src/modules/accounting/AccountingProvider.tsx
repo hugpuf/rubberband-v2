@@ -1,4 +1,3 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -271,8 +270,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     if (!organization?.id) return [];
     
     try {
-      // Placeholder for fetchBills function
-      return [] as Bill[];
+      return await accountingApi.fetchBills(organization.id);
     } catch (error) {
       console.error("Error fetching bills:", error);
       toast({
@@ -285,15 +283,25 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => {
-    // Placeholder - will be implemented in Phase 4
-    const newBill: Bill = {
-      ...bill,
-      id: `temp-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    if (!organization?.id) throw new Error("Organization not found");
     
-    return newBill;
+    try {
+      const newBill = await accountingApi.createBill(organization.id, bill);
+      
+      if (!newBill) {
+        throw new Error("Failed to create bill");
+      }
+      
+      toast({
+        title: "Bill created",
+        description: `Bill ${newBill.billNumber} has been created.`
+      });
+      
+      return newBill;
+    } catch (error) {
+      console.error("Error creating bill:", error);
+      throw error;
+    }
   };
   
   const updateBill = async (id: string, updates: Partial<Bill>) => {
