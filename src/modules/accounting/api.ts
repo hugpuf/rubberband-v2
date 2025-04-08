@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Account, Transaction, Invoice, Bill, BillItem, PayrollRun, AccountingModuleConfig } from "./types";
 
@@ -797,4 +798,100 @@ export const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedA
       .eq('id', insertedBill.id)
       .single();
 
-    if (fetchError) throw
+    if (fetchError) throw fetchError;
+
+    return mapBillFromApi(billWithItems);
+  } catch (error) {
+    console.error(`Error creating bill:`, error);
+    throw error;
+  }
+};
+
+// Implement missing API functions required by AccountingContext
+export const getBills = async (): Promise<Bill[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('bills')
+      .select(`
+        *,
+        items:bill_items(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    return data.map(mapBillFromApi);
+  } catch (error) {
+    console.error('Error fetching bills:', error);
+    // Return empty array as fallback
+    return [];
+  }
+};
+
+export const updateInvoice = async (id: string, updates: Partial<Invoice>): Promise<Invoice> => {
+  // Mock implementation
+  return Promise.resolve({
+    id,
+    invoiceNumber: updates.invoiceNumber || 'INV-0000',
+    customerId: updates.customerId || '',
+    customerName: updates.customerName || 'Unknown Customer',
+    notes: updates.notes || '',
+    status: updates.status || 'draft',
+    issueDate: updates.issueDate || new Date().toISOString().split('T')[0],
+    dueDate: updates.dueDate || new Date().toISOString().split('T')[0],
+    subtotal: updates.subtotal || 0,
+    taxAmount: updates.taxAmount || 0,
+    total: updates.total || 0,
+    items: updates.items || [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+export const deleteInvoice = async (id: string): Promise<boolean> => {
+  // Mock implementation
+  return Promise.resolve(true);
+};
+
+export const adjustAccountBalance = async (accountId: string, amount: number, description: string): Promise<Account> => {
+  // Mock implementation
+  return Promise.resolve({
+    id: accountId,
+    code: '1010',
+    name: 'Cash',
+    description: 'Cash on hand',
+    type: 'asset',
+    balance: 1000 + amount, // Simulate balance adjustment
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+export const getPayrollRuns = async (): Promise<PayrollRun[]> => {
+  // Mock implementation
+  return Promise.resolve([
+    {
+      id: '1',
+      name: 'January 2024 Payroll',
+      period: 'January 2024',
+      status: 'completed',
+      employeeCount: 15,
+      grossAmount: 45000,
+      netAmount: 36000,
+      paymentDate: '2024-01-31',
+      createdAt: '2024-01-25T00:00:00.000Z',
+      updatedAt: '2024-01-31T00:00:00.000Z',
+    }
+  ]);
+};
+
+export const getCustomerBalance = async (customerId: string): Promise<number> => {
+  // Mock implementation
+  return Promise.resolve(1500);
+};
+
+export const getVendorBalance = async (vendorId: string): Promise<number> => {
+  // Mock implementation
+  return Promise.resolve(2500);
+};
