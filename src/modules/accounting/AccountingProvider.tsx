@@ -1,4 +1,3 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -172,7 +171,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   
   const deleteAccount = async (id: string) => {
     try {
-      const success = await accountingApi.deleteAccount(id);
+      await accountingApi.deleteAccount(id);
       
       setState(prev => ({
         ...prev,
@@ -183,8 +182,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         title: "Account deleted",
         description: "The account has been deleted."
       });
-      
-      return success;
     } catch (error) {
       console.error("Error deleting account:", error);
       toast({

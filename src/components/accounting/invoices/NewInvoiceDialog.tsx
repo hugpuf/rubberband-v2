@@ -65,6 +65,7 @@ export function NewInvoiceDialog({
       unitPrice: 0,
       taxRate: 10,
       amount: 0,
+      accountId: "5" // Default to Sales Revenue account
     },
   ]);
 
@@ -109,6 +110,7 @@ export function NewInvoiceDialog({
         unitPrice: 0,
         taxRate: 10,
         amount: 0,
+        accountId: "5" // Default to Sales Revenue account
       },
     ]);
   };
@@ -186,6 +188,7 @@ export function NewInvoiceDialog({
           unitPrice: 0,
           taxRate: 10,
           amount: 0,
+          accountId: "5" // Default to Sales Revenue account
         },
       ]);
 

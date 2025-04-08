@@ -72,7 +72,8 @@ export function EditInvoiceDialog({
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         taxRate: item.taxRate,
-        amount: item.amount
+        amount: item.amount,
+        accountId: item.accountId
       })));
     }
   }, [open, invoice]);
@@ -118,6 +119,7 @@ export function EditInvoiceDialog({
         unitPrice: 0,
         taxRate: 10,
         amount: 0,
+        accountId: "5" // Default to Sales Revenue account
       },
     ]);
   };

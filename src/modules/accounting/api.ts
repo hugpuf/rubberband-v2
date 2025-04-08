@@ -75,10 +75,9 @@ const mapInvoiceItemFromApi = (data: any): any => ({
   description: data.description,
   quantity: data.quantity,
   unitPrice: data.unit_price,
-  total: data.total,
-  accountId: data.account_id,
   taxRate: data.tax_rate || 0,
   amount: data.amount || 0,
+  accountId: data.account_id || "5",
 });
 
 const mapInvoiceFromApi = (data: any): Invoice => {
@@ -88,7 +87,7 @@ const mapInvoiceFromApi = (data: any): Invoice => {
     customerId: data.contact_id || "",
     customerName: data.customer_name || "Unknown Customer",
     notes: data.notes,
-    status: data.status,
+    status: data.status === "posted" ? "sent" : data.status,
     issueDate: data.issue_date,
     dueDate: data.due_date,
     subtotal: data.subtotal,
@@ -105,10 +104,9 @@ const mapBillItemFromApi = (data: any): BillItem => ({
   description: data.description,
   quantity: data.quantity,
   unitPrice: data.unit_price,
-  total: data.total,
-  accountId: data.account_id,
   taxRate: data.tax_rate || 0,
   amount: data.amount || 0,
+  accountId: data.account_id || "6",
 });
 
 // Map API bill data to our Bill type
@@ -287,9 +285,9 @@ export const updateAccount = async (id: string, updates: Partial<Account>): Prom
   });
 };
 
-export const deleteAccount = async (id: string): Promise<boolean> => {
+export const deleteAccount = async (id: string): Promise<void> => {
   // Mock data
-  return Promise.resolve(true);
+  return Promise.resolve();
 };
 
 // --- Transaction API ---
@@ -501,7 +499,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
       "customerId": "cust-1",
       "customerName": "Customer A",
       "notes": "Invoice for services rendered in January",
-      "status": "posted",
+      "status": "sent",
       "issueDate": "2024-01-01",
       "dueDate": "2024-01-31",
       "subtotal": 5000,
@@ -515,7 +513,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
           "unitPrice": 500,
           "taxRate": 10,
           "amount": 5000,
-          "accountId": "1"
+          "accountId": "5"
         }
       ],
       "createdAt": "2024-01-01T00:00:00.000Z",
@@ -541,7 +539,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
           "unitPrice": 100,
           "taxRate": 10,
           "amount": 2000,
-          "accountId": "2"
+          "accountId": "5"
         }
       ],
       "createdAt": "2024-01-15T00:00:00.000Z",
@@ -553,7 +551,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
       "customerId": "cust-3",
       "customerName": "Customer C",
       "notes": "Invoice for maintenance services in January",
-      "status": "posted",
+      "status": "sent",
       "issueDate": "2024-01-20",
       "dueDate": "2024-02-20",
       "subtotal": 3000,
@@ -567,7 +565,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
           "unitPrice": 3000,
           "taxRate": 10,
           "amount": 3000,
-          "accountId": "3"
+          "accountId": "5"
         }
       ],
       "createdAt": "2024-01-20T00:00:00.000Z",

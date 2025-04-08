@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { Bill, BillItem } from "@/modules/accounting/types";
@@ -47,7 +46,7 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
 
   // Initialize with one empty item
   const [items, setItems] = useState<Partial<BillItem>[]>([
-    { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0 },
+    { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0, accountId: "6" },
   ]);
 
   const form = useForm({
@@ -77,7 +76,7 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
         notes: "",
       });
       setItems([
-        { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0 },
+        { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0, accountId: "6" },
       ]);
       // Load vendors when dialog opens
       fetchVendors();
@@ -108,7 +107,7 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
   const addNewItem = () => {
     setItems([
       ...items,
-      { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0 },
+      { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0, accountId: "6" },
     ]);
   };
 
@@ -182,6 +181,7 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
         unitPrice: item.unitPrice || 0,
         taxRate: item.taxRate || 0,
         amount: item.amount || 0,
+        accountId: item.accountId || "6"
       }));
 
       // Create a new vendor if needed
