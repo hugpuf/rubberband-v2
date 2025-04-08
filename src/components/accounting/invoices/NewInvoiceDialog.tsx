@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +23,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Invoice, InvoiceItem } from "@/modules/accounting/types";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface NewInvoiceDialogProps {
   open: boolean;
@@ -35,6 +41,11 @@ interface TempInvoiceItem extends Omit<InvoiceItem, "id"> {
   tempId: string;
 }
 
+interface Customer {
+  id: string;
+  name: string;
+}
+
 export function NewInvoiceDialog({ 
   open, 
   onOpenChange, 
@@ -44,6 +55,10 @@ export function NewInvoiceDialog({
   const { organization } = useOrganization();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+  const [showCustomerPopover, setShowCustomerPopover] = useState(false);
 
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -68,6 +83,56 @@ export function NewInvoiceDialog({
       accountId: "5" // Default to Sales Revenue account
     },
   ]);
+
+  useEffect(() => {
+    if (open) {
+      // Reset form when dialog opens
+      setInvoiceNumber("");
+      setCustomerId("");
+      setCustomerName("");
+      setIssueDate(new Date().toISOString().substring(0, 10));
+      setDueDate(
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .substring(0, 10)
+      );
+      setNotes("");
+      setItems([
+        {
+          tempId: "temp-1",
+          description: "",
+          quantity: 1,
+          unitPrice: 0,
+          taxRate: 10,
+          amount: 0,
+          accountId: "5" // Default to Sales Revenue account
+        },
+      ]);
+      
+      fetchCustomers();
+    }
+  }, [open]);
+
+  const fetchCustomers = async () => {
+    if (!organization?.id) return;
+    
+    setIsLoadingCustomers(true);
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name')
+        .eq('organization_id', organization.id)
+        .eq('type', 'customer');
+
+      if (error) throw error;
+      
+      setCustomers(data || []);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+    } finally {
+      setIsLoadingCustomers(false);
+    }
+  };
 
   const calculateItemAmount = (
     quantity: number,
@@ -136,6 +201,18 @@ export function NewInvoiceDialog({
     return calculateSubtotal() + calculateTaxAmount();
   };
 
+  const filteredCustomers = customerSearchQuery
+    ? customers.filter(customer => 
+        customer.name.toLowerCase().includes(customerSearchQuery.toLowerCase())
+      )
+    : customers;
+
+  const handleSelectCustomer = (customer: Customer) => {
+    setCustomerId(customer.id);
+    setCustomerName(customer.name);
+    setShowCustomerPopover(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -145,9 +222,53 @@ export function NewInvoiceDialog({
     const total = calculateTotal();
 
     try {
+      if (!customerName) {
+        toast({
+          variant: "destructive",
+          title: "Customer name is required",
+          description: "Please enter a customer name",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      let createdCustomerId = customerId;
+      
+      // If no customer ID but we have a name, create a new customer
+      if (!createdCustomerId && organization?.id) {
+        try {
+          console.log("Creating new customer:", {
+            organization_id: organization.id,
+            name: customerName,
+            type: 'customer'
+          });
+          
+          const { data: customerData, error } = await supabase
+            .from('contacts')
+            .insert({
+              organization_id: organization.id,
+              name: customerName,
+              type: 'customer'
+            })
+            .select('id')
+            .single();
+            
+          if (error) {
+            console.error("Error creating customer:", error);
+            console.error("Error details:", error.details, error.hint, error.message);
+            throw error;
+          }
+          
+          createdCustomerId = customerData.id;
+          console.log("Customer created with ID:", createdCustomerId);
+        } catch (error) {
+          console.error("Error creating customer:", error);
+        }
+      }
+
       const invoiceToCreate = {
-        invoiceNumber,
-        customerId,
+        invoiceNumber: invoiceNumber || undefined, // Let database trigger generate it if empty
+        customerId: createdCustomerId || 'temp-customer',
         customerName,
         issueDate,
         dueDate,
@@ -159,9 +280,12 @@ export function NewInvoiceDialog({
         taxAmount,
         total,
         status: "draft" as const,
-        notes: notes || undefined
+        notes: notes || undefined,
+        organization_id: organization?.id || ""
       };
 
+      console.log("Creating invoice with data:", invoiceToCreate);
+      
       const newInvoice = await createInvoice(invoiceToCreate);
 
       toast({
@@ -169,30 +293,6 @@ export function NewInvoiceDialog({
         description: "The invoice has been created successfully",
       });
       
-      // Reset form
-      setInvoiceNumber("");
-      setCustomerId("");
-      setCustomerName("");
-      setIssueDate(new Date().toISOString().substring(0, 10));
-      setDueDate(
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .substring(0, 10)
-      );
-      setNotes("");
-      setItems([
-        {
-          tempId: "temp-1",
-          description: "",
-          quantity: 1,
-          unitPrice: 0,
-          taxRate: 10,
-          amount: 0,
-          accountId: "5" // Default to Sales Revenue account
-        },
-      ]);
-
-      // Notify parent
       if (onInvoiceCreated) {
         onInvoiceCreated(newInvoice);
       }
@@ -200,25 +300,16 @@ export function NewInvoiceDialog({
       onOpenChange(false);
     } catch (error) {
       console.error("Error creating invoice:", error);
+      console.error("Error stack:", error.stack);
+      
       toast({
         variant: "destructive",
         title: "Failed to create invoice",
-        description: "There was an error creating the invoice",
+        description: "Please try again later. Check console for details.",
       });
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleCustomerChange = (value: string) => {
-    setCustomerId(value);
-    // In a real app, you'd fetch the customer details from the database
-    // For now, we'll use hardcoded names based on the customer ID
-    setCustomerName(
-      value === 'customer-1' ? 'Acme Corp' : 
-      value === 'customer-2' ? 'Globex Inc' : 
-      value === 'customer-3' ? 'ABC Enterprises' : 'Unknown'
-    );
   };
 
   return (
@@ -237,28 +328,76 @@ export function NewInvoiceDialog({
                 <Label htmlFor="invoiceNumber">Invoice Number</Label>
                 <Input
                   id="invoiceNumber"
-                  placeholder="INV-001"
+                  placeholder="Auto-generated if left empty"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
-                  required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customerId">Customer</Label>
-                <Select
-                  value={customerId}
-                  onValueChange={handleCustomerChange}
-                  required
-                >
-                  <SelectTrigger id="customerId">
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="customer-1">Acme Corp</SelectItem>
-                    <SelectItem value="customer-2">Globex Inc</SelectItem>
-                    <SelectItem value="customer-3">ABC Enterprises</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex">
+                  <Input
+                    id="customerName"
+                    placeholder="Enter or select customer"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="rounded-r-none"
+                    required
+                  />
+                  <Popover open={showCustomerPopover} onOpenChange={setShowCustomerPopover}>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="rounded-l-none border-l-0 px-2"
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
+                      <div className="p-2">
+                        <Input
+                          placeholder="Search customers..."
+                          value={customerSearchQuery}
+                          onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                          className="border-slate-200"
+                        />
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto">
+                        {isLoadingCustomers ? (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            Loading customers...
+                          </div>
+                        ) : filteredCustomers.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            No customers found
+                          </div>
+                        ) : (
+                          filteredCustomers.map((customer) => (
+                            <div
+                              key={customer.id}
+                              className="px-2 py-1 hover:bg-muted cursor-pointer text-sm"
+                              onClick={() => handleSelectCustomer(customer)}
+                            >
+                              {customer.name}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="p-2 border-t">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="w-full text-muted-foreground"
+                          onClick={() => setShowCustomerPopover(false)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create new customer
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
 

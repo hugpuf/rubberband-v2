@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Account, Transaction, Invoice, Bill, BillItem, PayrollRun, AccountingModuleConfig } from "./types";
+import { Account, Transaction, Invoice, Bill, PayrollRun, AccountingModuleConfig } from "./types";
+import { mapBillFromApi, mapBillToApiFormat, mapInvoiceFromApi, mapInvoiceToApiFormat } from "./utils/mappers";
+import invoiceService from "./services/InvoiceService";
 
 // Use Vite's import.meta.env instead of process.env
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -71,112 +73,6 @@ const mapTransactionToApiFormat = (transaction: Omit<Transaction, 'id' | 'create
     credit_amount: line.creditAmount,
   })),
 });
-
-const mapInvoiceItemFromApi = (data: any): any => ({
-  id: data.id,
-  description: data.description,
-  quantity: data.quantity,
-  unitPrice: data.unit_price,
-  taxRate: data.tax_rate || 0,
-  amount: data.amount || 0,
-  accountId: data.account_id || "5",
-});
-
-const mapInvoiceFromApi = (data: any): Invoice => {
-  // Map API status to our application status
-  let mappedStatus: Invoice['status'];
-  switch(data.status) {
-    case "posted":
-      mappedStatus = "sent";
-      break;
-    case "draft":
-      mappedStatus = "draft";
-      break;
-    case "paid":
-      mappedStatus = "paid";
-      break;
-    case "overdue":
-      mappedStatus = "overdue";
-      break;
-    case "cancelled":
-      mappedStatus = "cancelled";
-      break;
-    case "partially_paid":
-      mappedStatus = "partially_paid";
-      break;
-    default:
-      mappedStatus = "draft";
-  }
-
-  return {
-    id: data.id,
-    invoiceNumber: data.invoice_number,
-    customerId: data.contact_id || "",
-    customerName: data.customer_name || "Unknown Customer",
-    notes: data.notes,
-    status: mappedStatus,
-    issueDate: data.issue_date,
-    dueDate: data.due_date,
-    subtotal: data.subtotal,
-    taxAmount: data.tax_amount,
-    total: data.total,
-    items: data.items ? data.items.map(mapInvoiceItemFromApi) : [],
-    createdAt: data.created_at,
-    updatedAt: data.updated_at
-  };
-};
-
-const mapBillItemFromApi = (data: any): BillItem => ({
-  id: data.id,
-  description: data.description,
-  quantity: data.quantity,
-  unitPrice: data.unit_price,
-  taxRate: data.tax_rate || 0,
-  amount: data.amount || 0,
-  accountId: data.account_id || "6",
-});
-
-// Map Supabase bill data to our Bill type
-const mapBillFromApi = (data: any): Bill => {
-  return {
-    id: data.id,
-    billNumber: data.bill_number,
-    vendorId: data.contact_id || "",
-    vendorName: data.vendor_name || data.contact_name || "Unknown Vendor",
-    notes: data.notes,
-    status: data.status,
-    issueDate: data.issue_date,
-    dueDate: data.due_date,
-    subtotal: data.subtotal,
-    taxAmount: data.tax_amount,
-    total: data.total,
-    items: data.items ? data.items.map(mapBillItemFromApi) : [],
-    createdAt: data.created_at,
-    updatedAt: data.updated_at
-  };
-};
-
-// Map our Bill type to Supabase format
-const mapBillToApiFormat = (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>): any => {
-  console.log("Mapping bill to API format:", bill);
-  
-  // Create a clean object with only the fields needed by the database
-  const mappedBill = {
-    bill_number: bill.billNumber,
-    contact_id: bill.vendorId,
-    contact_name: bill.vendorName,
-    notes: bill.notes,
-    status: bill.status,
-    issue_date: bill.issueDate,
-    due_date: bill.dueDate,
-    subtotal: bill.subtotal,
-    tax_amount: bill.taxAmount,
-    total: bill.total
-  };
-  
-  console.log("Mapped bill format:", mappedBill);
-  return mappedBill;
-};
 
 // --- Account API ---
 export const getAccounts = async (): Promise<Account[]> => {
@@ -530,108 +426,25 @@ export const deleteTransaction = async (id: string): Promise<boolean> => {
 };
 
 // --- Invoice API ---
-export const getInvoices = async (): Promise<Invoice[]> => {
-  // Mock data
-  return Promise.resolve([
-    {
-      "id": "1",
-      "invoiceNumber": "INV-2024-001",
-      "customerId": "cust-1",
-      "customerName": "Customer A",
-      "notes": "Invoice for services rendered in January",
-      "status": "sent",
-      "issueDate": "2024-01-01",
-      "dueDate": "2024-01-31",
-      "subtotal": 5000,
-      "taxAmount": 500,
-      "total": 5500,
-      "items": [
-        {
-          "id": "1",
-          "description": "Consulting services",
-          "quantity": 10,
-          "unitPrice": 500,
-          "taxRate": 10,
-          "amount": 5000,
-          "accountId": "5"
-        }
-      ],
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    },
-    {
-      "id": "2",
-      "invoiceNumber": "INV-2024-002",
-      "customerId": "cust-2",
-      "customerName": "Customer B",
-      "notes": "Invoice for product sales in January",
-      "status": "draft",
-      "issueDate": "2024-01-15",
-      "dueDate": "2024-02-15",
-      "subtotal": 2000,
-      "taxAmount": 200,
-      "total": 2200,
-      "items": [
-        {
-          "id": "2",
-          "description": "Product X",
-          "quantity": 20,
-          "unitPrice": 100,
-          "taxRate": 10,
-          "amount": 2000,
-          "accountId": "5"
-        }
-      ],
-      "createdAt": "2024-01-15T00:00:00.000Z",
-      "updatedAt": "2024-01-15T00:00:00.000Z"
-    },
-    {
-      "id": "3",
-      "invoiceNumber": "INV-2024-003",
-      "customerId": "cust-3",
-      "customerName": "Customer C",
-      "notes": "Invoice for maintenance services in January",
-      "status": "sent",
-      "issueDate": "2024-01-20",
-      "dueDate": "2024-02-20",
-      "subtotal": 3000,
-      "taxAmount": 300,
-      "total": 3300,
-      "items": [
-        {
-          "id": "3",
-          "description": "Maintenance Service",
-          "quantity": 1,
-          "unitPrice": 3000,
-          "taxRate": 10,
-          "amount": 3000,
-          "accountId": "5"
-        }
-      ],
-      "createdAt": "2024-01-20T00:00:00.000Z",
-      "updatedAt": "2024-01-20T00:00:00.000Z"
-    }
-  ]);
+export const getInvoices = async (options?: { filter?: string; sort?: string; page?: number; limit?: number }): Promise<Invoice[]> => {
+  return invoiceService.getInvoices(options);
 };
 
-export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>): Promise<Invoice> => {
-  // Mock data
-  return Promise.resolve({
-    id: Math.random().toString(36).substring(7),
-    invoiceNumber: 'INV-' + Math.floor(Math.random() * 10000),
-    customerId: invoice.customerId,
-    customerName: invoice.customerName,
-    notes: invoice.notes,
-    status: invoice.status,
-    issueDate: invoice.issueDate,
-    dueDate: invoice.dueDate,
-    subtotal: invoice.subtotal,
-    taxAmount: invoice.taxAmount,
-    total: invoice.total,
-    items: invoice.items,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
+export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'> & { organization_id?: string }): Promise<Invoice> => {
+  // Ensure organization_id is present
+  if (!invoice.organization_id) {
+    throw new Error("Organization ID is required");
+  }
+  
+  return invoiceService.createInvoice(invoice as any);
+};
+
+export const updateInvoice = async (id: string, updates: Partial<Invoice>): Promise<Invoice> => {
+  return invoiceService.updateInvoice(id, updates);
+};
+
+export const deleteInvoice = async (id: string): Promise<boolean> => {
+  return invoiceService.deleteInvoice(id);
 };
 
 // For bills update and delete:
@@ -856,31 +669,6 @@ export const getBills = async (): Promise<Bill[]> => {
     // Return empty array as fallback
     return [];
   }
-};
-
-export const updateInvoice = async (id: string, updates: Partial<Invoice>): Promise<Invoice> => {
-  // Mock implementation
-  return Promise.resolve({
-    id,
-    invoiceNumber: updates.invoiceNumber || 'INV-0000',
-    customerId: updates.customerId || '',
-    customerName: updates.customerName || 'Unknown Customer',
-    notes: updates.notes || '',
-    status: updates.status || 'draft',
-    issueDate: updates.issueDate || new Date().toISOString().split('T')[0],
-    dueDate: updates.dueDate || new Date().toISOString().split('T')[0],
-    subtotal: updates.subtotal || 0,
-    taxAmount: updates.taxAmount || 0,
-    total: updates.total || 0,
-    items: updates.items || [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-};
-
-export const deleteInvoice = async (id: string): Promise<boolean> => {
-  // Mock implementation
-  return Promise.resolve(true);
 };
 
 export const adjustAccountBalance = async (accountId: string, amount: number, description: string): Promise<Account> => {

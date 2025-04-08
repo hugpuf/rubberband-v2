@@ -46,7 +46,10 @@ export function InvoicesOverview() {
   const fetchInvoices = async () => {
     setIsLoading(true);
     try {
-      const fetchedInvoices = await getInvoices();
+      // Using the new service capabilities for filtering and sorting
+      const filter = activeFilter ? `status=${activeFilter}` : undefined;
+      const sort = 'created_at.desc'; // Default sort by most recent
+      const fetchedInvoices = await getInvoices({ filter, sort });
       setInvoices(fetchedInvoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
@@ -69,10 +72,7 @@ export function InvoicesOverview() {
   };
 
   const filteredInvoices = invoices.filter((invoice) => {
-    if (activeFilter && invoice.status !== activeFilter) {
-      return false;
-    }
-    
+    // Already filtered by status at API level if activeFilter is set
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -131,35 +131,50 @@ export function InvoicesOverview() {
         <Button
           variant={activeFilter === null ? "default" : "outline"}
           size="sm"
-          onClick={() => setActiveFilter(null)}
+          onClick={() => {
+            setActiveFilter(null);
+            fetchInvoices(); // Refetch with no filters
+          }}
         >
           All ({invoices.length})
         </Button>
         <Button
           variant={activeFilter === "draft" ? "default" : "outline"}
           size="sm"
-          onClick={() => setActiveFilter("draft")}
+          onClick={() => {
+            setActiveFilter("draft");
+            fetchInvoices(); // Will be applied in fetchInvoices
+          }}
         >
           Draft ({statusCounts["draft"] || 0})
         </Button>
         <Button
           variant={activeFilter === "sent" ? "default" : "outline"}
           size="sm"
-          onClick={() => setActiveFilter("sent")}
+          onClick={() => {
+            setActiveFilter("sent");
+            fetchInvoices(); // Will be applied in fetchInvoices
+          }}
         >
           Sent ({statusCounts["sent"] || 0})
         </Button>
         <Button
           variant={activeFilter === "paid" ? "default" : "outline"}
           size="sm"
-          onClick={() => setActiveFilter("paid")}
+          onClick={() => {
+            setActiveFilter("paid");
+            fetchInvoices(); // Will be applied in fetchInvoices
+          }}
         >
           Paid ({statusCounts["paid"] || 0})
         </Button>
         <Button
           variant={activeFilter === "overdue" ? "default" : "outline"}
           size="sm"
-          onClick={() => setActiveFilter("overdue")}
+          onClick={() => {
+            setActiveFilter("overdue");
+            fetchInvoices(); // Will be applied in fetchInvoices
+          }}
         >
           Overdue ({statusCounts["overdue"] || 0})
         </Button>
