@@ -28,7 +28,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   const { organization } = useOrganization();
   const { toast } = useToast();
 
-  // Initialize the module when the organization is loaded
   useEffect(() => {
     if (organization?.id && !state.isInitialized) {
       initializeModule();
@@ -41,10 +40,8 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Fetch accounting configuration
       const config = await accountingApi.getAccountingConfig(organization.id);
       
-      // Fetch accounts
       const accounts = await accountingApi.fetchAccounts(organization.id);
       
       setState({
@@ -76,7 +73,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     try {
       await accountingApi.updateAccountingConfig(organization.id, configUpdates);
       
-      // Update local state
       setState(prev => ({
         ...prev,
         config: prev.config ? { ...prev.config, ...configUpdates } : null
@@ -96,14 +92,12 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Account operations
   const getAccounts = async () => {
     if (!organization?.id) return [];
     
     try {
       const accounts = await accountingApi.fetchAccounts(organization.id);
       
-      // Update accounts in state
       setState(prev => ({
         ...prev,
         accounts
@@ -130,7 +124,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       throw new Error("Failed to create account");
     }
     
-    // Update accounts in state
     setState(prev => ({
       ...prev,
       accounts: [...prev.accounts, newAccount]
@@ -151,7 +144,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       throw new Error("Failed to update account");
     }
     
-    // Update accounts in state
     setState(prev => ({
       ...prev,
       accounts: prev.accounts.map(account => 
@@ -174,7 +166,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       throw new Error("Failed to delete account");
     }
     
-    // Remove account from state or mark as inactive
     setState(prev => ({
       ...prev,
       accounts: prev.accounts.filter(account => account.id !== id)
@@ -186,7 +177,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     });
   };
   
-  // Transaction operations
   const createTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!organization?.id) throw new Error("Organization not found");
     
@@ -207,13 +197,11 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       description: `Transaction has been recorded.`
     });
     
-    // Refresh accounts to update balances
     await getAccounts();
     
     return newTransaction;
   };
   
-  // Invoice operations
   const getInvoices = async () => {
     if (!organization?.id) return [];
     
@@ -231,41 +219,80 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>) => {
-    // Placeholder - will be implemented in Phase 4
-    const newInvoice: Invoice = {
-      ...invoice,
-      id: `temp-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    if (!organization?.id) throw new Error("Organization not found");
     
-    return newInvoice;
+    try {
+      const newInvoice = await accountingApi.createInvoice(organization.id, invoice);
+      
+      if (!newInvoice) {
+        throw new Error("Failed to create invoice");
+      }
+      
+      toast({
+        title: "Invoice created",
+        description: `Invoice ${newInvoice.invoiceNumber} has been created.`
+      });
+      
+      return newInvoice;
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create invoice."
+      });
+      throw error;
+    }
   };
   
   const updateInvoice = async (id: string, updates: Partial<Invoice>) => {
-    // Placeholder - will be implemented in Phase 4
-    // Fix: Explicitly cast the status to the correct type
-    const updatedInvoice: Invoice = {
-      id,
-      invoiceNumber: '',
-      customerId: '',
-      customerName: '',
-      issueDate: '',
-      dueDate: '',
-      items: [],
-      subtotal: 0,
-      taxAmount: 0,
-      total: 0,
-      status: 'draft', // Explicitly use a valid status value
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...updates
-    };
-    
-    return updatedInvoice;
+    try {
+      const updatedInvoice = await accountingApi.updateExistingInvoice(id, updates);
+      
+      if (!updatedInvoice) {
+        throw new Error("Failed to update invoice");
+      }
+      
+      toast({
+        title: "Invoice updated",
+        description: `Invoice ${updatedInvoice.invoiceNumber} has been updated.`
+      });
+      
+      return updatedInvoice;
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update invoice."
+      });
+      throw error;
+    }
   };
   
-  // Bill operations
+  const deleteInvoice = async (id: string) => {
+    try {
+      const success = await accountingApi.deleteInvoice(id);
+      
+      if (!success) {
+        throw new Error("Failed to delete invoice");
+      }
+      
+      toast({
+        title: "Invoice deleted",
+        description: "The invoice has been deleted."
+      });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete invoice."
+      });
+      throw error;
+    }
+  };
+  
   const getBills = async () => {
     if (!organization?.id) return [];
     
@@ -305,7 +332,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const updateBill = async (id: string, updates: Partial<Bill>) => {
-    // Placeholder - will be implemented in Phase 4
     const updatedBill: Bill = {
       id,
       billNumber: '',
@@ -317,7 +343,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       subtotal: 0,
       taxAmount: 0,
       total: 0,
-      status: 'draft', // Explicitly use a valid status value
+      status: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       ...updates
@@ -326,7 +352,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     return updatedBill;
   };
   
-  // Payroll operations
   const getPayrollRuns = async () => {
     if (!organization?.id) return [];
     
@@ -343,7 +368,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Cross-module integration
   const getCustomerBalance = async (customerId: string) => {
     return accountingApi.getCustomerBalance(customerId);
   };
@@ -374,7 +398,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to adjust account balance");
       }
       
-      // Update account in state
       setState(prev => ({
         ...prev,
         accounts: prev.accounts.map(account => 
@@ -412,6 +435,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     getInvoices,
     createInvoice,
     updateInvoice,
+    deleteInvoice,
     getBills,
     createBill,
     updateBill,

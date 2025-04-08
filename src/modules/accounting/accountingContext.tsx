@@ -24,6 +24,7 @@ export type AccountingContextType = {
   getInvoices: () => Promise<Invoice[]>;
   createInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Invoice>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<Invoice>;
+  deleteInvoice: (id: string) => Promise<void>;
   
   // Bill operations
   getBills: () => Promise<Bill[]>;

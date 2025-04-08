@@ -914,6 +914,233 @@ export const createBill = async (
   }
 };
 
+/**
+ * Creates a new invoice
+ */
+export const createInvoice = async (
+  organizationId: string,
+  invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Invoice | null> => {
+  try {
+    // First, ensure the customer exists
+    const customerId = await createOrUpdateContact(
+      organizationId,
+      {
+        name: invoiceData.customerName,
+        type: 'customer'
+      }
+    );
+    
+    if (!customerId) {
+      throw new Error('Failed to create or update customer contact');
+    }
+    
+    // Create the invoice
+    const { data: invoice, error } = await supabase
+      .from('invoices')
+      .insert({
+        organization_id: organizationId,
+        contact_id: customerId,
+        invoice_number: invoiceData.invoiceNumber,
+        issue_date: invoiceData.issueDate,
+        due_date: invoiceData.dueDate,
+        subtotal: invoiceData.subtotal,
+        tax_amount: invoiceData.taxAmount,
+        total: invoiceData.total,
+        status: invoiceData.status,
+        notes: invoiceData.notes || null
+      })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    // Create invoice items
+    const invoiceItems = invoiceData.items.map(item => ({
+      invoice_id: invoice.id,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      tax_rate: item.taxRate,
+      amount: item.amount
+    }));
+    
+    const { error: itemsError } = await supabase
+      .from('invoice_items')
+      .insert(invoiceItems);
+      
+    if (itemsError) throw itemsError;
+    
+    return {
+      id: invoice.id,
+      invoiceNumber: invoice.invoice_number,
+      customerId: invoice.contact_id,
+      customerName: invoiceData.customerName,
+      issueDate: invoice.issue_date,
+      dueDate: invoice.due_date,
+      subtotal: invoice.subtotal,
+      taxAmount: invoice.tax_amount,
+      total: invoice.total,
+      status: invoice.status as Invoice['status'],
+      notes: invoice.notes || undefined,
+      items: invoiceData.items,
+      createdAt: invoice.created_at,
+      updatedAt: invoice.updated_at
+    };
+  } catch (error) {
+    console.error('Error creating invoice:', error);
+    return null;
+  }
+};
+
+/**
+ * Updates an existing invoice
+ */
+export const updateExistingInvoice = async (
+  invoiceId: string,
+  invoiceData: Partial<Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>>
+): Promise<Invoice | null> => {
+  try {
+    // Get the invoice to update (including organization_id)
+    const { data: existingInvoice, error: getError } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', invoiceId)
+      .single();
+      
+    if (getError) throw getError;
+    
+    // Prepare updates
+    const updates: Record<string, any> = {};
+    
+    if (invoiceData.invoiceNumber) updates.invoice_number = invoiceData.invoiceNumber;
+    if (invoiceData.issueDate) updates.issue_date = invoiceData.issueDate;
+    if (invoiceData.dueDate) updates.due_date = invoiceData.dueDate;
+    if (invoiceData.subtotal !== undefined) updates.subtotal = invoiceData.subtotal;
+    if (invoiceData.taxAmount !== undefined) updates.tax_amount = invoiceData.taxAmount;
+    if (invoiceData.total !== undefined) updates.total = invoiceData.total;
+    if (invoiceData.status) updates.status = invoiceData.status;
+    if (invoiceData.notes !== undefined) updates.notes = invoiceData.notes || null;
+    
+    // Update customer if needed
+    if (invoiceData.customerId && invoiceData.customerName) {
+      const customerId = await createOrUpdateContact(
+        existingInvoice.organization_id,
+        {
+          name: invoiceData.customerName,
+          type: 'customer'
+        }
+      );
+      
+      if (customerId) {
+        updates.contact_id = customerId;
+      }
+    }
+    
+    // Update invoice
+    const { data: updatedInvoice, error } = await supabase
+      .from('invoices')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', invoiceId)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    // Update invoice items if provided
+    if (invoiceData.items) {
+      // Delete existing items
+      const { error: deleteError } = await supabase
+        .from('invoice_items')
+        .delete()
+        .eq('invoice_id', invoiceId);
+        
+      if (deleteError) throw deleteError;
+      
+      // Create new items
+      const invoiceItems = invoiceData.items.map(item => ({
+        invoice_id: invoiceId,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        tax_rate: item.taxRate,
+        amount: item.amount
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(invoiceItems);
+        
+      if (itemsError) throw itemsError;
+    }
+    
+    // Get the updated invoice items
+    const { data: updatedItems, error: itemsError } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', invoiceId);
+      
+    if (itemsError) throw itemsError;
+    
+    // Get the customer name
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('name')
+      .eq('id', updatedInvoice.contact_id)
+      .single();
+      
+    return {
+      id: updatedInvoice.id,
+      invoiceNumber: updatedInvoice.invoice_number,
+      customerId: updatedInvoice.contact_id,
+      customerName: contact?.name || 'Unknown Customer',
+      issueDate: updatedInvoice.issue_date,
+      dueDate: updatedInvoice.due_date,
+      subtotal: updatedInvoice.subtotal,
+      taxAmount: updatedInvoice.tax_amount,
+      total: updatedInvoice.total,
+      status: updatedInvoice.status as Invoice['status'],
+      notes: updatedInvoice.notes || undefined,
+      items: updatedItems.map(item => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        taxRate: item.tax_rate,
+        amount: item.amount
+      })),
+      createdAt: updatedInvoice.created_at,
+      updatedAt: updatedInvoice.updated_at
+    };
+  } catch (error) {
+    console.error('Error updating invoice:', error);
+    return null;
+  }
+};
+
+/**
+ * Deletes an invoice
+ */
+export const deleteInvoice = async (invoiceId: string): Promise<boolean> => {
+  try {
+    // Delete the invoice (will cascade to items due to foreign key constraints)
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', invoiceId);
+      
+    if (error) throw error;
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting invoice:', error);
+    return false;
+  }
+};
+
 // PAYROLL API
 
 /**

@@ -1,16 +1,15 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
-import { useOrganization } from "@/hooks/useOrganization";
-import { useToast } from "@/hooks/use-toast";
+import { Invoice, InvoiceItem } from "@/modules/accounting/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,51 +21,61 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Invoice, InvoiceItem } from "@/modules/accounting/types";
+import { useToast } from "@/hooks/use-toast";
 import { X, Plus } from "lucide-react";
 
-interface NewInvoiceDialogProps {
+interface EditInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onInvoiceCreated?: (invoice: Invoice) => void;
+  invoice: Invoice;
+  onInvoiceUpdated: (invoice: Invoice) => void;
 }
 
 interface TempInvoiceItem extends Omit<InvoiceItem, "id"> {
   tempId: string;
+  originalId?: string;
 }
 
-export function NewInvoiceDialog({ 
-  open, 
-  onOpenChange, 
-  onInvoiceCreated 
-}: NewInvoiceDialogProps) {
-  const { createInvoice } = useAccounting();
-  const { organization } = useOrganization();
+export function EditInvoiceDialog({
+  open,
+  onOpenChange,
+  invoice,
+  onInvoiceUpdated
+}: EditInvoiceDialogProps) {
+  const { updateInvoice } = useAccounting();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [issueDate, setIssueDate] = useState(
-    new Date().toISOString().substring(0, 10)
-  );
-  const [dueDate, setDueDate] = useState(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .substring(0, 10)
-  );
-  const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<TempInvoiceItem[]>([
-    {
-      tempId: "temp-1",
-      description: "",
-      quantity: 1,
-      unitPrice: 0,
-      taxRate: 10,
-      amount: 0,
-    },
-  ]);
+  const [invoiceNumber, setInvoiceNumber] = useState(invoice.invoiceNumber);
+  const [customerId, setCustomerId] = useState(invoice.customerId);
+  const [customerName, setCustomerName] = useState(invoice.customerName);
+  const [issueDate, setIssueDate] = useState(invoice.issueDate);
+  const [dueDate, setDueDate] = useState(invoice.dueDate);
+  const [notes, setNotes] = useState(invoice.notes || '');
+  const [items, setItems] = useState<TempInvoiceItem[]>([]);
+
+  // Initialize items when the dialog opens or invoice changes
+  useEffect(() => {
+    if (open && invoice) {
+      setInvoiceNumber(invoice.invoiceNumber);
+      setCustomerId(invoice.customerId);
+      setCustomerName(invoice.customerName);
+      setIssueDate(invoice.issueDate);
+      setDueDate(invoice.dueDate);
+      setNotes(invoice.notes || '');
+      
+      // Convert invoice items to temp items
+      setItems(invoice.items.map(item => ({
+        tempId: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        originalId: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        taxRate: item.taxRate,
+        amount: item.amount
+      })));
+    }
+  }, [open, invoice]);
 
   const calculateItemAmount = (
     quantity: number,
@@ -103,7 +112,7 @@ export function NewInvoiceDialog({
     setItems([
       ...items,
       {
-        tempId: `temp-${Date.now()}`,
+        tempId: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         description: "",
         quantity: 1,
         unitPrice: 0,
@@ -143,88 +152,50 @@ export function NewInvoiceDialog({
     const total = calculateTotal();
 
     try {
-      const invoiceToCreate = {
+      const invoiceToUpdate = {
         invoiceNumber,
         customerId,
         customerName,
         issueDate,
         dueDate,
-        items: items.map(({ tempId, ...item }) => ({
+        items: items.map(({ tempId, originalId, ...item }) => ({
           ...item,
-          id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          id: originalId || `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         })),
         subtotal,
         taxAmount,
         total,
-        status: "draft" as const,
         notes: notes || undefined
       };
 
-      const newInvoice = await createInvoice(invoiceToCreate);
-
-      toast({
-        title: "Invoice created",
-        description: "The invoice has been created successfully",
-      });
+      const updatedInvoice = await updateInvoice(invoice.id, invoiceToUpdate);
       
-      // Reset form
-      setInvoiceNumber("");
-      setCustomerId("");
-      setCustomerName("");
-      setIssueDate(new Date().toISOString().substring(0, 10));
-      setDueDate(
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .substring(0, 10)
-      );
-      setNotes("");
-      setItems([
-        {
-          tempId: "temp-1",
-          description: "",
-          quantity: 1,
-          unitPrice: 0,
-          taxRate: 10,
-          amount: 0,
-        },
-      ]);
-
-      // Notify parent
-      if (onInvoiceCreated) {
-        onInvoiceCreated(newInvoice);
-      }
-      
+      onInvoiceUpdated(updatedInvoice);
       onOpenChange(false);
+      
+      toast({
+        title: "Invoice updated",
+        description: "The invoice has been updated successfully",
+      });
     } catch (error) {
-      console.error("Error creating invoice:", error);
+      console.error("Error updating invoice:", error);
       toast({
         variant: "destructive",
-        title: "Failed to create invoice",
-        description: "There was an error creating the invoice",
+        title: "Failed to update invoice",
+        description: "There was an error updating the invoice",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCustomerChange = (value: string) => {
-    setCustomerId(value);
-    // In a real app, you'd fetch the customer details from the database
-    // For now, we'll use hardcoded names based on the customer ID
-    setCustomerName(
-      value === 'customer-1' ? 'Acme Corp' : 
-      value === 'customer-2' ? 'Globex Inc' : 
-      value === 'customer-3' ? 'ABC Enterprises' : 'Unknown'
-    );
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Invoice</DialogTitle>
+          <DialogTitle>Edit Invoice</DialogTitle>
           <DialogDescription>
-            Create a new invoice for your customer
+            Update the details for invoice {invoice.invoiceNumber}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -244,7 +215,13 @@ export function NewInvoiceDialog({
                 <Label htmlFor="customerId">Customer</Label>
                 <Select
                   value={customerId}
-                  onValueChange={handleCustomerChange}
+                  onValueChange={(value) => {
+                    setCustomerId(value);
+                    // In a real app, you would fetch customer details here
+                    setCustomerName(value === 'customer-1' ? 'Acme Corp' : 
+                                   value === 'customer-2' ? 'Globex Inc' : 
+                                   value === 'customer-3' ? 'ABC Enterprises' : 'Unknown');
+                  }}
                   required
                 >
                   <SelectTrigger id="customerId">
@@ -429,7 +406,7 @@ export function NewInvoiceDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Invoice"}
+              {isSubmitting ? "Updating..." : "Update Invoice"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
+import { useOrganization } from "@/hooks/useOrganization";
 import { Invoice } from "@/modules/accounting/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +25,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { NewInvoiceDialog } from "./NewInvoiceDialog";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
+import { InvoiceDetail } from "./InvoiceDetail";
 
 export function InvoicesOverview() {
   const { getInvoices } = useAccounting();
+  const { organization } = useOrganization();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -34,122 +37,36 @@ export function InvoicesOverview() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
-    getInvoices()
-      .then((fetchedInvoices) => {
-        const sampleInvoices: Invoice[] = [
-          {
-            id: "1",
-            invoiceNumber: "INV-001",
-            customerId: "customer-1",
-            customerName: "Acme Corp",
-            issueDate: "2025-03-01",
-            dueDate: "2025-04-01",
-            items: [
-              {
-                id: "item-1",
-                description: "Website Design",
-                quantity: 1,
-                unitPrice: 1200,
-                taxRate: 10,
-                amount: 1200,
-              },
-            ],
-            subtotal: 1200,
-            taxAmount: 120,
-            total: 1320,
-            status: "sent",
-            createdAt: "2025-03-01T12:00:00Z",
-            updatedAt: "2025-03-01T12:00:00Z",
-          },
-          {
-            id: "2",
-            invoiceNumber: "INV-002",
-            customerId: "customer-2",
-            customerName: "Globex Inc",
-            issueDate: "2025-03-05",
-            dueDate: "2025-04-05",
-            items: [
-              {
-                id: "item-2",
-                description: "Monthly Maintenance",
-                quantity: 1,
-                unitPrice: 500,
-                taxRate: 10,
-                amount: 500,
-              },
-            ],
-            subtotal: 500,
-            taxAmount: 50,
-            total: 550,
-            status: "paid",
-            createdAt: "2025-03-05T14:30:00Z",
-            updatedAt: "2025-03-10T09:15:00Z",
-          },
-          {
-            id: "3",
-            invoiceNumber: "INV-003",
-            customerId: "customer-3",
-            customerName: "ABC Enterprises",
-            issueDate: "2025-03-10",
-            dueDate: "2025-04-10",
-            items: [
-              {
-                id: "item-3",
-                description: "Custom Development",
-                quantity: 20,
-                unitPrice: 120,
-                taxRate: 10,
-                amount: 2400,
-              },
-            ],
-            subtotal: 2400,
-            taxAmount: 240,
-            total: 2640,
-            status: "draft",
-            createdAt: "2025-03-10T16:45:00Z",
-            updatedAt: "2025-03-10T16:45:00Z",
-          },
-          {
-            id: "4",
-            invoiceNumber: "INV-004",
-            customerId: "customer-1",
-            customerName: "Acme Corp",
-            issueDate: "2025-03-15",
-            dueDate: "2025-04-15",
-            items: [
-              {
-                id: "item-4",
-                description: "Consulting Services",
-                quantity: 5,
-                unitPrice: 200,
-                taxRate: 10,
-                amount: 1000,
-              },
-            ],
-            subtotal: 1000,
-            taxAmount: 100,
-            total: 1100,
-            status: "overdue",
-            createdAt: "2025-03-15T10:20:00Z",
-            updatedAt: "2025-03-15T10:20:00Z",
-          },
-        ];
-        setInvoices(sampleInvoices);
-        setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching invoices:", error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load invoices",
-          description: "Please try again later",
-        });
-        setIsLoading(false);
-      });
+    fetchInvoices();
   }, []);
+
+  const fetchInvoices = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedInvoices = await getInvoices();
+      setInvoices(fetchedInvoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load invoices",
+        description: "Please try again later",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInvoiceCreated = (newInvoice: Invoice) => {
+    setInvoices((current) => [newInvoice, ...current]);
+  };
+
+  const handleViewInvoice = (invoiceId: string) => {
+    setSelectedInvoiceId(invoiceId);
+  };
 
   const filteredInvoices = invoices.filter((invoice) => {
     if (activeFilter && invoice.status !== activeFilter) {
@@ -160,7 +77,7 @@ export function InvoicesOverview() {
       const query = searchQuery.toLowerCase();
       return (
         invoice.invoiceNumber.toLowerCase().includes(query) ||
-        invoice.customerId.toLowerCase().includes(query) ||
+        invoice.customerName.toLowerCase().includes(query) ||
         invoice.total.toString().includes(query)
       );
     }
@@ -182,6 +99,19 @@ export function InvoicesOverview() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // If an invoice is selected, show its detail view
+  if (selectedInvoiceId) {
+    return (
+      <InvoiceDetail 
+        invoiceId={selectedInvoiceId} 
+        onBack={() => {
+          setSelectedInvoiceId(null);
+          fetchInvoices(); // Refresh the list to get any updates
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -245,9 +175,9 @@ export function InvoicesOverview() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={fetchInvoices}>
           <Filter className="mr-2 h-4 w-4" />
-          More Filters
+          Refresh
         </Button>
       </div>
 
@@ -277,9 +207,13 @@ export function InvoicesOverview() {
             </TableHeader>
             <TableBody>
               {paginatedInvoices.map((invoice) => (
-                <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow 
+                  key={invoice.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleViewInvoice(invoice.id)}
+                >
                   <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                  <TableCell>{invoice.customerId}</TableCell>
+                  <TableCell>{invoice.customerName}</TableCell>
                   <TableCell>
                     <InvoiceStatusBadge status={invoice.status} />
                   </TableCell>
@@ -327,6 +261,7 @@ export function InvoicesOverview() {
       <NewInvoiceDialog
         open={showNewInvoiceDialog}
         onOpenChange={setShowNewInvoiceDialog}
+        onInvoiceCreated={handleInvoiceCreated}
       />
     </div>
   );
