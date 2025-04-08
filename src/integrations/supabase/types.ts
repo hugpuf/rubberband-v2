@@ -9,6 +9,242 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      accounting_settings: {
+        Row: {
+          created_at: string
+          default_currency: string
+          fiscal_year_start: string
+          id: string
+          organization_id: string
+          tax_rate: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_currency?: string
+          fiscal_year_start?: string
+          id?: string
+          organization_id: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_currency?: string
+          fiscal_year_start?: string
+          id?: string
+          organization_id?: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accounts: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bill_items: {
+        Row: {
+          amount: number
+          bill_id: string
+          created_at: string
+          description: string
+          id: string
+          quantity: number
+          tax_rate: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          bill_id: string
+          created_at?: string
+          description: string
+          id?: string
+          quantity?: number
+          tax_rate?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bill_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          quantity?: number
+          tax_rate?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bills: {
+        Row: {
+          bill_number: string
+          contact_id: string
+          contact_type: string
+          created_at: string
+          due_date: string
+          id: string
+          issue_date: string
+          notes: string | null
+          organization_id: string
+          status: string
+          subtotal: number
+          tax_amount: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          bill_number: string
+          contact_id: string
+          contact_type?: string
+          created_at?: string
+          due_date: string
+          id?: string
+          issue_date: string
+          notes?: string | null
+          organization_id: string
+          status: string
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          bill_number?: string
+          contact_id?: string
+          contact_type?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          issue_date?: string
+          notes?: string | null
+          organization_id?: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          organization_id: string
+          phone: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          phone?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          phone?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           access_token: string | null
@@ -99,6 +335,116 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          tax_rate: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          quantity?: number
+          tax_rate?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          tax_rate?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          contact_id: string
+          contact_type: string
+          created_at: string
+          due_date: string
+          id: string
+          invoice_number: string
+          issue_date: string
+          notes: string | null
+          organization_id: string
+          status: string
+          subtotal: number
+          tax_amount: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          contact_type?: string
+          created_at?: string
+          due_date: string
+          id?: string
+          invoice_number: string
+          issue_date: string
+          notes?: string | null
+          organization_id: string
+          status: string
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          contact_type?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          notes?: string | null
+          organization_id?: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -224,6 +570,122 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_items: {
+        Row: {
+          contact_id: string
+          contact_type: string
+          created_at: string
+          deduction_amount: number
+          gross_salary: number
+          id: string
+          net_salary: number
+          notes: string | null
+          payroll_run_id: string
+          tax_amount: number
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          contact_type?: string
+          created_at?: string
+          deduction_amount?: number
+          gross_salary?: number
+          id?: string
+          net_salary?: number
+          notes?: string | null
+          payroll_run_id: string
+          tax_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          contact_type?: string
+          created_at?: string
+          deduction_amount?: number
+          gross_salary?: number
+          id?: string
+          net_salary?: number
+          notes?: string | null
+          payroll_run_id?: string
+          tax_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_items_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          created_at: string
+          deduction_amount: number
+          gross_amount: number
+          id: string
+          name: string
+          net_amount: number
+          notes: string | null
+          organization_id: string
+          payment_date: string
+          period_end: string
+          period_start: string
+          status: string
+          tax_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deduction_amount?: number
+          gross_amount?: number
+          id?: string
+          name: string
+          net_amount?: number
+          notes?: string | null
+          organization_id: string
+          payment_date: string
+          period_end: string
+          period_start: string
+          status: string
+          tax_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deduction_amount?: number
+          gross_amount?: number
+          id?: string
+          name?: string
+          net_amount?: number
+          notes?: string | null
+          organization_id?: string
+          payment_date?: string
+          period_end?: string
+          period_start?: string
+          status?: string
+          tax_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -327,6 +789,105 @@ export type Database = {
           },
         ]
       }
+      transaction_lines: {
+        Row: {
+          account_id: string
+          created_at: string
+          credit_amount: number
+          debit_amount: number
+          description: string | null
+          id: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credit_amount?: number
+          debit_amount?: number
+          description?: string | null
+          id?: string
+          transaction_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credit_amount?: number
+          debit_amount?: number
+          description?: string | null
+          id?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "transaction_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_lines_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          organization_id: string
+          reference_number: string | null
+          status: string
+          transaction_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          organization_id: string
+          reference_number?: string | null
+          status: string
+          transaction_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          organization_id?: string
+          reference_number?: string | null
+          status?: string
+          transaction_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_logs: {
         Row: {
           action: string | null
@@ -416,7 +977,25 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      account_balances: {
+        Row: {
+          account_id: string | null
+          balance: number | null
+          code: string | null
+          name: string | null
+          organization_id: string | null
+          type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: {
