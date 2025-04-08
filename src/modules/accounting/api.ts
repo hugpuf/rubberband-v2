@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Account, Transaction, Invoice, Bill, BillItem, PayrollRun, AccountingModuleConfig } from "./types";
 
@@ -159,10 +158,13 @@ const mapBillFromApi = (data: any): Bill => {
 
 // Map our Bill type to Supabase format
 const mapBillToApiFormat = (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>): any => {
-  return {
+  console.log("Mapping bill to API format:", bill);
+  
+  // Create a clean object with only the fields needed by the database
+  const mappedBill = {
     bill_number: bill.billNumber,
     contact_id: bill.vendorId,
-    contact_name: bill.vendorName, // Changed from vendor_name to contact_name
+    contact_name: bill.vendorName,
     notes: bill.notes,
     status: bill.status,
     issue_date: bill.issueDate,
@@ -171,6 +173,9 @@ const mapBillToApiFormat = (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>):
     tax_amount: bill.taxAmount,
     total: bill.total
   };
+  
+  console.log("Mapped bill format:", mappedBill);
+  return mappedBill;
 };
 
 // --- Account API ---
@@ -762,6 +767,15 @@ export const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedA
     };
 
     console.log('Creating bill with data:', billData);
+    console.log('Bill data fields:', Object.keys(billData));
+    console.log('Bill data types:', Object.entries(billData).map(([key, value]) => `${key}: ${typeof value}`));
+    
+    // Check for null values in required fields
+    const requiredFields = ['organization_id', 'contact_type', 'status', 'issue_date', 'due_date'];
+    const missingFields = requiredFields.filter(field => billData[field] === null || billData[field] === undefined);
+    if (missingFields.length > 0) {
+      console.error('Missing required fields:', missingFields);
+    }
 
     // Insert bill
     const { data: insertedBill, error } = await supabase
@@ -772,6 +786,7 @@ export const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedA
 
     if (error) {
       console.error('Error inserting bill:', error);
+      console.error('Error details:', error.details, error.hint, error.message);
       throw error;
     }
     
@@ -787,12 +802,15 @@ export const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedA
         account_id: item.accountId
       }));
 
+      console.log('Bill items data:', billItems);
+
       const { error: itemsError } = await supabase
         .from('bill_items')
         .insert(billItems);
 
       if (itemsError) {
         console.error('Error inserting bill items:', itemsError);
+        console.error('Error details:', itemsError.details, itemsError.hint, itemsError.message);
         throw itemsError;
       }
     }
@@ -807,7 +825,10 @@ export const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedA
       .eq('id', insertedBill.id)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error('Error fetching bill with items:', fetchError);
+      throw fetchError;
+    }
 
     return mapBillFromApi(billWithItems);
   } catch (error) {

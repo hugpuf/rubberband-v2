@@ -182,6 +182,12 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
       
       if (!vendorId && organization?.id) {
         try {
+          console.log("Creating new vendor:", {
+            organization_id: organization.id,
+            name: data.vendorName,
+            type: 'vendor'
+          });
+          
           const { data: vendorData, error } = await supabase
             .from('contacts')
             .insert({
@@ -192,8 +198,13 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
             .select('id')
             .single();
             
-          if (error) throw error;
+          if (error) {
+            console.error("Error creating vendor:", error);
+            console.error("Error details:", error.details, error.hint, error.message);
+            throw error;
+          }
           vendorId = vendorData.id;
+          console.log("Vendor created with ID:", vendorId);
         } catch (error) {
           console.error("Error creating vendor:", error);
         }
@@ -215,6 +226,14 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
       };
 
       console.log("Creating bill with data:", billData);
+      console.log("Bill data structure:", {
+        vendorId: typeof billData.vendorId,
+        vendorName: typeof billData.vendorName,
+        issueDate: typeof billData.issueDate,
+        organization_id: typeof billData.organization_id,
+        status: billData.status
+      });
+      
       const newBill = await createBill(billData);
 
       toast({
@@ -229,10 +248,12 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
       onOpenChange(false);
     } catch (error) {
       console.error("Error creating bill:", error);
+      console.error("Error stack:", error.stack);
+      
       toast({
         variant: "destructive",
         title: "Failed to create bill",
-        description: "Please try again later.",
+        description: "Please try again later. Check console for details.",
       });
     } finally {
       setIsSubmitting(false);
