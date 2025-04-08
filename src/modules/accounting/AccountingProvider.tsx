@@ -202,26 +202,23 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     return newTransaction;
   };
   
-const fetchTransactions = async (filters?: {
-  startDate?: string;
-  endDate?: string;
-  status?: 'draft' | 'posted' | 'voided';
-  search?: string;
-}) => {
-  if (!organization?.id) return [];
-  
-  try {
-    return await accountingApi.fetchTransactions(organization.id, filters);
-  } catch (error) {
-    console.error("Error fetching transactions:", error);
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Failed to fetch transactions."
-    });
-    return [];
-  }
-};
+  const fetchTransactions = async (filters?: { 
+    startDate?: string; 
+    endDate?: string; 
+    status?: "draft" | "posted" | "voided"; 
+    search?: string;
+  }): Promise<Transaction[]> => {
+    try {
+      const result = await accountingApi.fetchTransactions(filters);
+      if (result) {
+        console.log(`Fetched ${result.length} transactions`);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      throw error;
+    }
+  };
   
   const getTransactionById = async (id: string) => {
     try {
@@ -330,50 +327,25 @@ const fetchTransactions = async (filters?: {
     }
   };
   
-  const updateInvoice = async (id: string, updates: Partial<Invoice>) => {
+  const updateInvoice = async (id: string, updates: Partial<Invoice>): Promise<Invoice> => {
     try {
-      const updatedInvoice = await accountingApi.updateExistingInvoice(id, updates);
-      
-      if (!updatedInvoice) {
-        throw new Error("Failed to update invoice");
+      const result = await accountingApi.updateInvoice(id, updates);
+      if (result) {
+        console.log('Invoice updated successfully:', result);
       }
-      
-      toast({
-        title: "Invoice updated",
-        description: `Invoice ${updatedInvoice.invoiceNumber} has been updated.`
-      });
-      
-      return updatedInvoice;
+      return result;
     } catch (error) {
-      console.error("Error updating invoice:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update invoice."
-      });
+      console.error('Error updating invoice:', error);
       throw error;
     }
   };
   
-  const deleteInvoice = async (id: string) => {
+  const deleteInvoice = async (id: string): Promise<void> => {
     try {
-      const success = await accountingApi.deleteInvoice(id);
-      
-      if (!success) {
-        throw new Error("Failed to delete invoice");
-      }
-      
-      toast({
-        title: "Invoice deleted",
-        description: "The invoice has been deleted."
-      });
+      await accountingApi.deleteInvoice(id);
+      console.log('Invoice deleted successfully');
     } catch (error) {
-      console.error("Error deleting invoice:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete invoice."
-      });
+      console.error('Error deleting invoice:', error);
       throw error;
     }
   };
@@ -421,60 +393,29 @@ const fetchTransactions = async (filters?: {
     }
   };
   
-const updateBill = async (id: string, updates: Partial<Bill>) => {
-  if (!organization?.id) throw new Error("Organization not found");
+  const updateBill = async (id: string, updates: Partial<Bill>): Promise<Bill> => {
+    try {
+      const result = await accountingApi.updateBill(id, updates);
+      if (result) {
+        console.log('Bill updated successfully:', result);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error updating bill:', error);
+      throw error;
+    }
+  };
   
-  try {
-    // Rename from updateExistingBill to updateBill to match the API
-    const updatedBill = await accountingApi.updateBill(id, updates);
-    
-    if (!updatedBill) {
-      throw new Error("Failed to update bill");
+  const deleteBill = async (id: string): Promise<boolean> => {
+    try {
+      const success = await accountingApi.deleteBill(id);
+      console.log('Bill deletion result:', success);
+      return success;
+    } catch (error) {
+      console.error('Error deleting bill:', error);
+      throw error;
     }
-    
-    toast({
-      title: "Bill updated",
-      description: `Bill ${updatedBill.billNumber} has been updated.`
-    });
-    
-    return updatedBill;
-  } catch (error) {
-    console.error("Error updating bill:", error);
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Failed to update bill."
-    });
-    throw error;
-  }
-};
-
-// Fix the deleteBill method to use the correct API function name
-const deleteBill = async (id: string) => {
-  try {
-    // Use deleteBill instead of the non-existent method
-    const success = await accountingApi.deleteBill(id);
-    
-    if (!success) {
-      throw new Error("Failed to delete bill");
-    }
-    
-    toast({
-      title: "Bill deleted",
-      description: "The bill has been deleted."
-    });
-    
-    return true;
-  } catch (error) {
-    console.error("Error deleting bill:", error);
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Failed to delete bill."
-    });
-    throw error;
-  }
-};
+  };
   
   const getPayrollRuns = async () => {
     if (!organization?.id) return [];
