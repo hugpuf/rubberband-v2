@@ -30,6 +30,7 @@ export type AccountingContextType = {
   getBills: () => Promise<Bill[]>;
   createBill: (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Bill>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<Bill>;
+  deleteBill: (id: string) => Promise<boolean>;
   
   // Payroll operations
   getPayrollRuns: () => Promise<PayrollRun[]>;

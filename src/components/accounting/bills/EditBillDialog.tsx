@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { Bill, BillItem } from "@/modules/accounting/types";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,100 +15,63 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useForm } from "react-hook-form";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
 
-interface NewBillDialogProps {
+interface EditBillDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onBillCreated?: (bill: Bill) => void;
+  bill: Bill;
+  onBillUpdated: (bill: Bill) => void;
 }
 
-interface Vendor {
-  id: string;
-  name: string;
-}
-
-export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDialogProps) {
-  const { createBill } = useAccounting();
-  const { organization } = useOrganization();
+export function EditBillDialog({ 
+  open, 
+  onOpenChange, 
+  bill, 
+  onBillUpdated 
+}: EditBillDialogProps) {
+  const { updateBill } = useAccounting();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [vendorSearchQuery, setVendorSearchQuery] = useState("");
-  const [isLoadingVendors, setIsLoadingVendors] = useState(false);
-  const [showVendorPopover, setShowVendorPopover] = useState(false);
-
-  // Initialize with one empty item
-  const [items, setItems] = useState<Partial<BillItem>[]>([
-    { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0 },
-  ]);
+  const [items, setItems] = useState<BillItem[]>([]);
 
   const form = useForm({
     defaultValues: {
-      vendorName: "",
-      vendorId: "",
-      billNumber: "",
-      issueDate: new Date().toISOString().split("T")[0],
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0],
-      notes: "",
+      vendorName: bill.vendorName,
+      vendorId: bill.vendorId,
+      billNumber: bill.billNumber,
+      issueDate: bill.issueDate,
+      dueDate: bill.dueDate,
+      notes: bill.notes || "",
     },
   });
 
-  // Reset form when dialog opens/closes
   useEffect(() => {
-    if (open) {
+    // Initialize items when the bill changes or dialog opens
+    if (open && bill) {
+      setItems([...bill.items]);
       form.reset({
-        vendorName: "",
-        vendorId: "",
-        billNumber: "",
-        issueDate: new Date().toISOString().split("T")[0],
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-        notes: "",
+        vendorName: bill.vendorName,
+        vendorId: bill.vendorId,
+        billNumber: bill.billNumber,
+        issueDate: bill.issueDate,
+        dueDate: bill.dueDate,
+        notes: bill.notes || "",
       });
-      setItems([
-        { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0 },
-      ]);
-      // Load vendors when dialog opens
-      fetchVendors();
     }
-  }, [open, form.reset]);
-
-  const fetchVendors = async () => {
-    if (!organization?.id) return;
-    
-    setIsLoadingVendors(true);
-    try {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('id, name')
-        .eq('organization_id', organization.id)
-        .eq('type', 'vendor');
-
-      if (error) throw error;
-      
-      setVendors(data || []);
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
-    } finally {
-      setIsLoadingVendors(false);
-    }
-  };
+  }, [bill, open, form.reset]);
 
   const addNewItem = () => {
     setItems([
       ...items,
-      { description: "", quantity: 1, unitPrice: 0, taxRate: 0, amount: 0 },
+      { 
+        id: `temp-${Date.now()}`, 
+        description: "", 
+        quantity: 1, 
+        unitPrice: 0, 
+        taxRate: 0, 
+        amount: 0 
+      },
     ]);
   };
 
@@ -124,8 +87,8 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
 
     // Calculate amount
     if (field === "quantity" || field === "unitPrice") {
-      const quantity = field === "quantity" ? value : newItems[index].quantity || 0;
-      const unitPrice = field === "unitPrice" ? value : newItems[index].unitPrice || 0;
+      const quantity = field === "quantity" ? value : newItems[index].quantity;
+      const unitPrice = field === "unitPrice" ? value : newItems[index].unitPrice;
       newItems[index].amount = quantity * unitPrice;
     }
 
@@ -145,99 +108,39 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
     };
   };
 
-  const filteredVendors = vendorSearchQuery
-    ? vendors.filter(vendor => 
-        vendor.name.toLowerCase().includes(vendorSearchQuery.toLowerCase())
-      )
-    : vendors;
-
-  const handleSelectVendor = (vendor: Vendor) => {
-    form.setValue("vendorName", vendor.name);
-    form.setValue("vendorId", vendor.id);
-    setShowVendorPopover(false);
-  };
-
   const { subtotal, taxAmount, total } = calculateTotals();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
 
     try {
-      // Validate required fields
-      if (!data.vendorName) {
-        toast({
-          variant: "destructive",
-          title: "Vendor name is required",
-          description: "Please enter a vendor name",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Convert items to the required format
-      const billItems = items.map((item, index) => ({
-        id: `temp-${index}`,
-        description: item.description || "",
-        quantity: item.quantity || 0,
-        unitPrice: item.unitPrice || 0,
-        taxRate: item.taxRate || 0,
-        amount: item.amount || 0,
-      }));
-
-      // Create a new vendor if needed
-      let vendorId = data.vendorId;
-      
-      if (!vendorId && organization?.id) {
-        try {
-          const { data: vendorData, error } = await supabase
-            .from('contacts')
-            .insert({
-              organization_id: organization.id,
-              name: data.vendorName,
-              type: 'vendor'
-            })
-            .select('id')
-            .single();
-            
-          if (error) throw error;
-          vendorId = vendorData.id;
-        } catch (error) {
-          console.error("Error creating vendor:", error);
-          // Continue with just the name
-        }
-      }
-
-      const billData: Omit<Bill, "id" | "createdAt" | "updatedAt"> = {
-        billNumber: data.billNumber || `BILL-${Date.now().toString().substring(7)}`,
-        vendorId: vendorId || 'temp-vendor',
+      // Update with the new values
+      const updatedBill: Partial<Bill> = {
         vendorName: data.vendorName,
+        vendorId: data.vendorId,
+        billNumber: data.billNumber,
         issueDate: data.issueDate,
         dueDate: data.dueDate,
-        items: billItems,
+        notes: data.notes,
+        items: items,
         subtotal,
         taxAmount,
         total,
-        notes: data.notes || undefined,
-        status: "draft",
       };
 
-      const newBill = await createBill(billData);
+      const result = await updateBill(bill.id, updatedBill);
 
       toast({
-        title: "Bill created",
-        description: "Your bill has been created successfully.",
+        title: "Bill updated",
+        description: "Your bill has been updated successfully.",
       });
 
-      if (onBillCreated) {
-        onBillCreated(newBill);
-      }
-
-      onOpenChange(false);
+      onBillUpdated(result);
     } catch (error) {
-      console.error("Error creating bill:", error);
+      console.error("Error updating bill:", error);
       toast({
         variant: "destructive",
-        title: "Failed to create bill",
+        title: "Failed to update bill",
         description: "Please try again later.",
       });
     } finally {
@@ -249,81 +152,32 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Bill</DialogTitle>
+          <DialogTitle>Edit Bill</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="vendorName">Vendor</Label>
-              <div className="flex">
-                <Input
-                  id="vendorName"
-                  placeholder="Enter or select vendor"
-                  {...form.register("vendorName", { required: true })}
-                  className="rounded-r-none"
-                />
-                <Popover open={showVendorPopover} onOpenChange={setShowVendorPopover}>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="rounded-l-none border-l-0 px-2"
-                    >
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
-                    <div className="p-2">
-                      <Input
-                        placeholder="Search vendors..."
-                        value={vendorSearchQuery}
-                        onChange={(e) => setVendorSearchQuery(e.target.value)}
-                        className="border-slate-200"
-                      />
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto">
-                      {isLoadingVendors ? (
-                        <div className="p-2 text-center text-sm text-muted-foreground">
-                          Loading vendors...
-                        </div>
-                      ) : filteredVendors.length === 0 ? (
-                        <div className="p-2 text-center text-sm text-muted-foreground">
-                          No vendors found
-                        </div>
-                      ) : (
-                        filteredVendors.map((vendor) => (
-                          <div
-                            key={vendor.id}
-                            className="px-2 py-1 hover:bg-muted cursor-pointer text-sm"
-                            onClick={() => handleSelectVendor(vendor)}
-                          >
-                            {vendor.name}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="p-2 border-t">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="w-full text-muted-foreground"
-                        onClick={() => setShowVendorPopover(false)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create new vendor
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <Label htmlFor="vendorName">Vendor Name</Label>
               <Input
-                type="hidden"
-                id="vendorId"
-                {...form.register("vendorId")}
+                id="vendorName"
+                placeholder="Enter vendor name"
+                {...form.register("vendorName", { required: true })}
               />
               {form.formState.errors.vendorName && (
-                <p className="text-red-500 text-sm">Vendor is required</p>
+                <p className="text-red-500 text-sm">Vendor name is required</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vendorId">Vendor ID</Label>
+              <Input
+                id="vendorId"
+                placeholder="Enter vendor ID"
+                {...form.register("vendorId", { required: true })}
+              />
+              {form.formState.errors.vendorId && (
+                <p className="text-red-500 text-sm">Vendor ID is required</p>
               )}
             </div>
 
@@ -331,9 +185,12 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
               <Label htmlFor="billNumber">Bill Number</Label>
               <Input
                 id="billNumber"
-                placeholder="Auto-generated if left empty"
-                {...form.register("billNumber")}
+                placeholder="Enter bill number"
+                {...form.register("billNumber", { required: true })}
               />
+              {form.formState.errors.billNumber && (
+                <p className="text-red-500 text-sm">Bill number is required</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -391,7 +248,7 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
 
               {items.map((item, index) => (
                 <div
-                  key={index}
+                  key={item.id || index}
                   className="grid grid-cols-12 gap-2 p-3 border-t items-center"
                 >
                   <div className="col-span-5">
@@ -483,7 +340,7 @@ export function NewBillDialog({ open, onOpenChange, onBillCreated }: NewBillDial
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Bill"}
+              {isSubmitting ? "Updating..." : "Update Bill"}
             </Button>
           </DialogFooter>
         </form>

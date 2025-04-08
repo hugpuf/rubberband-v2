@@ -1134,6 +1134,13 @@ export const deleteInvoice = async (invoiceId: string): Promise<boolean> => {
       
     if (error) throw error;
     
+    // Log the action
+    await logUserAction({
+      module: 'accounting',
+      action: 'delete_invoice',
+      recordId: invoiceId
+    });
+    
     return true;
   } catch (error) {
     console.error('Error deleting invoice:', error);

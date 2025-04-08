@@ -1,3 +1,4 @@
+
 import { ReactNode, useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -327,29 +328,66 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       return newBill;
     } catch (error) {
       console.error("Error creating bill:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create bill."
+      });
       throw error;
     }
   };
   
   const updateBill = async (id: string, updates: Partial<Bill>) => {
-    const updatedBill: Bill = {
-      id,
-      billNumber: '',
-      vendorId: '',
-      vendorName: '',
-      issueDate: '',
-      dueDate: '',
-      items: [],
-      subtotal: 0,
-      taxAmount: 0,
-      total: 0,
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...updates
-    };
+    if (!organization?.id) throw new Error("Organization not found");
     
-    return updatedBill;
+    try {
+      // We need to implement the missing updateExistingBill function
+      const updatedBill = await accountingApi.updateExistingBill(id, updates);
+      
+      if (!updatedBill) {
+        throw new Error("Failed to update bill");
+      }
+      
+      toast({
+        title: "Bill updated",
+        description: `Bill ${updatedBill.billNumber} has been updated.`
+      });
+      
+      return updatedBill;
+    } catch (error) {
+      console.error("Error updating bill:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update bill."
+      });
+      throw error;
+    }
+  };
+  
+  const deleteBill = async (id: string) => {
+    try {
+      const success = await accountingApi.deleteBill(id);
+      
+      if (!success) {
+        throw new Error("Failed to delete bill");
+      }
+      
+      toast({
+        title: "Bill deleted",
+        description: "The bill has been deleted."
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting bill:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete bill."
+      });
+      throw error;
+    }
   };
   
   const getPayrollRuns = async () => {
@@ -439,6 +477,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     getBills,
     createBill,
     updateBill,
+    deleteBill,
     getPayrollRuns,
     getCustomerBalance,
     getVendorBalance

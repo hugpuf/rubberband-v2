@@ -4,7 +4,7 @@ import { useAccounting } from "@/modules/accounting";
 import { Bill } from "@/modules/accounting/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, RefreshCw } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { NewBillDialog } from "./NewBillDialog";
 import { BillStatusBadge } from "./BillStatusBadge";
+import { BillDetail } from "./BillDetail";
 
 export function BillsOverview() {
   const { getBills } = useAccounting();
@@ -34,122 +35,36 @@ export function BillsOverview() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
-    getBills()
-      .then((fetchedBills) => {
-        const sampleBills: Bill[] = [
-          {
-            id: "1",
-            billNumber: "BILL-001",
-            vendorId: "vendor-1",
-            vendorName: "Acme Supplies",
-            issueDate: "2025-03-01",
-            dueDate: "2025-04-01",
-            items: [
-              {
-                id: "item-1",
-                description: "Office Supplies",
-                quantity: 1,
-                unitPrice: 250,
-                taxRate: 10,
-                amount: 250,
-              },
-            ],
-            subtotal: 250,
-            taxAmount: 25,
-            total: 275,
-            status: "pending",
-            createdAt: "2025-03-01T12:00:00Z",
-            updatedAt: "2025-03-01T12:00:00Z",
-          },
-          {
-            id: "2",
-            billNumber: "BILL-002",
-            vendorId: "vendor-2",
-            vendorName: "Tech Solutions Inc.",
-            issueDate: "2025-03-05",
-            dueDate: "2025-04-05",
-            items: [
-              {
-                id: "item-2",
-                description: "Software Subscription",
-                quantity: 1,
-                unitPrice: 99,
-                taxRate: 10,
-                amount: 99,
-              },
-            ],
-            subtotal: 99,
-            taxAmount: 9.9,
-            total: 108.9,
-            status: "paid",
-            createdAt: "2025-03-05T14:30:00Z",
-            updatedAt: "2025-03-10T09:15:00Z",
-          },
-          {
-            id: "3",
-            billNumber: "BILL-003",
-            vendorId: "vendor-3",
-            vendorName: "Consulting Partners LLC",
-            issueDate: "2025-03-10",
-            dueDate: "2025-04-10",
-            items: [
-              {
-                id: "item-3",
-                description: "Consulting Services",
-                quantity: 5,
-                unitPrice: 150,
-                taxRate: 10,
-                amount: 750,
-              },
-            ],
-            subtotal: 750,
-            taxAmount: 75,
-            total: 825,
-            status: "draft",
-            createdAt: "2025-03-10T16:45:00Z",
-            updatedAt: "2025-03-10T16:45:00Z",
-          },
-          {
-            id: "4",
-            billNumber: "BILL-004",
-            vendorId: "vendor-1",
-            vendorName: "Acme Supplies",
-            issueDate: "2025-03-15",
-            dueDate: "2025-04-15",
-            items: [
-              {
-                id: "item-4",
-                description: "Equipment Rental",
-                quantity: 1,
-                unitPrice: 500,
-                taxRate: 10,
-                amount: 500,
-              },
-            ],
-            subtotal: 500,
-            taxAmount: 50,
-            total: 550,
-            status: "overdue",
-            createdAt: "2025-03-15T10:20:00Z",
-            updatedAt: "2025-03-15T10:20:00Z",
-          },
-        ];
-        setBills(sampleBills);
-        setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching bills:", error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load bills",
-          description: "Please try again later",
-        });
-        setIsLoading(false);
-      });
+    fetchBills();
   }, []);
+
+  const fetchBills = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedBills = await getBills();
+      setBills(fetchedBills);
+    } catch (error) {
+      console.error("Error fetching bills:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load bills",
+        description: "Please try again later",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBillCreated = (newBill: Bill) => {
+    setBills((current) => [newBill, ...current]);
+  };
+
+  const handleViewBill = (billId: string) => {
+    setSelectedBillId(billId);
+  };
 
   const filteredBills = bills.filter((bill) => {
     if (activeFilter && bill.status !== activeFilter) {
@@ -160,7 +75,7 @@ export function BillsOverview() {
       const query = searchQuery.toLowerCase();
       return (
         bill.billNumber.toLowerCase().includes(query) ||
-        bill.vendorId.toLowerCase().includes(query) ||
+        bill.vendorName.toLowerCase().includes(query) ||
         bill.total.toString().includes(query)
       );
     }
@@ -182,6 +97,19 @@ export function BillsOverview() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // If a bill is selected, show its detail view
+  if (selectedBillId) {
+    return (
+      <BillDetail 
+        billId={selectedBillId} 
+        onBack={() => {
+          setSelectedBillId(null);
+          fetchBills(); // Refresh the list to get any updates
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -245,9 +173,9 @@ export function BillsOverview() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="sm">
-          <Filter className="mr-2 h-4 w-4" />
-          More Filters
+        <Button variant="outline" size="sm" onClick={fetchBills}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh
         </Button>
       </div>
 
@@ -277,9 +205,13 @@ export function BillsOverview() {
             </TableHeader>
             <TableBody>
               {paginatedBills.map((bill) => (
-                <TableRow key={bill.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow 
+                  key={bill.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleViewBill(bill.id)}
+                >
                   <TableCell className="font-medium">{bill.billNumber}</TableCell>
-                  <TableCell>{bill.vendorId}</TableCell>
+                  <TableCell>{bill.vendorName}</TableCell>
                   <TableCell>
                     <BillStatusBadge status={bill.status} />
                   </TableCell>
@@ -327,6 +259,7 @@ export function BillsOverview() {
       <NewBillDialog
         open={showNewBillDialog}
         onOpenChange={setShowNewBillDialog}
+        onBillCreated={handleBillCreated}
       />
     </div>
   );
