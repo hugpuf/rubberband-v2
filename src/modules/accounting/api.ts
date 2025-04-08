@@ -152,7 +152,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Checking account",
       "type": "asset",
       "balance": 5000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -164,7 +163,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Money owed to vendors",
       "type": "liability",
       "balance": 2000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -176,7 +174,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Accumulated profits",
       "type": "equity",
       "balance": 10000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -188,7 +185,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Income from sales",
       "type": "revenue",
       "balance": 15000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -200,7 +196,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Direct costs of products sold",
       "type": "expense",
       "balance": 8000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -212,7 +207,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Monthly rent payments",
       "type": "expense",
       "balance": 2000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -224,7 +218,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Monthly utilities payments",
       "type": "expense",
       "balance": 500,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -236,7 +229,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Goods available for sale",
       "type": "asset",
       "balance": 3000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -248,7 +240,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Sales tax collected from customers",
       "type": "liability",
       "balance": 1000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
