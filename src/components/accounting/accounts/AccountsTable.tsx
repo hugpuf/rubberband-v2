@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Loader2, Trash2 } from "lucide-react";
+import { Edit, Loader2, Trash2, DollarSign } from "lucide-react";
 
 type AccountsTableProps = {
   accounts: Account[];
@@ -19,6 +19,7 @@ type AccountsTableProps = {
   selectedType: AccountType | "all";
   onEdit: (account: Account) => void;
   onDelete: (account: Account) => void;
+  onAdjustBalance: (account: Account) => void;
 };
 
 export function AccountsTable({ 
@@ -27,7 +28,8 @@ export function AccountsTable({
   searchTerm, 
   selectedType,
   onEdit,
-  onDelete 
+  onDelete,
+  onAdjustBalance
 }: AccountsTableProps) {
   // Filter accounts based on search term and selected type
   const filteredAccounts = accounts.filter((account) => {
@@ -86,6 +88,10 @@ export function AccountsTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => onAdjustBalance(account)} title="Adjust Balance">
+                      <DollarSign className="h-4 w-4" />
+                      <span className="sr-only">Adjust Balance for {account.name}</span>
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => onEdit(account)}>
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Edit {account.name}</span>

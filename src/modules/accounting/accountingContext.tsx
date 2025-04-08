@@ -15,6 +15,7 @@ export type AccountingContextType = {
   createAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => Promise<Account>;
   updateAccount: (id: string, updates: Partial<Account>) => Promise<Account>;
   deleteAccount: (id: string) => Promise<void>;
+  adjustAccountBalance: (accountId: string, amount: number, description: string) => Promise<Account>;
   
   // Transaction operations
   createTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;

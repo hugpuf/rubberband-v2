@@ -13,10 +13,11 @@ import { AccountsTable } from "./accounts/AccountsTable";
 import { CreateAccountDialog } from "./accounts/CreateAccountDialog";
 import { EditAccountDialog } from "./accounts/EditAccountDialog";
 import { DeleteAccountDialog } from "./accounts/DeleteAccountDialog";
+import { AdjustBalanceDialog } from "./accounts/AdjustBalanceDialog";
 import { AccountFormValues } from "./accounts/AccountForm";
 
 export function ChartOfAccounts() {
-  const { state, getAccounts, createAccount, updateAccount, deleteAccount } = useAccounting();
+  const { state, getAccounts, createAccount, updateAccount, deleteAccount, adjustAccountBalance } = useAccounting();
   const { toast } = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export function ChartOfAccounts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<AccountType | "all">("all");
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
+  const [accountToAdjust, setAccountToAdjust] = useState<Account | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -168,6 +170,54 @@ export function ChartOfAccounts() {
     }
   };
 
+  const handleAdjustBalance = async (values: { amount: string; description: string }) => {
+    if (!accountToAdjust) return;
+    
+    try {
+      setIsSubmitting(true);
+      const amount = Number(values.amount);
+      
+      const updatedAccount = await adjustAccountBalance(
+        accountToAdjust.id,
+        amount,
+        values.description
+      );
+      
+      setAccounts((prev) =>
+        prev.map((account) =>
+          account.id === updatedAccount.id ? updatedAccount : account
+        )
+      );
+      
+      setAccountToAdjust(null);
+      
+      toast({
+        title: "Balance Adjusted",
+        description: `Account "${updatedAccount.name}" balance has been adjusted by $${Math.abs(amount).toFixed(2)}.`
+      });
+      
+      // Log user action
+      await logUserAction({
+        module: "accounting",
+        action: "adjust_account_balance",
+        recordId: updatedAccount.id,
+        metadata: { 
+          account_name: updatedAccount.name,
+          adjustment_amount: amount
+        }
+      });
+    } catch (err) {
+      console.error("Error adjusting account balance:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to adjust account balance. Please try again."
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <AccountsHeader 
@@ -194,6 +244,7 @@ export function ChartOfAccounts() {
         selectedType={selectedType}
         onEdit={setEditingAccount}
         onDelete={setAccountToDelete}
+        onAdjustBalance={setAccountToAdjust}
       />
       
       {/* Dialogs */}
@@ -216,6 +267,13 @@ export function ChartOfAccounts() {
         onConfirm={handleDeleteAccount}
         onCancel={() => setAccountToDelete(null)}
         isDeleting={isDeleting}
+      />
+      
+      <AdjustBalanceDialog
+        account={accountToAdjust}
+        onOpenChange={() => setAccountToAdjust(null)}
+        onSubmit={handleAdjustBalance}
+        isSubmitting={isSubmitting}
       />
     </div>
   );

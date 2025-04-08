@@ -352,6 +352,53 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     return accountingApi.getVendorBalance(vendorId);
   };
 
+  const adjustAccountBalance = async (
+    accountId: string,
+    amount: number,
+    description: string
+  ) => {
+    if (!organization?.id) throw new Error("Organization not found");
+    
+    try {
+      const userId = organization.id; // This is a placeholder, should be the authenticated user's ID
+      
+      const updatedAccount = await accountingApi.adjustAccountBalance(
+        organization.id,
+        userId,
+        accountId,
+        amount,
+        description
+      );
+      
+      if (!updatedAccount) {
+        throw new Error("Failed to adjust account balance");
+      }
+      
+      // Update account in state
+      setState(prev => ({
+        ...prev,
+        accounts: prev.accounts.map(account => 
+          account.id === updatedAccount.id ? updatedAccount : account
+        )
+      }));
+      
+      toast({
+        title: "Balance adjusted",
+        description: `Account "${updatedAccount.name}" balance has been adjusted.`
+      });
+      
+      return updatedAccount;
+    } catch (error) {
+      console.error("Error adjusting account balance:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to adjust account balance."
+      });
+      throw error;
+    }
+  };
+
   const contextValue = {
     state,
     initializeModule,
@@ -360,6 +407,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     createAccount,
     updateAccount,
     deleteAccount,
+    adjustAccountBalance,
     createTransaction,
     getInvoices,
     createInvoice,

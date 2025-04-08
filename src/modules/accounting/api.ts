@@ -1036,3 +1036,185 @@ export const getVendorBalance = async (vendorId: string): Promise<number> => {
     return 0;
   }
 };
+
+/**
+ * Adjust account balance by creating a transaction
+ */
+export const adjustAccountBalance = async (
+  organizationId: string,
+  userId: string,
+  accountId: string,
+  amount: number,
+  description: string
+): Promise<Account | null> => {
+  try {
+    // Create a transaction to adjust the balance
+    const transaction = {
+      date: new Date().toISOString().split('T')[0],
+      description: `Balance adjustment: ${description}`,
+      status: 'posted' as const,
+      lines: []
+    };
+    
+    // Get the account details
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('id', accountId)
+      .single();
+    
+    if (accountError) throw accountError;
+    
+    // Determine if this is a debit or credit adjustment based on account type and amount
+    let debitAmount = 0;
+    let creditAmount = 0;
+    
+    // For asset and expense accounts, debits increase the balance
+    // For liability, equity, and revenue accounts, credits increase the balance
+    const isDebitNormalAccount = account.type === 'asset' || account.type === 'expense';
+    
+    if ((isDebitNormalAccount && amount > 0) || (!isDebitNormalAccount && amount < 0)) {
+      debitAmount = Math.abs(amount);
+    } else {
+      creditAmount = Math.abs(amount);
+    }
+    
+    // Add the line for the account being adjusted
+    transaction.lines.push({
+      accountId,
+      description,
+      debitAmount,
+      creditAmount
+    });
+    
+    // Create a balancing entry to an adjustment account
+    // Find or create an adjustment account
+    let adjustmentAccount;
+    
+    const { data: existingAccounts, error: searchError } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('name', 'Balance Adjustment Account')
+      .limit(1);
+      
+    if (searchError) throw searchError;
+    
+    if (existingAccounts && existingAccounts.length > 0) {
+      adjustmentAccount = existingAccounts[0];
+    } else {
+      // Create a balance adjustment account if it doesn't exist
+      const { data: newAccount, error: createError } = await supabase
+        .from('accounts')
+        .insert({
+          organization_id: organizationId,
+          code: '9999',
+          name: 'Balance Adjustment Account',
+          type: 'equity',
+          description: 'Account used for balance adjustments',
+          is_active: true
+        })
+        .select()
+        .single();
+        
+      if (createError) throw createError;
+      adjustmentAccount = newAccount;
+    }
+    
+    // Add the balancing entry (reverse of the main entry)
+    transaction.lines.push({
+      accountId: adjustmentAccount.id,
+      description: `Balancing entry for adjustment to ${account.name}`,
+      debitAmount: creditAmount,  // Reversed
+      creditAmount: debitAmount   // Reversed
+    });
+    
+    // Create the transaction
+    const { data: createdTransaction, error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        organization_id: organizationId,
+        created_by: userId,
+        transaction_date: transaction.date,
+        description: transaction.description,
+        status: transaction.status
+      })
+      .select()
+      .single();
+      
+    if (transactionError) throw transactionError;
+    
+    // Create the transaction lines
+    const transactionLines = transaction.lines.map(line => ({
+      transaction_id: createdTransaction.id,
+      account_id: line.accountId,
+      description: line.description,
+      debit_amount: line.debitAmount,
+      credit_amount: line.creditAmount
+    }));
+    
+    const { error: linesError } = await supabase
+      .from('transaction_lines')
+      .insert(transactionLines);
+      
+    if (linesError) throw linesError;
+    
+    // Log the action
+    await logUserAction({
+      module: 'accounting',
+      action: 'adjust_account_balance',
+      recordId: accountId,
+      metadata: { 
+        account_name: account.name, 
+        adjustment_amount: amount,
+        description
+      }
+    });
+    
+    // Return the updated account with the new balance
+    return await getAccountWithBalance(accountId);
+  } catch (error) {
+    console.error('Error adjusting account balance:', error);
+    return null;
+  }
+};
+
+/**
+ * Helper function to get an account with its current balance
+ */
+const getAccountWithBalance = async (accountId: string): Promise<Account | null> => {
+  try {
+    // Get the account details
+    const { data: account, error: accountError } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('id', accountId)
+      .single();
+    
+    if (accountError) throw accountError;
+    
+    // Get the account balance
+    const { data: balanceData, error: balanceError } = await supabase
+      .from('account_balances')
+      .select('balance')
+      .eq('account_id', accountId)
+      .maybeSingle();
+      
+    if (balanceError) throw balanceError;
+    
+    return {
+      id: account.id,
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      description: account.description || undefined,
+      isActive: account.is_active,
+      balance: balanceData?.balance || 0,
+      createdAt: account.created_at,
+      updatedAt: account.updated_at
+    };
+  } catch (error) {
+    console.error('Error getting account with balance:', error);
+    return null;
+  }
+};
