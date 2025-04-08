@@ -631,27 +631,72 @@ export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 
 // For bills update and delete:
 export const updateBill = async (id: string, updates: Partial<Bill>): Promise<Bill> => {
   try {
-    // Simulation of API call to update a bill
-    console.log(`Updating bill ${id} with`, updates);
+    // Convert updates to database format
+    const updateData: any = {};
+    if (updates.vendorName !== undefined) updateData.vendor_name = updates.vendorName;
+    if (updates.vendorId !== undefined) updateData.vendor_id = updates.vendorId;
+    if (updates.billNumber !== undefined) updateData.bill_number = updates.billNumber;
+    if (updates.issueDate !== undefined) updateData.issue_date = updates.issueDate;
+    if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate;
+    if (updates.notes !== undefined) updateData.notes = updates.notes;
+    if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.subtotal !== undefined) updateData.subtotal = updates.subtotal;
+    if (updates.taxAmount !== undefined) updateData.tax_amount = updates.taxAmount;
+    if (updates.total !== undefined) updateData.total = updates.total;
     
-    // Get current bills
-    const bills = await getBills();
-    const billIndex = bills.findIndex(bill => bill.id === id);
-    
-    if (billIndex === -1) {
-      throw new Error(`Bill with id ${id} not found`);
+    updateData.updated_at = new Date().toISOString();
+
+    // Update the bill
+    const { data: updatedBill, error } = await supabase
+      .from('bills')
+      .update(updateData)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    // If there are items to update
+    if (updates.items && updates.items.length > 0) {
+      // First, delete existing items
+      const { error: deleteError } = await supabase
+        .from('bill_items')
+        .delete()
+        .eq('bill_id', id);
+
+      if (deleteError) throw deleteError;
+
+      // Then insert new items
+      const billItems = updates.items.map(item => ({
+        bill_id: id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        tax_rate: item.taxRate,
+        amount: item.amount,
+        account_id: item.accountId
+      }));
+
+      const { error: insertError } = await supabase
+        .from('bill_items')
+        .insert(billItems);
+
+      if (insertError) throw insertError;
     }
-    
-    // Create updated bill
-    const updatedBill = {
-      ...bills[billIndex],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    
-    // In a real implementation, this would be saved to the database
-    // Return the updated bill
-    return updatedBill;
+
+    // Fetch the updated bill with its items
+    const { data: billWithItems, error: fetchError } = await supabase
+      .from('bills')
+      .select(`
+        *,
+        items:bill_items(*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    return mapBillFromApi(billWithItems);
   } catch (error) {
     console.error(`Error updating bill ${id}:`, error);
     throw error;
@@ -660,58 +705,25 @@ export const updateBill = async (id: string, updates: Partial<Bill>): Promise<Bi
 
 export const deleteBill = async (id: string): Promise<boolean> => {
   try {
-    // Simulation of API call to delete a bill
-    console.log(`Deleting bill ${id}`);
-    
-    // In a real implementation, this would delete from the database
-    // For now, simulate a successful deletion
+    // Delete bill items first (should cascade, but just to be safe)
+    const { error: itemsError } = await supabase
+      .from('bill_items')
+      .delete()
+      .eq('bill_id', id);
+
+    if (itemsError) throw itemsError;
+
+    // Delete the bill
+    const { error } = await supabase
+      .from('bills')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
     return true;
   } catch (error) {
     console.error(`Error deleting bill ${id}:`, error);
-    throw error;
-  }
-};
-
-// For invoices update and delete:
-export const updateInvoice = async (id: string, updates: Partial<Invoice>): Promise<Invoice> => {
-  try {
-    // Simulation of API call to update an invoice
-    console.log(`Updating invoice ${id} with`, updates);
-    
-    // Get current invoices
-    const invoices = await getInvoices();
-    const invoiceIndex = invoices.findIndex(invoice => invoice.id === id);
-    
-    if (invoiceIndex === -1) {
-      throw new Error(`Invoice with id ${id} not found`);
-    }
-    
-    // Create updated invoice
-    const updatedInvoice = {
-      ...invoices[invoiceIndex],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    
-    // In a real implementation, this would be saved to the database
-    // Return the updated invoice
-    return updatedInvoice;
-  } catch (error) {
-    console.error(`Error updating invoice ${id}:`, error);
-    throw error;
-  }
-};
-
-export const deleteInvoice = async (id: string): Promise<boolean> => {
-  try {
-    // Simulation of API call to delete an invoice
-    console.log(`Deleting invoice ${id}`);
-    
-    // In a real implementation, this would delete from the database
-    // For now, simulate a successful deletion
-    return true;
-  } catch (error) {
-    console.error(`Error deleting invoice ${id}:`, error);
     throw error;
   }
 };
@@ -785,77 +797,4 @@ export const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedA
       .eq('id', insertedBill.id)
       .single();
 
-    if (fetchError) throw fetchError;
-
-    return mapBillFromApi(billWithItems);
-  } catch (error) {
-    console.error("Error creating bill:", error);
-    throw error;
-  }
-};
-
-export const getBills = async (): Promise<Bill[]> => {
-  try {
-    // Get the bills
-    const { data: bills, error } = await supabase
-      .from('bills')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    // For each bill, get its items
-    const billsWithItems = await Promise.all(bills.map(async (bill) => {
-      const { data: items, error: itemsError } = await supabase
-        .from('bill_items')
-        .select('*')
-        .eq('bill_id', bill.id);
-
-      if (itemsError) throw itemsError;
-
-      return {
-        ...bill,
-        items: items || []
-      };
-    }));
-
-    return billsWithItems.map(mapBillFromApi);
-  } catch (error) {
-    console.error("Error fetching bills:", error);
-    throw error;
-  }
-};
-
-export const getPayrollRuns = async (): Promise<PayrollRun[]> => {
-  // Mock implementation
-  return Promise.resolve([]);
-};
-
-export const getCustomerBalance = async (customerId: string): Promise<number> => {
-  // Mock implementation
-  return Promise.resolve(0);
-};
-
-export const getVendorBalance = async (vendorId: string): Promise<number> => {
-  // Mock implementation
-  return Promise.resolve(0);
-};
-
-export const adjustAccountBalance = async (
-  accountId: string,
-  amount: number,
-  description: string
-): Promise<Account> => {
-  // Mock implementation
-  return Promise.resolve({
-    id: accountId,
-    code: "1010",
-    name: "Cash",
-    description: "Cash on hand",
-    type: "asset",
-    balance: 1000 + amount,
-    isActive: true,
-    createdAt: "2021-08-01T00:00:00.000Z",
-    updatedAt: new Date().toISOString()
-  });
-};
+    if (fetchError) throw
