@@ -202,26 +202,26 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     return newTransaction;
   };
   
-  const fetchTransactions = async (filters?: {
-    startDate?: string;
-    endDate?: string;
-    status?: string;
-    search?: string;
-  }) => {
-    if (!organization?.id) return [];
-    
-    try {
-      return await accountingApi.fetchTransactions(organization.id, filters);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch transactions."
-      });
-      return [];
-    }
-  };
+const fetchTransactions = async (filters?: {
+  startDate?: string;
+  endDate?: string;
+  status?: 'draft' | 'posted' | 'voided';
+  search?: string;
+}) => {
+  if (!organization?.id) return [];
+  
+  try {
+    return await accountingApi.fetchTransactions(organization.id, filters);
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to fetch transactions."
+    });
+    return [];
+  }
+};
   
   const getTransactionById = async (id: string) => {
     try {
@@ -421,57 +421,60 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const updateBill = async (id: string, updates: Partial<Bill>) => {
-    if (!organization?.id) throw new Error("Organization not found");
-    
-    try {
-      const updatedBill = await accountingApi.updateExistingBill(id, updates);
-      
-      if (!updatedBill) {
-        throw new Error("Failed to update bill");
-      }
-      
-      toast({
-        title: "Bill updated",
-        description: `Bill ${updatedBill.billNumber} has been updated.`
-      });
-      
-      return updatedBill;
-    } catch (error) {
-      console.error("Error updating bill:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update bill."
-      });
-      throw error;
-    }
-  };
+const updateBill = async (id: string, updates: Partial<Bill>) => {
+  if (!organization?.id) throw new Error("Organization not found");
   
-  const deleteBill = async (id: string) => {
-    try {
-      const success = await accountingApi.deleteBill(id);
-      
-      if (!success) {
-        throw new Error("Failed to delete bill");
-      }
-      
-      toast({
-        title: "Bill deleted",
-        description: "The bill has been deleted."
-      });
-      
-      return true;
-    } catch (error) {
-      console.error("Error deleting bill:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete bill."
-      });
-      throw error;
+  try {
+    // Rename from updateExistingBill to updateBill to match the API
+    const updatedBill = await accountingApi.updateBill(id, updates);
+    
+    if (!updatedBill) {
+      throw new Error("Failed to update bill");
     }
-  };
+    
+    toast({
+      title: "Bill updated",
+      description: `Bill ${updatedBill.billNumber} has been updated.`
+    });
+    
+    return updatedBill;
+  } catch (error) {
+    console.error("Error updating bill:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to update bill."
+    });
+    throw error;
+  }
+};
+
+// Fix the deleteBill method to use the correct API function name
+const deleteBill = async (id: string) => {
+  try {
+    // Use deleteBill instead of the non-existent method
+    const success = await accountingApi.deleteBill(id);
+    
+    if (!success) {
+      throw new Error("Failed to delete bill");
+    }
+    
+    toast({
+      title: "Bill deleted",
+      description: "The bill has been deleted."
+    });
+    
+    return true;
+  } catch (error) {
+    console.error("Error deleting bill:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to delete bill."
+    });
+    throw error;
+  }
+};
   
   const getPayrollRuns = async () => {
     if (!organization?.id) return [];

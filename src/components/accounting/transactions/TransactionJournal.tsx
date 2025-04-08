@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { Transaction, Account } from "@/modules/accounting/types";
@@ -38,12 +37,11 @@ export function TransactionJournal() {
   const { toast } = useToast();
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
-  // Added this function definition to match its usage
-  const fetchTransactions = async () => {
+  // Load transactions method
+  const loadTransactions = async () => {
     setIsLoading(true);
     try {
-      // We need to implement fetchTransactions in the context
-      const fetchedTransactions = await useAccounting().fetchTransactions();
+      const fetchedTransactions = await fetchTransactions();
       setTransactions(fetchedTransactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -58,7 +56,7 @@ export function TransactionJournal() {
   };
 
   useEffect(() => {
-    fetchTransactions();
+    loadTransactions();
   }, []);
 
   const handleTransactionCreated = (newTransaction: Transaction) => {
@@ -107,7 +105,7 @@ export function TransactionJournal() {
         transactionId={selectedTransactionId} 
         onBack={() => {
           setSelectedTransactionId(null);
-          fetchTransactions(); // Refresh the list to get any updates
+          loadTransactions(); // Refresh the list to get any updates
         }}
       />
     );
@@ -168,7 +166,7 @@ export function TransactionJournal() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="sm" onClick={fetchTransactions}>
+        <Button variant="outline" size="sm" onClick={() => loadTransactions()}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>

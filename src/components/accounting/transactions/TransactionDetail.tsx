@@ -1,12 +1,14 @@
 
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
-import { Transaction, TransactionLine, Account } from "@/modules/accounting/types";
+import { Transaction, Account } from "@/modules/accounting/types";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Trash, Calendar, Check, X } from "lucide-react";
+import { ArrowLeft, Edit, Trash, FileText, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { TransactionStatusBadge } from "./TransactionStatusBadge";
+import { EditTransactionDialog } from "./EditTransactionDialog";
 import {
   Table,
   TableBody,
@@ -26,7 +28,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { EditTransactionDialog } from "./EditTransactionDialog";
 
 interface TransactionDetailProps {
   transactionId: string;
@@ -34,10 +35,10 @@ interface TransactionDetailProps {
 }
 
 export function TransactionDetail({ transactionId, onBack }: TransactionDetailProps) {
-  const { getTransactionById, updateTransaction, deleteTransaction, getAccounts } = useAccounting();
+  const { getTransactionById, deleteTransaction, updateTransaction, getAccounts } = useAccounting();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const { toast } = useToast();
 
@@ -107,11 +108,11 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
     }
   };
 
-  const handleUpdateTransactionStatus = async (status: string) => {
+  const handleUpdateTransactionStatus = async (status: "draft" | "posted" | "voided") => {
     if (!transaction) return;
     
     try {
-      const updatedTransaction = await updateTransaction(transaction.id, { status: status as any });
+      const updatedTransaction = await updateTransaction(transaction.id, { status });
       
       if (updatedTransaction) {
         setTransaction(updatedTransaction);
@@ -137,20 +138,9 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
     setShowEditDialog(false);
   };
 
-  // Find account names for each transaction line
-  const getAccountName = (accountId: string): string => {
-    const account = accounts.find(a => a.id === accountId);
-    return account ? account.name : "Unknown Account";
-  };
-
-  // Check if transaction is balanced
-  const isBalanced = (): boolean => {
-    if (!transaction) return false;
-    
-    const totalDebits = transaction.lines.reduce((sum, line) => sum + line.debitAmount, 0);
-    const totalCredits = transaction.lines.reduce((sum, line) => sum + line.creditAmount, 0);
-    
-    return Math.abs(totalDebits - totalCredits) < 0.01; // Allow for small rounding errors
+  const findAccountName = (accountId: string) => {
+    const account = accounts.find(acc => acc.id === accountId);
+    return account ? `${account.code} - ${account.name}` : "Unknown Account";
   };
 
   if (isLoading) {
@@ -172,6 +162,7 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
 
   const totalDebits = transaction.lines.reduce((sum, line) => sum + line.debitAmount, 0);
   const totalCredits = transaction.lines.reduce((sum, line) => sum + line.creditAmount, 0);
+  const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
   return (
     <div className="space-y-6">
@@ -180,18 +171,11 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
           <Button variant="outline" size="sm" onClick={onBack}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Transactions
           </Button>
-          <h2 className="text-xl font-medium">Transaction Detail</h2>
+          <h2 className="text-xl font-medium">Transaction Details</h2>
           <TransactionStatusBadge status={transaction.status} />
-          
-          {!isBalanced() && (
-            <div className="text-red-500 flex items-center">
-              <X className="h-4 w-4 mr-1" />
-              Unbalanced
-            </div>
-          )}
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)} disabled={transaction.status === 'posted'}>
+          <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)}>
             <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
           
@@ -220,51 +204,46 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Description</CardTitle>
+            <CardTitle className="text-sm font-medium">Transaction Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-semibold">{transaction.description}</div>
+            <div className="text-lg font-semibold">Date: {new Date(transaction.date).toLocaleDateString()}</div>
             {transaction.referenceNumber && (
-              <div className="text-sm text-muted-foreground mt-2">Ref: {transaction.referenceNumber}</div>
+              <div className="text-sm text-muted-foreground mt-2">Reference: {transaction.referenceNumber}</div>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Date & Status</CardTitle>
+            <CardTitle className="text-sm font-medium">Description</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-              <span>Date: {new Date(transaction.date).toLocaleDateString()}</span>
-            </div>
-            <div className="flex items-center">
-              <span>Status: <TransactionStatusBadge status={transaction.status} /></span>
-            </div>
+          <CardContent>
+            <p className="whitespace-pre-wrap">{transaction.description}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Totals</CardTitle>
+            <CardTitle className="text-sm font-medium">Balance</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between">
               <div>
-                <div className="text-sm">Total Debits</div>
-                <div className="text-lg font-bold">${totalDebits.toFixed(2)}</div>
+                <div className="text-sm">Total Debits:</div>
+                <div className="text-sm">Total Credits:</div>
+                <div className="font-semibold mt-1">Difference:</div>
               </div>
-              <div>
-                <div className="text-sm">Total Credits</div>
-                <div className="text-lg font-bold">${totalCredits.toFixed(2)}</div>
+              <div className="text-right">
+                <div className="text-sm">${totalDebits.toFixed(2)}</div>
+                <div className="text-sm">${totalCredits.toFixed(2)}</div>
+                <div className={`font-semibold mt-1 ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
+                  ${Math.abs(totalDebits - totalCredits).toFixed(2)}
+                  {isBalanced && <Check className="inline ml-1 h-4 w-4 text-green-600" />}
+                  {!isBalanced && <X className="inline ml-1 h-4 w-4 text-red-600" />}
+                </div>
               </div>
             </div>
-            {!isBalanced() && (
-              <div className="mt-2 text-red-500 text-sm">
-                Transaction is unbalanced by ${Math.abs(totalDebits - totalCredits).toFixed(2)}
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
@@ -284,21 +263,33 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transaction.lines.map((line: TransactionLine) => (
+              {transaction.lines.map((line) => (
                 <TableRow key={line.id}>
-                  <TableCell>{getAccountName(line.accountId)}</TableCell>
+                  <TableCell>{findAccountName(line.accountId)}</TableCell>
                   <TableCell>{line.description || "-"}</TableCell>
-                  <TableCell className="text-right">{line.debitAmount > 0 ? `$${line.debitAmount.toFixed(2)}` : "-"}</TableCell>
-                  <TableCell className="text-right">{line.creditAmount > 0 ? `$${line.creditAmount.toFixed(2)}` : "-"}</TableCell>
+                  <TableCell className="text-right">${line.debitAmount.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">${line.creditAmount.toFixed(2)}</TableCell>
                 </TableRow>
               ))}
-              <TableRow className="font-bold">
-                <TableCell colSpan={2}>Total</TableCell>
-                <TableCell className="text-right">${totalDebits.toFixed(2)}</TableCell>
-                <TableCell className="text-right">${totalCredits.toFixed(2)}</TableCell>
-              </TableRow>
             </TableBody>
           </Table>
+
+          <div className="flex justify-end mt-4 space-x-4">
+            <div className="text-right">
+              <div className="text-sm">Total Debits:</div>
+              <div className="text-sm">Total Credits:</div>
+              <div className="font-semibold mt-1">
+                {isBalanced ? "Balanced" : "Imbalance"}:
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm">${totalDebits.toFixed(2)}</div>
+              <div className="text-sm">${totalCredits.toFixed(2)}</div>
+              <div className={`font-semibold mt-1 ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
+                ${Math.abs(totalDebits - totalCredits).toFixed(2)}
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -320,7 +311,8 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
               variant="default" 
               size="sm" 
               onClick={() => handleUpdateTransactionStatus('posted')}
-              disabled={transaction.status === 'posted' || !isBalanced()}
+              disabled={transaction.status === 'posted' || !isBalanced}
+              title={!isBalanced ? "Transaction must be balanced to post" : ""}
             >
               <Check className="mr-2 h-4 w-4" />
               Post Transaction
@@ -331,26 +323,20 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
               onClick={() => handleUpdateTransactionStatus('voided')}
               disabled={transaction.status === 'voided'}
             >
-              Mark as Voided
+              <X className="mr-2 h-4 w-4" />
+              Void Transaction
             </Button>
           </div>
-          {!isBalanced() && transaction.status !== 'posted' && (
-            <p className="text-red-500 text-sm mt-2">
-              Transaction must be balanced before it can be posted.
-            </p>
-          )}
         </CardContent>
       </Card>
 
-      {transaction.status !== 'posted' && (
-        <EditTransactionDialog
-          open={showEditDialog}
-          onOpenChange={setShowEditDialog}
-          transaction={transaction}
-          accounts={accounts}
-          onTransactionUpdated={handleTransactionUpdated}
-        />
-      )}
+      <EditTransactionDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        transaction={transaction}
+        accounts={accounts}
+        onTransactionUpdated={handleTransactionUpdated}
+      />
     </div>
   );
 }

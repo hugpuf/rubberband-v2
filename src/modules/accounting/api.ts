@@ -996,115 +996,60 @@ export const createInvoice = async (
 /**
  * Updates an existing invoice
  */
-export const updateExistingInvoice = async (
-  invoiceId: string,
-  invoiceData: Partial<Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>>
-): Promise<Invoice | null> => {
+export const updateBill = async (
+  billId: string,
+  billData: Partial<Bill>
+): Promise<Bill | null> => {
   try {
-    // Get the invoice to update (including organization_id)
-    const { data: existingInvoice, error: getError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', invoiceId)
-      .single();
-      
-    if (getError) throw getError;
+    // Format data for the database
+    const dbUpdates: Record<string, any> = {};
     
-    // Prepare updates
-    const updates: Record<string, any> = {};
+    if (billData.billNumber !== undefined) dbUpdates.bill_number = billData.billNumber;
+    if (billData.vendorName !== undefined) dbUpdates.contact_name = billData.vendorName;
+    if (billData.issueDate !== undefined) dbUpdates.issue_date = billData.issueDate;
+    if (billData.dueDate !== undefined) dbUpdates.due_date = billData.dueDate;
+    if (billData.status !== undefined) dbUpdates.status = billData.status;
+    if (billData.notes !== undefined) dbUpdates.notes = billData.notes;
+    if (billData.subtotal !== undefined) dbUpdates.subtotal = billData.subtotal;
+    if (billData.taxAmount !== undefined) dbUpdates.tax_amount = billData.taxAmount;
+    if (billData.total !== undefined) dbUpdates.total = billData.total;
     
-    if (invoiceData.invoiceNumber) updates.invoice_number = invoiceData.invoiceNumber;
-    if (invoiceData.issueDate) updates.issue_date = invoiceData.issueDate;
-    if (invoiceData.dueDate) updates.due_date = invoiceData.dueDate;
-    if (invoiceData.subtotal !== undefined) updates.subtotal = invoiceData.subtotal;
-    if (invoiceData.taxAmount !== undefined) updates.tax_amount = invoiceData.taxAmount;
-    if (invoiceData.total !== undefined) updates.total = invoiceData.total;
-    if (invoiceData.status) updates.status = invoiceData.status;
-    if (invoiceData.notes !== undefined) updates.notes = invoiceData.notes || null;
+    // Always update the updated_at timestamp
+    dbUpdates.updated_at = new Date().toISOString();
     
-    // Update customer if needed
-    if (invoiceData.customerId && invoiceData.customerName) {
-      const customerId = await createOrUpdateContact(
-        existingInvoice.organization_id,
-        {
-          name: invoiceData.customerName,
-          type: 'customer'
-        }
-      );
-      
-      if (customerId) {
-        updates.contact_id = customerId;
-      }
-    }
-    
-    // Update invoice
-    const { data: updatedInvoice, error } = await supabase
-      .from('invoices')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', invoiceId)
-      .select()
+    const { data, error } = await supabase
+      .from('bills')
+      .update(dbUpdates)
+      .eq('id', billId)
+      .select(`
+        *,
+        items:bill_items(*)
+      `)
       .single();
       
     if (error) throw error;
     
-    // Update invoice items if provided
-    if (invoiceData.items) {
-      // Delete existing items
-      const { error: deleteError } = await supabase
-        .from('invoice_items')
-        .delete()
-        .eq('invoice_id', invoiceId);
-        
-      if (deleteError) throw deleteError;
-      
-      // Create new items
-      const invoiceItems = invoiceData.items.map(item => ({
-        invoice_id: invoiceId,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        tax_rate: item.taxRate,
-        amount: item.amount
-      }));
-      
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(invoiceItems);
-        
-      if (itemsError) throw itemsError;
-    }
+    if (!data) return null;
     
-    // Get the updated invoice items
-    const { data: updatedItems, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', invoiceId);
-      
-    if (itemsError) throw itemsError;
+    // Log the action
+    await logUserAction({
+      module: 'accounting',
+      action: 'update_bill',
+      recordId: data.id,
+      metadata: { bill_number: data.bill_number }
+    });
     
-    // Get the customer name
-    const { data: contact } = await supabase
-      .from('contacts')
-      .select('name')
-      .eq('id', updatedInvoice.contact_id)
-      .single();
-      
+    // Map database bill to our Bill type
+    const billItems = data.items as any[];
+    
     return {
-      id: updatedInvoice.id,
-      invoiceNumber: updatedInvoice.invoice_number,
-      customerId: updatedInvoice.contact_id,
-      customerName: contact?.name || 'Unknown Customer',
-      issueDate: updatedInvoice.issue_date,
-      dueDate: updatedInvoice.due_date,
-      subtotal: updatedInvoice.subtotal,
-      taxAmount: updatedInvoice.tax_amount,
-      total: updatedInvoice.total,
-      status: updatedInvoice.status as Invoice['status'],
-      notes: updatedInvoice.notes || undefined,
-      items: updatedItems.map(item => ({
+      id: data.id,
+      billNumber: data.bill_number,
+      vendorId: data.contact_id,
+      vendorName: data.contact_name || 'Unknown Vendor',
+      issueDate: data.issue_date,
+      dueDate: data.due_date,
+      items: billItems.map(item => ({
         id: item.id,
         description: item.description,
         quantity: item.quantity,
@@ -1112,38 +1057,51 @@ export const updateExistingInvoice = async (
         taxRate: item.tax_rate,
         amount: item.amount
       })),
-      createdAt: updatedInvoice.created_at,
-      updatedAt: updatedInvoice.updated_at
+      subtotal: data.subtotal,
+      taxAmount: data.tax_amount,
+      total: data.total,
+      status: data.status as Bill['status'],
+      notes: data.notes || undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
     };
   } catch (error) {
-    console.error('Error updating invoice:', error);
+    console.error('Error updating bill:', error);
     return null;
   }
 };
 
 /**
- * Deletes an invoice
+ * Deletes a bill
  */
-export const deleteInvoice = async (invoiceId: string): Promise<boolean> => {
+export const deleteBill = async (billId: string): Promise<boolean> => {
   try {
-    // Delete the invoice (will cascade to items due to foreign key constraints)
-    const { error } = await supabase
-      .from('invoices')
+    // First delete all bill items
+    const { error: itemsError } = await supabase
+      .from('bill_items')
       .delete()
-      .eq('id', invoiceId);
+      .eq('bill_id', billId);
+      
+    if (itemsError) throw itemsError;
+    
+    // Then delete the bill
+    const { error } = await supabase
+      .from('bills')
+      .delete()
+      .eq('id', billId);
       
     if (error) throw error;
     
     // Log the action
     await logUserAction({
       module: 'accounting',
-      action: 'delete_invoice',
-      recordId: invoiceId
+      action: 'delete_bill',
+      recordId: billId
     });
     
     return true;
   } catch (error) {
-    console.error('Error deleting invoice:', error);
+    console.error('Error deleting bill:', error);
     return false;
   }
 };
