@@ -171,17 +171,21 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   
   const deleteAccount = async (id: string) => {
     try {
-      await accountingApi.deleteAccount(id);
+      const success = await accountingApi.deleteAccount(id);
       
-      setState(prev => ({
-        ...prev,
-        accounts: prev.accounts.filter(account => account.id !== id)
-      }));
+      if (success) {
+        setState(prev => ({
+          ...prev,
+          accounts: prev.accounts.filter(account => account.id !== id)
+        }));
+        
+        toast({
+          title: "Account deleted",
+          description: "The account has been deleted."
+        });
+      }
       
-      toast({
-        title: "Account deleted",
-        description: "The account has been deleted."
-      });
+      return success;
     } catch (error) {
       console.error("Error deleting account:", error);
       toast({
@@ -334,22 +338,45 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   const updateInvoice = async (id: string, updates: Partial<Invoice>): Promise<Invoice> => {
     try {
       const result = await accountingApi.updateInvoice(id, updates);
-      if (result) {
-        console.log('Invoice updated successfully:', result);
-      }
+      console.log('Invoice updated successfully:', result);
+      
+      toast({
+        title: "Invoice updated",
+        description: `Invoice has been updated successfully.`
+      });
+      
       return result;
     } catch (error) {
       console.error('Error updating invoice:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update invoice."
+      });
       throw error;
     }
   };
   
-  const deleteInvoice = async (id: string): Promise<void> => {
+  const deleteInvoice = async (id: string): Promise<boolean> => {
     try {
-      await accountingApi.deleteInvoice(id);
-      console.log('Invoice deleted successfully');
+      const success = await accountingApi.deleteInvoice(id);
+      console.log('Invoice deletion result:', success);
+      
+      if (success) {
+        toast({
+          title: "Invoice deleted",
+          description: "The invoice has been deleted successfully."
+        });
+      }
+      
+      return success;
     } catch (error) {
       console.error('Error deleting invoice:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete invoice."
+      });
       throw error;
     }
   };
@@ -394,9 +421,8 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   const updateBill = async (id: string, updates: Partial<Bill>): Promise<Bill> => {
     try {
       const result = await accountingApi.updateBill(id, updates);
-      if (result) {
-        console.log('Bill updated successfully:', result);
-      }
+      console.log('Bill updated successfully:', result);
+      
       return result;
     } catch (error) {
       console.error('Error updating bill:', error);
@@ -408,9 +434,22 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     try {
       const success = await accountingApi.deleteBill(id);
       console.log('Bill deletion result:', success);
+      
+      if (success) {
+        toast({
+          title: "Bill deleted",
+          description: "The bill has been deleted successfully."
+        });
+      }
+      
       return success;
     } catch (error) {
       console.error('Error deleting bill:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete bill."
+      });
       throw error;
     }
   };

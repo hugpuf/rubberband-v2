@@ -14,7 +14,7 @@ export type AccountingContextType = {
   getAccounts: () => Promise<Account[]>;
   createAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => Promise<Account>;
   updateAccount: (id: string, updates: Partial<Account>) => Promise<Account>;
-  deleteAccount: (id: string) => Promise<void>;
+  deleteAccount: (id: string) => Promise<boolean>;
   adjustAccountBalance: (accountId: string, amount: number, description: string) => Promise<Account>;
   
   // Transaction operations
@@ -28,7 +28,7 @@ export type AccountingContextType = {
   getInvoices: () => Promise<Invoice[]>;
   createInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Invoice>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<Invoice>;
-  deleteInvoice: (id: string) => Promise<void>;
+  deleteInvoice: (id: string) => Promise<boolean>;
   
   // Bill operations
   getBills: () => Promise<Bill[]>;

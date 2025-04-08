@@ -1,3 +1,4 @@
+
 import { Account, Transaction, Invoice, Bill, BillItem, PayrollRun, AccountingModuleConfig } from "./types";
 
 // Use Vite's import.meta.env instead of process.env
@@ -82,13 +83,38 @@ const mapInvoiceItemFromApi = (data: any): any => ({
 });
 
 const mapInvoiceFromApi = (data: any): Invoice => {
+  // Map API status to our application status
+  let mappedStatus: Invoice['status'];
+  switch(data.status) {
+    case "posted":
+      mappedStatus = "sent";
+      break;
+    case "draft":
+      mappedStatus = "draft";
+      break;
+    case "paid":
+      mappedStatus = "paid";
+      break;
+    case "overdue":
+      mappedStatus = "overdue";
+      break;
+    case "cancelled":
+      mappedStatus = "cancelled";
+      break;
+    case "partially_paid":
+      mappedStatus = "partially_paid";
+      break;
+    default:
+      mappedStatus = "draft";
+  }
+
   return {
     id: data.id,
     invoiceNumber: data.invoice_number,
     customerId: data.contact_id || "",
     customerName: data.customer_name || "Unknown Customer",
     notes: data.notes,
-    status: data.status === "posted" ? "sent" : data.status,
+    status: mappedStatus,
     issueDate: data.issue_date,
     dueDate: data.due_date,
     subtotal: data.subtotal,
@@ -277,9 +303,9 @@ export const updateAccount = async (id: string, updates: Partial<Account>): Prom
   });
 };
 
-export const deleteAccount = async (id: string): Promise<void> => {
-  // Mock data
-  return Promise.resolve();
+export const deleteAccount = async (id: string): Promise<boolean> => {
+  // Mock data - return true to indicate successful deletion
+  return Promise.resolve(true);
 };
 
 // --- Transaction API ---
@@ -592,24 +618,24 @@ export const updateBill = async (id: string, updates: Partial<Bill>): Promise<Bi
     // Simulation of API call to update a bill
     console.log(`Updating bill ${id} with`, updates);
     
-    // For now, simulate a successful response
-    return {
-      id,
+    // Get current bills
+    const bills = await getBills();
+    const billIndex = bills.findIndex(bill => bill.id === id);
+    
+    if (billIndex === -1) {
+      throw new Error(`Bill with id ${id} not found`);
+    }
+    
+    // Create updated bill
+    const updatedBill = {
+      ...bills[billIndex],
       ...updates,
-      billNumber: updates.billNumber || `BILL-${Math.floor(Math.random() * 10000)}`,
-      vendorId: updates.vendorId || "vendor-1",
-      vendorName: updates.vendorName || "Updated Vendor",
-      status: updates.status || "draft",
-      issueDate: updates.issueDate || new Date().toISOString().slice(0, 10),
-      dueDate: updates.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().slice(0, 10),
-      subtotal: updates.subtotal || 0,
-      taxAmount: updates.taxAmount || 0,
-      total: updates.total || 0,
-      items: updates.items || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      notes: updates.notes || ""
-    } as Bill;
+      updatedAt: new Date().toISOString()
+    };
+    
+    // In a real implementation, this would be saved to the database
+    // Return the updated bill
+    return updatedBill;
   } catch (error) {
     console.error(`Error updating bill ${id}:`, error);
     throw error;
@@ -621,6 +647,7 @@ export const deleteBill = async (id: string): Promise<boolean> => {
     // Simulation of API call to delete a bill
     console.log(`Deleting bill ${id}`);
     
+    // In a real implementation, this would delete from the database
     // For now, simulate a successful deletion
     return true;
   } catch (error) {
@@ -635,38 +662,38 @@ export const updateInvoice = async (id: string, updates: Partial<Invoice>): Prom
     // Simulation of API call to update an invoice
     console.log(`Updating invoice ${id} with`, updates);
     
-    // For now, simulate a successful response
-    return {
-      id,
+    // Get current invoices
+    const invoices = await getInvoices();
+    const invoiceIndex = invoices.findIndex(invoice => invoice.id === id);
+    
+    if (invoiceIndex === -1) {
+      throw new Error(`Invoice with id ${id} not found`);
+    }
+    
+    // Create updated invoice
+    const updatedInvoice = {
+      ...invoices[invoiceIndex],
       ...updates,
-      invoiceNumber: updates.invoiceNumber || `INV-${Math.floor(Math.random() * 10000)}`,
-      customerId: updates.customerId || "cust-1",
-      customerName: updates.customerName || "Updated Customer",
-      status: updates.status || "draft",
-      issueDate: updates.issueDate || new Date().toISOString().slice(0, 10),
-      dueDate: updates.dueDate || new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().slice(0, 10),
-      subtotal: updates.subtotal || 0,
-      taxAmount: updates.taxAmount || 0,
-      total: updates.total || 0,
-      items: updates.items || [],
-      createdAt: updates.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      notes: updates.notes || ""
-    } as Invoice;
+      updatedAt: new Date().toISOString()
+    };
+    
+    // In a real implementation, this would be saved to the database
+    // Return the updated invoice
+    return updatedInvoice;
   } catch (error) {
     console.error(`Error updating invoice ${id}:`, error);
     throw error;
   }
 };
 
-export const deleteInvoice = async (id: string): Promise<void> => {
+export const deleteInvoice = async (id: string): Promise<boolean> => {
   try {
     // Simulation of API call to delete an invoice
     console.log(`Deleting invoice ${id}`);
     
-    // In a real implementation, we would use Supabase or another API
+    // In a real implementation, this would delete from the database
     // For now, simulate a successful deletion
-    return Promise.resolve();
+    return true;
   } catch (error) {
     console.error(`Error deleting invoice ${id}:`, error);
     throw error;
@@ -735,10 +762,9 @@ export const getBills = async (): Promise<Bill[]> => {
           description: "Office supplies",
           quantity: 1,
           unitPrice: 500,
-          total: 500,
+          amount: 500,
           accountId: "6",
-          taxRate: 10,
-          amount: 500
+          taxRate: 10
         }
       ],
       createdAt: "2024-01-15T00:00:00.000Z",
