@@ -1,4 +1,4 @@
-import { Account, Transaction, Invoice, Bill, BillItem, PayrollRun } from "./types";
+import { Account, Transaction, Invoice, Bill, BillItem, PayrollRun, AccountingModuleConfig } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
@@ -22,7 +22,6 @@ const mapAccountFromApi = (data: any): Account => ({
   description: data.description || '',
   type: data.type,
   balance: data.balance,
-  currency: data.currency,
   isActive: data.is_active,
   createdAt: data.created_at,
   updatedAt: data.updated_at,
@@ -34,7 +33,6 @@ const mapAccountToApiFormat = (account: Omit<Account, 'id' | 'createdAt' | 'upda
   name: account.name,
   description: account.description,
   type: account.type,
-  currency: account.currency,
   is_active: account.isActive,
 });
 
@@ -74,19 +72,21 @@ const mapTransactionToApiFormat = (transaction: Omit<Transaction, 'id' | 'create
 
 const mapInvoiceItemFromApi = (data: any): any => ({
   id: data.id,
-  name: data.name,
   description: data.description,
   quantity: data.quantity,
   unitPrice: data.unit_price,
   total: data.total,
   accountId: data.account_id,
+  taxRate: data.tax_rate || 0,
+  amount: data.amount || 0,
 });
 
 const mapInvoiceFromApi = (data: any): Invoice => {
   return {
     id: data.id,
     invoiceNumber: data.invoice_number,
-    customerName: data.customer_id ? data.customer_name || "Unknown Customer" : "Unknown Customer",
+    customerId: data.contact_id || "",
+    customerName: data.customer_name || "Unknown Customer",
     notes: data.notes,
     status: data.status,
     issueDate: data.issue_date,
@@ -102,12 +102,13 @@ const mapInvoiceFromApi = (data: any): Invoice => {
 
 const mapBillItemFromApi = (data: any): BillItem => ({
   id: data.id,
-  name: data.name,
   description: data.description,
   quantity: data.quantity,
   unitPrice: data.unit_price,
   total: data.total,
   accountId: data.account_id,
+  taxRate: data.tax_rate || 0,
+  amount: data.amount || 0,
 });
 
 // Map API bill data to our Bill type
@@ -115,7 +116,8 @@ const mapBillFromApi = (data: any): Bill => {
   return {
     id: data.id,
     billNumber: data.bill_number,
-    vendorName: data.contact_id ? data.vendor_name || "Unknown Vendor" : "Unknown Vendor",
+    vendorId: data.contact_id || "",
+    vendorName: data.vendor_name || "Unknown Vendor",
     notes: data.notes,
     status: data.status,
     issueDate: data.issue_date,
@@ -140,7 +142,6 @@ export const getAccounts = async (): Promise<Account[]> => {
       "description": "Cash on hand",
       "type": "asset",
       "balance": 1000,
-      "currency": "USD",
       "isActive": true,
       "createdAt": "2021-08-01T00:00:00.000Z",
       "updatedAt": "2021-08-01T00:00:00.000Z"
@@ -265,7 +266,6 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
     description: account.description || '',
     type: account.type,
     balance: 0,
-    currency: account.currency,
     isActive: account.isActive,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -281,16 +281,15 @@ export const updateAccount = async (id: string, updates: Partial<Account>): Prom
     description: updates.description || 'Cash on hand',
     type: updates.type || 'asset',
     balance: 1000,
-    currency: updates.currency || 'USD',
     isActive: updates.isActive !== undefined ? updates.isActive : true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
 };
 
-export const deleteAccount = async (id: string): Promise<void> => {
+export const deleteAccount = async (id: string): Promise<boolean> => {
   // Mock data
-  return Promise.resolve();
+  return Promise.resolve(true);
 };
 
 // --- Transaction API ---
@@ -499,6 +498,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
     {
       "id": "1",
       "invoiceNumber": "INV-2024-001",
+      "customerId": "cust-1",
       "customerName": "Customer A",
       "notes": "Invoice for services rendered in January",
       "status": "posted",
@@ -510,11 +510,11 @@ export const getInvoices = async (): Promise<Invoice[]> => {
       "items": [
         {
           "id": "1",
-          "name": "Service 1",
           "description": "Consulting services",
           "quantity": 10,
           "unitPrice": 500,
-          "total": 5000,
+          "taxRate": 10,
+          "amount": 5000,
           "accountId": "1"
         }
       ],
@@ -524,6 +524,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
     {
       "id": "2",
       "invoiceNumber": "INV-2024-002",
+      "customerId": "cust-2",
       "customerName": "Customer B",
       "notes": "Invoice for product sales in January",
       "status": "draft",
@@ -535,11 +536,11 @@ export const getInvoices = async (): Promise<Invoice[]> => {
       "items": [
         {
           "id": "2",
-          "name": "Product X",
-          "description": "Sales of product X",
+          "description": "Product X",
           "quantity": 20,
           "unitPrice": 100,
-          "total": 2000,
+          "taxRate": 10,
+          "amount": 2000,
           "accountId": "2"
         }
       ],
@@ -549,6 +550,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
     {
       "id": "3",
       "invoiceNumber": "INV-2024-003",
+      "customerId": "cust-3",
       "customerName": "Customer C",
       "notes": "Invoice for maintenance services in January",
       "status": "posted",
@@ -560,11 +562,11 @@ export const getInvoices = async (): Promise<Invoice[]> => {
       "items": [
         {
           "id": "3",
-          "name": "Maintenance Service",
-          "description": "Regular maintenance services",
+          "description": "Maintenance Service",
           "quantity": 1,
           "unitPrice": 3000,
-          "total": 3000,
+          "taxRate": 10,
+          "amount": 3000,
           "accountId": "3"
         }
       ],
@@ -579,6 +581,7 @@ export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 
   return Promise.resolve({
     id: Math.random().toString(36).substring(7),
     invoiceNumber: 'INV-' + Math.floor(Math.random() * 10000),
+    customerId: invoice.customerId,
     customerName: invoice.customerName,
     notes: invoice.notes,
     status: invoice.status,
@@ -599,20 +602,12 @@ export const updateBill = async (id: string, updates: Partial<Bill>): Promise<Bi
     // Simulation of API call to update a bill
     console.log(`Updating bill ${id} with`, updates);
     
-    // In a real implementation, we would use Supabase or another API
-    // Example of a Supabase implementation:
-    // const { data, error } = await supabase
-    //   .from('bills')
-    //   .update(mapBillToApiFormat(updates))
-    //   .eq('id', id)
-    //   .select()
-    //   .single();
-    
     // For now, simulate a successful response
     return {
       id,
       ...updates,
       billNumber: updates.billNumber || `BILL-${Math.floor(Math.random() * 10000)}`,
+      vendorId: updates.vendorId || "vendor-1",
       vendorName: updates.vendorName || "Updated Vendor",
       status: updates.status || "draft",
       issueDate: updates.issueDate || new Date().toISOString().slice(0, 10),
@@ -636,13 +631,6 @@ export const deleteBill = async (id: string): Promise<boolean> => {
     // Simulation of API call to delete a bill
     console.log(`Deleting bill ${id}`);
     
-    // In a real implementation, we would use Supabase or another API
-    // Example of a Supabase implementation:
-    // const { error } = await supabase
-    //   .from('bills')
-    //   .delete()
-    //   .eq('id', id);
-    
     // For now, simulate a successful deletion
     return true;
   } catch (error) {
@@ -657,12 +645,12 @@ export const updateInvoice = async (id: string, updates: Partial<Invoice>): Prom
     // Simulation of API call to update an invoice
     console.log(`Updating invoice ${id} with`, updates);
     
-    // In a real implementation, we would use Supabase or another API
     // For now, simulate a successful response
     return {
       id,
       ...updates,
       invoiceNumber: updates.invoiceNumber || `INV-${Math.floor(Math.random() * 10000)}`,
+      customerId: updates.customerId || "cust-1",
       customerName: updates.customerName || "Updated Customer",
       status: updates.status || "draft",
       issueDate: updates.issueDate || new Date().toISOString().slice(0, 10),
@@ -693,4 +681,112 @@ export const deleteInvoice = async (id: string): Promise<void> => {
     console.error(`Error deleting invoice ${id}:`, error);
     throw error;
   }
+};
+
+// Additional API functions needed by AccountingProvider:
+export const getAccountingConfig = async (organizationId: string): Promise<AccountingModuleConfig> => {
+  // Mock implementation
+  return Promise.resolve({
+    defaultCurrency: "USD",
+    fiscalYearStart: "01-01",
+    taxRate: 10,
+    isEnabled: true
+  });
+};
+
+export const updateAccountingConfig = async (organizationId: string, config: Partial<AccountingModuleConfig>): Promise<AccountingModuleConfig> => {
+  // Mock implementation
+  return Promise.resolve({
+    defaultCurrency: config.defaultCurrency || "USD",
+    fiscalYearStart: config.fiscalYearStart || "01-01",
+    taxRate: config.taxRate !== undefined ? config.taxRate : 10,
+    isEnabled: config.isEnabled !== undefined ? config.isEnabled : true
+  });
+};
+
+export const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>): Promise<Bill> => {
+  // Mock implementation
+  return Promise.resolve({
+    id: Math.random().toString(36).substring(7),
+    billNumber: `BILL-${Math.floor(Math.random() * 10000)}`,
+    vendorId: bill.vendorId,
+    vendorName: bill.vendorName,
+    notes: bill.notes,
+    status: bill.status,
+    issueDate: bill.issueDate,
+    dueDate: bill.dueDate,
+    subtotal: bill.subtotal,
+    taxAmount: bill.taxAmount,
+    total: bill.total,
+    items: bill.items,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+};
+
+export const getBills = async (): Promise<Bill[]> => {
+  // Mock implementation
+  return Promise.resolve([
+    {
+      id: "bill-1",
+      billNumber: "BILL-1001",
+      vendorId: "vendor-1",
+      vendorName: "Vendor Company A",
+      notes: "Monthly office supplies",
+      status: "paid",
+      issueDate: "2024-01-15",
+      dueDate: "2024-02-15",
+      subtotal: 500,
+      taxAmount: 50,
+      total: 550,
+      items: [
+        {
+          id: "bill-item-1",
+          description: "Office supplies",
+          quantity: 1,
+          unitPrice: 500,
+          total: 500,
+          accountId: "6",
+          taxRate: 10,
+          amount: 500
+        }
+      ],
+      createdAt: "2024-01-15T00:00:00.000Z",
+      updatedAt: "2024-01-15T00:00:00.000Z"
+    }
+  ]);
+};
+
+export const getPayrollRuns = async (): Promise<PayrollRun[]> => {
+  // Mock implementation
+  return Promise.resolve([]);
+};
+
+export const getCustomerBalance = async (customerId: string): Promise<number> => {
+  // Mock implementation
+  return Promise.resolve(0);
+};
+
+export const getVendorBalance = async (vendorId: string): Promise<number> => {
+  // Mock implementation
+  return Promise.resolve(0);
+};
+
+export const adjustAccountBalance = async (
+  accountId: string,
+  amount: number,
+  description: string
+): Promise<Account> => {
+  // Mock implementation
+  return Promise.resolve({
+    id: accountId,
+    code: "1010",
+    name: "Cash",
+    description: "Cash on hand",
+    type: "asset",
+    balance: 1000 + amount,
+    isActive: true,
+    createdAt: "2021-08-01T00:00:00.000Z",
+    updatedAt: new Date().toISOString()
+  });
 };

@@ -49,6 +49,7 @@ export type InvoiceItem = {
   unitPrice: number;
   taxRate: number;
   amount: number;
+  accountId: string;
 };
 
 export type Invoice = {
@@ -75,6 +76,7 @@ export type BillItem = {
   unitPrice: number;
   taxRate: number;
   amount: number;
+  accountId: string;
 };
 
 export type Bill = {

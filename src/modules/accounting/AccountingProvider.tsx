@@ -1,3 +1,4 @@
+
 import { ReactNode, useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +43,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     try {
       const config = await accountingApi.getAccountingConfig(organization.id);
       
-      const accounts = await accountingApi.fetchAccounts(organization.id);
+      const accounts = await accountingApi.getAccounts();
       
       setState({
         isLoading: false,
@@ -71,11 +72,11 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     if (!organization?.id) return;
     
     try {
-      await accountingApi.updateAccountingConfig(organization.id, configUpdates);
+      const updatedConfig = await accountingApi.updateAccountingConfig(organization.id, configUpdates);
       
       setState(prev => ({
         ...prev,
-        config: prev.config ? { ...prev.config, ...configUpdates } : null
+        config: updatedConfig
       }));
       
       toast({
@@ -96,7 +97,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     if (!organization?.id) return [];
     
     try {
-      const accounts = await accountingApi.fetchAccounts(organization.id);
+      const accounts = await accountingApi.getAccounts();
       
       setState(prev => ({
         ...prev,
@@ -116,104 +117,120 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const createAccount = async (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => {
-    if (!organization?.id) throw new Error("Organization not found");
-    
-    const newAccount = await accountingApi.createAccount(organization.id, accountData);
-    
-    if (!newAccount) {
-      throw new Error("Failed to create account");
+    try {
+      const newAccount = await accountingApi.createAccount(accountData);
+      
+      setState(prev => ({
+        ...prev,
+        accounts: [...prev.accounts, newAccount]
+      }));
+      
+      toast({
+        title: "Account created",
+        description: `Account "${newAccount.name}" has been created.`
+      });
+      
+      return newAccount;
+    } catch (error) {
+      console.error("Error creating account:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create account."
+      });
+      throw error;
     }
-    
-    setState(prev => ({
-      ...prev,
-      accounts: [...prev.accounts, newAccount]
-    }));
-    
-    toast({
-      title: "Account created",
-      description: `Account "${newAccount.name}" has been created.`
-    });
-    
-    return newAccount;
   };
   
   const updateAccount = async (id: string, updates: Partial<Account>) => {
-    const updatedAccount = await accountingApi.updateAccount(id, updates);
-    
-    if (!updatedAccount) {
-      throw new Error("Failed to update account");
+    try {
+      const updatedAccount = await accountingApi.updateAccount(id, updates);
+      
+      setState(prev => ({
+        ...prev,
+        accounts: prev.accounts.map(account => 
+          account.id === updatedAccount.id ? updatedAccount : account
+        )
+      }));
+      
+      toast({
+        title: "Account updated",
+        description: `Account "${updatedAccount.name}" has been updated.`
+      });
+      
+      return updatedAccount;
+    } catch (error) {
+      console.error("Error updating account:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update account."
+      });
+      throw error;
     }
-    
-    setState(prev => ({
-      ...prev,
-      accounts: prev.accounts.map(account => 
-        account.id === updatedAccount.id ? updatedAccount : account
-      )
-    }));
-    
-    toast({
-      title: "Account updated",
-      description: `Account "${updatedAccount.name}" has been updated.`
-    });
-    
-    return updatedAccount;
   };
   
   const deleteAccount = async (id: string) => {
-    const success = await accountingApi.deleteAccount(id);
-    
-    if (!success) {
-      throw new Error("Failed to delete account");
+    try {
+      const success = await accountingApi.deleteAccount(id);
+      
+      setState(prev => ({
+        ...prev,
+        accounts: prev.accounts.filter(account => account.id !== id)
+      }));
+      
+      toast({
+        title: "Account deleted",
+        description: "The account has been deleted."
+      });
+      
+      return success;
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete account."
+      });
+      throw error;
     }
-    
-    setState(prev => ({
-      ...prev,
-      accounts: prev.accounts.filter(account => account.id !== id)
-    }));
-    
-    toast({
-      title: "Account deleted",
-      description: "The account has been deleted."
-    });
   };
   
   const createTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!organization?.id) throw new Error("Organization not found");
-    
-    const userId = organization.id; // This is a placeholder, should be the authenticated user's ID
-    
-    const newTransaction = await accountingApi.createTransaction(
-      organization.id,
-      userId,
-      transaction as any
-    );
-    
-    if (!newTransaction) {
-      throw new Error("Failed to create transaction");
+    try {
+      const newTransaction = await accountingApi.createTransaction(transaction);
+      
+      if (!newTransaction) {
+        throw new Error("Failed to create transaction");
+      }
+      
+      toast({
+        title: "Transaction created",
+        description: `Transaction has been recorded.`
+      });
+      
+      await getAccounts();
+      
+      return newTransaction;
+    } catch (error) {
+      console.error("Error creating transaction:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create transaction."
+      });
+      throw error;
     }
-    
-    toast({
-      title: "Transaction created",
-      description: `Transaction has been recorded.`
-    });
-    
-    await getAccounts();
-    
-    return newTransaction;
   };
   
   const fetchTransactions = async (filters?: { 
     startDate?: string; 
     endDate?: string; 
-    status?: "draft" | "posted" | "voided"; 
+    status?: string; 
     search?: string;
   }): Promise<Transaction[]> => {
     try {
-      const result = await accountingApi.fetchTransactions(filters);
-      if (result) {
-        console.log(`Fetched ${result.length} transactions`);
-      }
-      return result;
+      return await accountingApi.fetchTransactions(filters);
     } catch (error) {
       console.error('Error fetching transactions:', error);
       throw error;
@@ -263,16 +280,12 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     try {
       const success = await accountingApi.deleteTransaction(id);
       
-      if (!success) {
-        throw new Error("Failed to delete transaction");
-      }
-      
       toast({
         title: "Transaction deleted",
         description: "The transaction has been deleted."
       });
       
-      return true;
+      return success;
     } catch (error) {
       console.error("Error deleting transaction:", error);
       toast({
@@ -288,7 +301,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     if (!organization?.id) return [];
     
     try {
-      return await accountingApi.fetchInvoices(organization.id);
+      return await accountingApi.getInvoices();
     } catch (error) {
       console.error("Error fetching invoices:", error);
       toast({
@@ -301,14 +314,8 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!organization?.id) throw new Error("Organization not found");
-    
     try {
-      const newInvoice = await accountingApi.createInvoice(organization.id, invoice);
-      
-      if (!newInvoice) {
-        throw new Error("Failed to create invoice");
-      }
+      const newInvoice = await accountingApi.createInvoice(invoice);
       
       toast({
         title: "Invoice created",
@@ -354,7 +361,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     if (!organization?.id) return [];
     
     try {
-      return await accountingApi.fetchBills(organization.id);
+      return await accountingApi.getBills();
     } catch (error) {
       console.error("Error fetching bills:", error);
       toast({
@@ -367,14 +374,8 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
   };
   
   const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!organization?.id) throw new Error("Organization not found");
-    
     try {
-      const newBill = await accountingApi.createBill(organization.id, bill);
-      
-      if (!newBill) {
-        throw new Error("Failed to create bill");
-      }
+      const newBill = await accountingApi.createBill(bill);
       
       toast({
         title: "Bill created",
@@ -421,7 +422,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     if (!organization?.id) return [];
     
     try {
-      return await accountingApi.fetchPayrollRuns(organization.id);
+      return await accountingApi.getPayrollRuns();
     } catch (error) {
       console.error("Error fetching payroll runs:", error);
       toast({
@@ -446,22 +447,12 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     amount: number,
     description: string
   ) => {
-    if (!organization?.id) throw new Error("Organization not found");
-    
     try {
-      const userId = organization.id; // This is a placeholder, should be the authenticated user's ID
-      
       const updatedAccount = await accountingApi.adjustAccountBalance(
-        organization.id,
-        userId,
         accountId,
         amount,
         description
       );
-      
-      if (!updatedAccount) {
-        throw new Error("Failed to adjust account balance");
-      }
       
       setState(prev => ({
         ...prev,
