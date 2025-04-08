@@ -10,7 +10,8 @@ import {
   Bill,
   BillItem,
   PayrollRun,
-  PayrollItem
+  PayrollItem,
+  AccountType
 } from "./types";
 
 /**
