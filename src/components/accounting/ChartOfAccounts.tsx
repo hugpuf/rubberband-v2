@@ -37,20 +37,39 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { AlertCircle, Edit, Plus, Search, Trash2 } from "lucide-react";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertCircle, Edit, Plus, Search, Trash2, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { logUserAction } from "@/services/userLogs";
+import { useToast } from "@/hooks/use-toast";
 
-type AccountFormValues = {
-  code: string;
-  name: string;
-  type: AccountType;
-  description?: string;
-};
+// Define validation schema for account form
+const accountFormSchema = z.object({
+  code: z.string().min(1, "Account code is required"),
+  name: z.string().min(1, "Account name is required"),
+  type: z.enum(["asset", "liability", "equity", "revenue", "expense"], {
+    required_error: "Please select an account type",
+  }),
+  description: z.string().optional(),
+});
+
+type AccountFormValues = z.infer<typeof accountFormSchema>;
 
 export function ChartOfAccounts() {
   const { state, getAccounts, createAccount, updateAccount, deleteAccount } = useAccounting();
+  const { toast } = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +77,9 @@ export function ChartOfAccounts() {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<AccountType | "all">("all");
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const accountTypeOptions: { value: AccountType; label: string }[] = [
     { value: "asset", label: "Asset" },
@@ -81,13 +103,19 @@ export function ChartOfAccounts() {
     } catch (err) {
       console.error("Error fetching accounts:", err);
       setError("Unable to load accounts. Please try again later.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load accounts. Please try again."
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Create form
+  // Create form with zod validation
   const createForm = useForm<AccountFormValues>({
+    resolver: zodResolver(accountFormSchema),
     defaultValues: {
       code: "",
       name: "",
@@ -96,8 +124,9 @@ export function ChartOfAccounts() {
     },
   });
 
-  // Edit form
+  // Edit form with zod validation
   const editForm = useForm<AccountFormValues>({
+    resolver: zodResolver(accountFormSchema),
     defaultValues: {
       code: "",
       name: "",
@@ -120,6 +149,7 @@ export function ChartOfAccounts() {
 
   const handleCreateSubmit = async (values: AccountFormValues) => {
     try {
+      setIsSubmitting(true);
       const newAccount = await createAccount({
         code: values.code,
         name: values.name,
@@ -132,6 +162,11 @@ export function ChartOfAccounts() {
       createForm.reset();
       setIsCreatingAccount(false);
       
+      toast({
+        title: "Account Created",
+        description: `Account "${newAccount.name}" has been created successfully.`
+      });
+      
       // Log user action
       await logUserAction({
         module: "accounting",
@@ -141,7 +176,13 @@ export function ChartOfAccounts() {
       });
     } catch (err) {
       console.error("Error creating account:", err);
-      // Handle the error appropriately
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create account. Please try again."
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -149,6 +190,7 @@ export function ChartOfAccounts() {
     if (!editingAccount) return;
     
     try {
+      setIsSubmitting(true);
       const updatedAccount = await updateAccount(editingAccount.id, {
         code: values.code,
         name: values.name,
@@ -164,6 +206,11 @@ export function ChartOfAccounts() {
       
       setEditingAccount(null);
       
+      toast({
+        title: "Account Updated",
+        description: `Account "${updatedAccount.name}" has been updated successfully.`
+      });
+      
       // Log user action
       await logUserAction({
         module: "accounting",
@@ -173,27 +220,46 @@ export function ChartOfAccounts() {
       });
     } catch (err) {
       console.error("Error updating account:", err);
-      // Handle the error appropriately
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update account. Please try again."
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDeleteAccount = async (account: Account) => {
-    if (window.confirm(`Are you sure you want to archive account ${account.name}?`)) {
-      try {
-        await deleteAccount(account.id);
-        setAccounts((prev) => prev.filter((a) => a.id !== account.id));
-        
-        // Log user action
-        await logUserAction({
-          module: "accounting",
-          action: "delete_account",
-          recordId: account.id,
-          metadata: { account_name: account.name }
-        });
-      } catch (err) {
-        console.error("Error deleting account:", err);
-        // Handle the error appropriately
-      }
+  const handleDeleteAccount = async () => {
+    if (!accountToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      await deleteAccount(accountToDelete.id);
+      setAccounts((prev) => prev.filter((a) => a.id !== accountToDelete.id));
+      
+      toast({
+        title: "Account Deleted",
+        description: `Account "${accountToDelete.name}" has been deleted successfully.`
+      });
+      
+      // Log user action
+      await logUserAction({
+        module: "accounting",
+        action: "delete_account",
+        recordId: accountToDelete.id,
+        metadata: { account_name: accountToDelete.name }
+      });
+    } catch (err) {
+      console.error("Error deleting account:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete account. Please try again."
+      });
+    } finally {
+      setIsDeleting(false);
+      setAccountToDelete(null);
     }
   };
 
@@ -308,10 +374,19 @@ export function ChartOfAccounts() {
                 />
                 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsCreatingAccount(false)}>
+                  <Button type="button" variant="outline" onClick={() => setIsCreatingAccount(false)} disabled={isSubmitting}>
                     Cancel
                   </Button>
-                  <Button type="submit">Create Account</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Account"
+                    )}
+                  </Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -349,6 +424,16 @@ export function ChartOfAccounts() {
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={fetchAccounts} disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading...
+            </>
+          ) : (
+            "Refresh"
+          )}
+        </Button>
       </div>
       
       <div className="rounded-md border">
@@ -365,14 +450,24 @@ export function ChartOfAccounts() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
-                  Loading accounts...
+                <TableCell colSpan={5} className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
                 </TableCell>
               </TableRow>
             ) : filteredAccounts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
-                  No accounts found
+                <TableCell colSpan={5} className="text-center py-8">
+                  {searchTerm || selectedType !== "all" ? (
+                    <div className="text-muted-foreground">
+                      No accounts found matching your filters
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground">
+                      No accounts found. Click "New Account" to create one.
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -390,6 +485,7 @@ export function ChartOfAccounts() {
                         <DialogTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => setEditingAccount(account)}>
                             <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit {account.name}</span>
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -472,18 +568,28 @@ export function ChartOfAccounts() {
                               />
                               
                               <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setEditingAccount(null)}>
+                                <Button type="button" variant="outline" onClick={() => setEditingAccount(null)} disabled={isSubmitting}>
                                   Cancel
                                 </Button>
-                                <Button type="submit">Save Changes</Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                  {isSubmitting ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Saving...
+                                    </>
+                                  ) : (
+                                    "Save Changes"
+                                  )}
+                                </Button>
                               </DialogFooter>
                             </form>
                           </Form>
                         </DialogContent>
                       </Dialog>
                       
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(account)}>
+                      <Button variant="ghost" size="icon" onClick={() => setAccountToDelete(account)}>
                         <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete {account.name}</span>
                       </Button>
                     </div>
                   </TableCell>
@@ -493,6 +599,35 @@ export function ChartOfAccounts() {
           </TableBody>
         </Table>
       </div>
+      
+      {/* Confirmation Dialog for Delete */}
+      <AlertDialog open={!!accountToDelete} onOpenChange={(open) => !open && setAccountToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the account "{accountToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteAccount} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Account"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
