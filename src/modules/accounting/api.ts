@@ -1,6 +1,7 @@
 import { Account, Transaction, Invoice, Bill, BillItem, PayrollRun, AccountingModuleConfig } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+// Use Vite's import.meta.env instead of process.env
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 // Utility function to handle API errors
 const handleApiError = async (response: Response) => {
