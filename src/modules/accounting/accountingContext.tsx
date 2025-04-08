@@ -1,6 +1,6 @@
 
 import { createContext, useContext } from "react";
-import { AccountingModuleState, AccountingModuleConfig, Account, Transaction, Invoice, Bill } from "./types";
+import { AccountingModuleState, AccountingModuleConfig, Account, Transaction, Invoice, Bill, PayrollRun } from "./types";
 
 export type AccountingContextType = {
   // State
@@ -28,6 +28,9 @@ export type AccountingContextType = {
   getBills: () => Promise<Bill[]>;
   createBill: (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Bill>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<Bill>;
+  
+  // Payroll operations
+  getPayrollRuns: () => Promise<PayrollRun[]>;
   
   // Cross-module integration
   getCustomerBalance: (customerId: string) => Promise<number>;

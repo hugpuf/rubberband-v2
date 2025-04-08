@@ -8,10 +8,11 @@ import {
   AccountingModuleConfig, 
   Account, 
   Transaction, 
+  TransactionLine,
   Invoice, 
   Bill,
-  InvoiceItem,
-  BillItem
+  PayrollRun,
+  PayrollItem
 } from "./types";
 import * as accountingApi from "./api";
 
@@ -96,58 +97,138 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Account operations - placeholders for Phase 4 implementation
+  // Account operations
   const getAccounts = async () => {
     if (!organization?.id) return [];
-    return state.accounts;
+    
+    try {
+      const accounts = await accountingApi.fetchAccounts(organization.id);
+      
+      // Update accounts in state
+      setState(prev => ({
+        ...prev,
+        accounts
+      }));
+      
+      return accounts;
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch accounts."
+      });
+      return [];
+    }
   };
   
-  const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => {
-    // Placeholder - will be implemented in Phase 4
-    const newAccount: Account = {
-      ...account,
-      id: `temp-${Date.now()}`,
-      balance: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+  const createAccount = async (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => {
+    if (!organization?.id) throw new Error("Organization not found");
+    
+    const newAccount = await accountingApi.createAccount(organization.id, accountData);
+    
+    if (!newAccount) {
+      throw new Error("Failed to create account");
+    }
+    
+    // Update accounts in state
+    setState(prev => ({
+      ...prev,
+      accounts: [...prev.accounts, newAccount]
+    }));
+    
+    toast({
+      title: "Account created",
+      description: `Account "${newAccount.name}" has been created.`
+    });
     
     return newAccount;
   };
   
   const updateAccount = async (id: string, updates: Partial<Account>) => {
-    // Placeholder - will be implemented in Phase 4
-    const updatedAccount = state.accounts.find(a => a.id === id);
-    if (!updatedAccount) throw new Error("Account not found");
+    const updatedAccount = await accountingApi.updateAccount(id, updates);
     
-    return {
-      ...updatedAccount,
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
+    if (!updatedAccount) {
+      throw new Error("Failed to update account");
+    }
+    
+    // Update accounts in state
+    setState(prev => ({
+      ...prev,
+      accounts: prev.accounts.map(account => 
+        account.id === updatedAccount.id ? updatedAccount : account
+      )
+    }));
+    
+    toast({
+      title: "Account updated",
+      description: `Account "${updatedAccount.name}" has been updated.`
+    });
+    
+    return updatedAccount;
   };
   
   const deleteAccount = async (id: string) => {
-    // Placeholder - will be implemented in Phase 4
+    const success = await accountingApi.deleteAccount(id);
+    
+    if (!success) {
+      throw new Error("Failed to delete account");
+    }
+    
+    // Remove account from state or mark as inactive
+    setState(prev => ({
+      ...prev,
+      accounts: prev.accounts.filter(account => account.id !== id)
+    }));
+    
+    toast({
+      title: "Account deleted",
+      description: "The account has been deleted."
+    });
   };
   
-  // Transaction operations - placeholders for Phase 4 implementation
+  // Transaction operations
   const createTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
-    // Placeholder - will be implemented in Phase 4
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: `temp-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    if (!organization?.id) throw new Error("Organization not found");
+    
+    const userId = organization.id; // This is a placeholder, should be the authenticated user's ID
+    
+    const newTransaction = await accountingApi.createTransaction(
+      organization.id,
+      userId,
+      transaction as any
+    );
+    
+    if (!newTransaction) {
+      throw new Error("Failed to create transaction");
+    }
+    
+    toast({
+      title: "Transaction created",
+      description: `Transaction has been recorded.`
+    });
+    
+    // Refresh accounts to update balances
+    await getAccounts();
     
     return newTransaction;
   };
   
-  // Invoice operations - placeholders for Phase 4 implementation
+  // Invoice operations
   const getInvoices = async () => {
-    // Placeholder - will be implemented in Phase 4
-    return [] as Invoice[];
+    if (!organization?.id) return [];
+    
+    try {
+      return await accountingApi.fetchInvoices(organization.id);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch invoices."
+      });
+      return [];
+    }
   };
   
   const createInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -169,6 +250,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       id,
       invoiceNumber: '',
       customerId: '',
+      customerName: '',
       issueDate: '',
       dueDate: '',
       items: [],
@@ -184,10 +266,22 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     return updatedInvoice;
   };
   
-  // Bill operations - placeholders for Phase 4 implementation
+  // Bill operations
   const getBills = async () => {
-    // Placeholder - will be implemented in Phase 4
-    return [] as Bill[];
+    if (!organization?.id) return [];
+    
+    try {
+      // Placeholder for fetchBills function
+      return [] as Bill[];
+    } catch (error) {
+      console.error("Error fetching bills:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch bills."
+      });
+      return [];
+    }
   };
   
   const createBill = async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -208,6 +302,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
       id,
       billNumber: '',
       vendorId: '',
+      vendorName: '',
       issueDate: '',
       dueDate: '',
       items: [],
@@ -221,6 +316,23 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     };
     
     return updatedBill;
+  };
+  
+  // Payroll operations
+  const getPayrollRuns = async () => {
+    if (!organization?.id) return [];
+    
+    try {
+      return await accountingApi.fetchPayrollRuns(organization.id);
+    } catch (error) {
+      console.error("Error fetching payroll runs:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch payroll runs."
+      });
+      return [];
+    }
   };
   
   // Cross-module integration
@@ -247,6 +359,7 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     getBills,
     createBill,
     updateBill,
+    getPayrollRuns,
     getCustomerBalance,
     getVendorBalance
   };

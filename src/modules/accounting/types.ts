@@ -20,30 +20,24 @@ export type Account = {
   updatedAt: string;
 };
 
-export type Transaction = {
+export type TransactionLine = {
   id: string;
-  date: string;
-  description: string;
-  amount: number;
-  fromAccountId: string;
-  toAccountId: string;
-  status: 'pending' | 'completed' | 'voided';
-  createdBy: string;
+  accountId: string;
+  description?: string;
+  debitAmount: number;
+  creditAmount: number;
   createdAt: string;
   updatedAt: string;
 };
 
-export type Invoice = {
+export type Transaction = {
   id: string;
-  invoiceNumber: string;
-  customerId: string;
-  issueDate: string;
-  dueDate: string;
-  items: InvoiceItem[];
-  subtotal: number;
-  taxAmount: number;
-  total: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'partially_paid';
+  date: string;
+  description: string;
+  referenceNumber?: string;
+  status: 'draft' | 'posted' | 'voided';
+  lines: TransactionLine[];
+  createdBy?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -57,17 +51,19 @@ export type InvoiceItem = {
   amount: number;
 };
 
-export type Bill = {
+export type Invoice = {
   id: string;
-  billNumber: string;
-  vendorId: string;
+  invoiceNumber: string;
+  customerId: string;
+  customerName: string;
   issueDate: string;
   dueDate: string;
-  items: BillItem[];
+  items: InvoiceItem[];
   subtotal: number;
   taxAmount: number;
   total: number;
-  status: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -81,6 +77,34 @@ export type BillItem = {
   amount: number;
 };
 
+export type Bill = {
+  id: string;
+  billNumber: string;
+  vendorId: string;
+  vendorName: string;
+  issueDate: string;
+  dueDate: string;
+  items: BillItem[];
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  status: 'draft' | 'pending' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PayrollItem = {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  grossSalary: number;
+  taxAmount: number;
+  deductionAmount: number;
+  netSalary: number;
+  notes?: string;
+};
+
 export type PayrollRun = {
   id: string;
   name: string;
@@ -90,22 +114,6 @@ export type PayrollRun = {
   grossAmount: number;
   netAmount: number;
   paymentDate: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type Employee = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  position: string;
-  department: string;
-  employmentType: 'full-time' | 'part-time' | 'contractor';
-  salary: number;
-  hourlyRate?: number;
-  startDate: string;
-  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
