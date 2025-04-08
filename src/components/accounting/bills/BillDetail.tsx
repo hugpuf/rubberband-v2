@@ -1,45 +1,33 @@
 
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
-import { Bill } from "@/modules/accounting/types";
+import { Bill, BillItem, Account } from "@/modules/accounting/types";
 import { Button } from "@/components/ui/button";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { BillStatusBadge } from "./BillStatusBadge";
+import { ArrowLeft, Edit, Trash, FileText, Calendar, Check } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { 
-  ChevronLeft, 
-  Download, 
-  Pencil, 
-  Trash2, 
-  CreditCard,
-  Clock
-} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { BillStatusBadge } from "./BillStatusBadge";
 import { EditBillDialog } from "./EditBillDialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface BillDetailProps {
   billId: string;
@@ -47,16 +35,16 @@ interface BillDetailProps {
 }
 
 export function BillDetail({ billId, onBack }: BillDetailProps) {
-  const { getBills, updateBill, deleteBill } = useAccounting();
+  const { getBills, deleteBill, updateBill, getAccounts } = useAccounting();
   const [bill, setBill] = useState<Bill | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchBill();
+    fetchAccounts();
   }, [billId]);
 
   const fetchBill = async () => {
@@ -80,54 +68,69 @@ export function BillDetail({ billId, onBack }: BillDetailProps) {
       toast({
         variant: "destructive",
         title: "Error loading bill",
-        description: "There was a problem loading the bill details"
+        description: "There was an error loading the bill details"
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleStatusChange = async (newStatus: Bill['status']) => {
-    if (!bill) return;
-
+  const fetchAccounts = async () => {
     try {
-      const updatedBill = await updateBill(bill.id, { status: newStatus });
-      setBill(updatedBill);
-      toast({
-        title: "Status updated",
-        description: `Bill status changed to ${newStatus}`
-      });
+      const fetchedAccounts = await getAccounts();
+      setAccounts(fetchedAccounts);
     } catch (error) {
-      console.error("Error updating bill status:", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to update status",
-        description: "There was a problem updating the bill status"
-      });
+      console.error("Error fetching accounts:", error);
     }
   };
 
   const handleDeleteBill = async () => {
     if (!bill) return;
     
-    setIsDeleting(true);
     try {
-      await deleteBill(bill.id);
-      toast({
-        title: "Bill deleted",
-        description: "The bill has been successfully deleted"
-      });
-      onBack();
+      const success = await deleteBill(bill.id);
+      
+      if (success) {
+        toast({
+          title: "Bill deleted",
+          description: `Bill ${bill.billNumber} has been deleted`
+        });
+        onBack();
+      } else {
+        throw new Error("Failed to delete bill");
+      }
     } catch (error) {
       console.error("Error deleting bill:", error);
       toast({
         variant: "destructive",
-        title: "Failed to delete bill",
-        description: "There was a problem deleting the bill"
+        title: "Delete failed",
+        description: "Failed to delete the bill"
       });
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteDialog(false);
+    }
+  };
+
+  const handleUpdateBillStatus = async (status: string) => {
+    if (!bill) return;
+    
+    try {
+      const updatedBill = await updateBill(bill.id, { status: status as any });
+      
+      if (updatedBill) {
+        setBill(updatedBill);
+        toast({
+          title: "Status updated",
+          description: `Bill has been marked as ${status}`
+        });
+      } else {
+        throw new Error("Failed to update bill status");
+      }
+    } catch (error) {
+      console.error("Error updating bill status:", error);
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: "Failed to update bill status"
+      });
     }
   };
 
@@ -146,21 +149,9 @@ export function BillDetail({ billId, onBack }: BillDetailProps) {
 
   if (!bill) {
     return (
-      <div className="space-y-4">
-        <Button variant="ghost" onClick={onBack}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back to Bills
-        </Button>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <p>Bill not found</p>
-              <Button variant="outline" className="mt-4" onClick={onBack}>
-                Return to Bills List
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-center justify-center h-64">
+        <p className="text-muted-foreground">Bill not found</p>
+        <Button onClick={onBack} className="mt-4">Go Back</Button>
       </div>
     );
   }
@@ -168,209 +159,192 @@ export function BillDetail({ billId, onBack }: BillDetailProps) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <Button variant="ghost" onClick={onBack}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back to Bills
-        </Button>
-        
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="sm" onClick={onBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Bills
+          </Button>
+          <h2 className="text-xl font-medium">Bill #{bill.billNumber}</h2>
+          <BillStatusBadge status={bill.status} />
+        </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => setShowEditDialog(true)}>
-            <Pencil className="mr-2 h-4 w-4" /> Edit
+          <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)}>
+            <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
-          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setShowDeleteDialog(true)}>
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </Button>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                <Trash className="mr-2 h-4 w-4" /> Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete Bill #{bill.billNumber}. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteBill}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="col-span-2">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between">
-              <div>
-                <CardTitle className="text-2xl">Bill #{bill.billNumber}</CardTitle>
-                <CardDescription>Created on {new Date(bill.createdAt).toLocaleDateString()}</CardDescription>
-              </div>
-              <BillStatusBadge status={bill.status} className="h-6" />
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Vendor Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              <div className="flex justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Bill Date</h3>
-                  <p>{new Date(bill.issueDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Due Date</h3>
-                  <p>{new Date(bill.dueDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Total Amount</h3>
-                  <p className="font-medium">${bill.total.toFixed(2)}</p>
-                </div>
-              </div>
+            <div className="text-lg font-semibold">{bill.vendorName}</div>
+            <div className="text-sm text-muted-foreground mt-2">Vendor ID: {bill.vendorId}</div>
+          </CardContent>
+        </Card>
 
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Vendor</h3>
-                <div className="bg-muted p-3 rounded-md">
-                  <p className="font-medium">{bill.vendorName}</p>
-                  <p className="text-sm text-muted-foreground">Vendor ID: {bill.vendorId}</p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Items</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Tax (%)</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bill.items.map((item, index) => (
-                      <TableRow key={item.id || index}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{item.taxRate}%</TableCell>
-                        <TableCell className="text-right">${item.amount.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span>${bill.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Tax</span>
-                    <span>${bill.taxAmount.toFixed(2)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-medium">
-                    <span>Total</span>
-                    <span>${bill.total.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {bill.notes && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Notes</h3>
-                  <p className="text-sm bg-muted p-3 rounded-md">{bill.notes}</p>
-                </div>
-              )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Bill Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span>Issued: {new Date(bill.issueDate).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span>Due: {new Date(bill.dueDate).toLocaleDateString()}</span>
             </div>
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {bill.status === 'draft' && (
-                  <Button 
-                    className="w-full justify-start"
-                    onClick={() => handleStatusChange('pending')}
-                  >
-                    <Clock className="mr-2 h-4 w-4" />
-                    Mark as Pending
-                  </Button>
-                )}
-                
-                {(bill.status === 'draft' || bill.status === 'pending' || bill.status === 'overdue') && (
-                  <Button 
-                    className="w-full justify-start"
-                    onClick={() => handleStatusChange('paid')}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Mark as Paid
-                  </Button>
-                )}
-                
-                {bill.status === 'paid' && (
-                  <Button 
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => handleStatusChange('pending')}
-                  >
-                    <Clock className="mr-2 h-4 w-4" />
-                    Mark as Pending
-                  </Button>
-                )}
-                
-                <Button variant="outline" className="w-full justify-start">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download PDF
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Status</p>
-                  <p className="font-medium"><BillStatusBadge status={bill.status} /></p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Payment Due</p>
-                  <p className="font-medium">{new Date(bill.dueDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Amount Due</p>
-                  <p className="font-medium">${bill.total.toFixed(2)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Amount</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${bill.total.toFixed(2)}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Subtotal: ${bill.subtotal.toFixed(2)} + Tax: ${bill.taxAmount.toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Edit Dialog */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Bill Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Tax</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {bill.items.map((item: BillItem) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.description}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{item.taxRate}%</TableCell>
+                  <TableCell className="text-right">${item.amount.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <div className="flex justify-end mt-4 space-x-4">
+            <div className="text-right">
+              <div className="text-sm">Subtotal</div>
+              <div className="text-sm">Tax</div>
+              <div className="font-semibold mt-1">Total</div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm">${bill.subtotal.toFixed(2)}</div>
+              <div className="text-sm">${bill.taxAmount.toFixed(2)}</div>
+              <div className="font-semibold mt-1">${bill.total.toFixed(2)}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {bill.notes && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{bill.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Status Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleUpdateBillStatus('draft')}
+              disabled={bill.status === 'draft'}
+            >
+              Mark as Draft
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleUpdateBillStatus('pending')}
+              disabled={bill.status === 'pending'}
+            >
+              Mark as Awaiting Payment
+            </Button>
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => handleUpdateBillStatus('paid')}
+              disabled={bill.status === 'paid'}
+            >
+              <Check className="mr-2 h-4 w-4" />
+              Mark as Paid
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleUpdateBillStatus('overdue')}
+              disabled={bill.status === 'overdue'}
+            >
+              Mark as Overdue
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleUpdateBillStatus('cancelled')}
+              disabled={bill.status === 'cancelled'}
+            >
+              Mark as Cancelled
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <EditBillDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
         bill={bill}
+        accounts={accounts}
         onBillUpdated={handleBillUpdated}
       />
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Bill</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete bill #{bill.billNumber}? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteBill}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete Bill"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

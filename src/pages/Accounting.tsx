@@ -6,6 +6,7 @@ import { BillsOverview } from "@/components/accounting/bills/BillsOverview";
 import { InvoicesOverview } from "@/components/accounting/invoices/InvoicesOverview";
 import { AccountingMetrics } from "@/components/accounting/AccountingMetrics";
 import { PayrollOverview } from "@/components/accounting/payroll/PayrollOverview";
+import { TransactionJournal } from "@/components/accounting/transactions/TransactionJournal";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useState } from "react";
 import { logUserAction } from "@/services/userLogs";
@@ -51,6 +52,12 @@ const Accounting = () => {
             Chart of Accounts
           </TabsTrigger>
           <TabsTrigger 
+            value="transactions" 
+            className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
+          >
+            Transactions
+          </TabsTrigger>
+          <TabsTrigger 
             value="invoices" 
             className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 font-normal"
           >
@@ -80,6 +87,9 @@ const Accounting = () => {
         </TabsContent>
         <TabsContent value="accounts">
           <ChartOfAccounts />
+        </TabsContent>
+        <TabsContent value="transactions">
+          <TransactionJournal />
         </TabsContent>
         <TabsContent value="invoices">
           <InvoicesOverview />

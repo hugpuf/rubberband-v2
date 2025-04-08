@@ -19,6 +19,10 @@ export type AccountingContextType = {
   
   // Transaction operations
   createTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
+  fetchTransactions: (filters?: { startDate?: string; endDate?: string; status?: string; search?: string; }) => Promise<Transaction[]>;
+  getTransactionById: (id: string) => Promise<Transaction | null>;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<Transaction | null>;
+  deleteTransaction: (id: string) => Promise<boolean>;
   
   // Invoice operations
   getInvoices: () => Promise<Invoice[]>;

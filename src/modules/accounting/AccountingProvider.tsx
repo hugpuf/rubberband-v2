@@ -1,4 +1,3 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -203,6 +202,91 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     return newTransaction;
   };
   
+  const fetchTransactions = async (filters?: {
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    search?: string;
+  }) => {
+    if (!organization?.id) return [];
+    
+    try {
+      return await accountingApi.fetchTransactions(organization.id, filters);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch transactions."
+      });
+      return [];
+    }
+  };
+  
+  const getTransactionById = async (id: string) => {
+    try {
+      return await accountingApi.getTransactionById(id);
+    } catch (error) {
+      console.error("Error fetching transaction by ID:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch transaction details."
+      });
+      return null;
+    }
+  };
+  
+  const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    try {
+      const updatedTransaction = await accountingApi.updateTransaction(id, updates);
+      
+      if (!updatedTransaction) {
+        throw new Error("Failed to update transaction");
+      }
+      
+      toast({
+        title: "Transaction updated",
+        description: "The transaction has been updated."
+      });
+      
+      return updatedTransaction;
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update transaction."
+      });
+      return null;
+    }
+  };
+  
+  const deleteTransaction = async (id: string) => {
+    try {
+      const success = await accountingApi.deleteTransaction(id);
+      
+      if (!success) {
+        throw new Error("Failed to delete transaction");
+      }
+      
+      toast({
+        title: "Transaction deleted",
+        description: "The transaction has been deleted."
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete transaction."
+      });
+      return false;
+    }
+  };
+  
   const getInvoices = async () => {
     if (!organization?.id) return [];
     
@@ -341,7 +425,6 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     if (!organization?.id) throw new Error("Organization not found");
     
     try {
-      // We need to implement the missing updateExistingBill function
       const updatedBill = await accountingApi.updateExistingBill(id, updates);
       
       if (!updatedBill) {
@@ -470,6 +553,10 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     deleteAccount,
     adjustAccountBalance,
     createTransaction,
+    fetchTransactions,
+    getTransactionById,
+    updateTransaction,
+    deleteTransaction,
     getInvoices,
     createInvoice,
     updateInvoice,
