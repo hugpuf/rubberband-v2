@@ -1110,7 +1110,7 @@ export const adjustAccountBalance = async (
           organization_id: organizationId,
           code: '9999',
           name: 'Balance Adjustment Account',
-          type: 'equity',
+          type: 'equity' as AccountType,
           description: 'Account used for balance adjustments',
           is_active: true
         })
