@@ -1066,4 +1066,122 @@ export const adjustAccountBalance = async (
     
     if (accountError) throw accountError;
     
-    // Determine if this is a debit or credit adjustment based on account
+    // Determine if this is a debit or credit adjustment based on account type
+    const accountType = account.type as AccountType;
+    let debitAccount: string | null = null;
+    let creditAccount: string | null = null;
+    
+    // Find or create adjustment account
+    const { data: adjustmentAccounts, error: accError } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('name', 'Balance Adjustment Account')
+      .maybeSingle();
+      
+    if (accError) throw accError;
+    
+    let adjustmentAccountId: string;
+    
+    if (!adjustmentAccounts) {
+      // Create an adjustment account if it doesn't exist
+      const { data: newAccount, error: createError } = await supabase
+        .from('accounts')
+        .insert({
+          organization_id: organizationId,
+          code: 'ADJ',
+          name: 'Balance Adjustment Account',
+          type: 'equity' as AccountType,
+          description: 'Account used for balance adjustments',
+          is_active: true
+        })
+        .select()
+        .single();
+        
+      if (createError) throw createError;
+      adjustmentAccountId = newAccount.id;
+    } else {
+      adjustmentAccountId = adjustmentAccounts.id;
+    }
+    
+    // For asset and expense accounts:
+    // - Positive adjustment: Debit the account (increase)
+    // - Negative adjustment: Credit the account (decrease)
+    //
+    // For liability, equity, revenue accounts:
+    // - Positive adjustment: Credit the account (increase)
+    // - Negative adjustment: Debit the account (decrease)
+    if (accountType === 'asset' || accountType === 'expense') {
+      if (amount >= 0) {
+        debitAccount = accountId;
+        creditAccount = adjustmentAccountId;
+      } else {
+        debitAccount = adjustmentAccountId;
+        creditAccount = accountId;
+      }
+    } else {
+      // liability, equity, revenue
+      if (amount >= 0) {
+        debitAccount = adjustmentAccountId;
+        creditAccount = accountId;
+      } else {
+        debitAccount = accountId;
+        creditAccount = adjustmentAccountId;
+      }
+    }
+    
+    // Create transaction lines
+    const absAmount = Math.abs(amount);
+    transaction.lines = [
+      {
+        accountId: debitAccount,
+        debitAmount: absAmount,
+        creditAmount: 0
+      },
+      {
+        accountId: creditAccount,
+        debitAmount: 0,
+        creditAmount: absAmount
+      }
+    ];
+    
+    // Create the adjustment transaction
+    const newTransaction = await createTransaction(organizationId, userId, transaction);
+    
+    if (!newTransaction) {
+      throw new Error('Failed to create adjustment transaction');
+    }
+    
+    // Get the updated account with new balance
+    const { data: updatedAccount, error: updatedError } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('id', accountId)
+      .single();
+      
+    if (updatedError) throw updatedError;
+    
+    // Get current balance
+    const { data: balanceData } = await supabase
+      .from('account_balances')
+      .select('balance')
+      .eq('account_id', accountId)
+      .maybeSingle();
+      
+    // Return the updated account
+    return {
+      id: updatedAccount.id,
+      code: updatedAccount.code,
+      name: updatedAccount.name,
+      type: updatedAccount.type as AccountType,
+      description: updatedAccount.description || undefined,
+      isActive: updatedAccount.is_active,
+      balance: balanceData?.balance || 0,
+      createdAt: updatedAccount.created_at,
+      updatedAt: updatedAccount.updated_at
+    };
+  } catch (error) {
+    console.error('Error adjusting account balance:', error);
+    return null;
+  }
+};
