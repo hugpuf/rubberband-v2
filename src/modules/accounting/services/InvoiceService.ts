@@ -1,3 +1,4 @@
+
 import { Invoice } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapInvoiceFromApi, mapInvoiceToApiFormat } from "../utils/mappers";
@@ -162,9 +163,8 @@ export class SupabaseInvoiceService implements IInvoiceService {
         throw error;
       }
       
-      // FIX: Use type casting instead of type assertion to avoid deep instantiation issues
-      const typedData = (data || []) as any[];
-      return typedData.map(item => mapInvoiceFromApi(item));
+      // Cast the data to any[] explicitly to avoid deep type instantiation
+      return (data || []).map((item: any) => mapInvoiceFromApi(item));
     } catch (error) {
       console.error('Error in getInvoices:', error);
       // Return empty array as fallback to prevent UI crashes

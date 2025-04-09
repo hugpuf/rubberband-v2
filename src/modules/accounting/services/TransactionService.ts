@@ -1,3 +1,4 @@
+
 import { Transaction, TransactionLine } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -192,9 +193,8 @@ export class SupabaseTransactionService implements ITransactionService {
         throw error;
       }
       
-      // FIX: Use type casting instead of type assertion to avoid deep instantiation issues
-      const typedData = (data || []) as any[];
-      return typedData.map(item => mapTransactionFromApi(item));
+      // Cast the data to any[] explicitly to avoid deep type instantiation
+      return (data || []).map((item: any) => mapTransactionFromApi(item));
     } catch (error) {
       console.error('Error in getTransactions:', error);
       // Return empty array as fallback to prevent UI crashes
