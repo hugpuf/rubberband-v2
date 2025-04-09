@@ -1,4 +1,3 @@
-
 import { Transaction, TransactionLine } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -194,7 +193,8 @@ export class SupabaseTransactionService implements ITransactionService {
         throw error;
       }
       
-      return (data || []).map(mapTransactionFromApi);
+      // Use type assertion to avoid deep instantiation issues
+      return (data || []).map(item => mapTransactionFromApi(item as any));
     } catch (error) {
       console.error('Error in getTransactions:', error);
       // Return empty array as fallback to prevent UI crashes

@@ -1,4 +1,3 @@
-
 import { Invoice } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapInvoiceFromApi, mapInvoiceToApiFormat } from "../utils/mappers";
@@ -163,7 +162,7 @@ export class SupabaseInvoiceService implements IInvoiceService {
         throw error;
       }
       
-      // Type assertion to avoid deep instantiation issues
+      // Use type assertion to avoid deep instantiation issues
       return (data || []).map(item => mapInvoiceFromApi(item as any));
     } catch (error) {
       console.error('Error in getInvoices:', error);
