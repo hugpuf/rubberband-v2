@@ -103,12 +103,17 @@ export const AccountingProvider: React.FC<AccountingProviderProps> = ({ children
 
   // Transaction operations - using the new service
   const createTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Transaction> => {
-    // Add organization ID - in a real app, this would come from the auth context
-    const txn = {
-      ...transaction,
-      organization_id: "test-org-id"
-    };
-    return TransactionService.createTransaction(txn);
+    try {
+      // Add organization ID - in a real app, this would come from the auth context
+      const txn = {
+        ...transaction,
+        organization_id: "test-org-id"
+      };
+      return TransactionService.createTransaction(txn);
+    } catch (error) {
+      console.error("Error creating transaction:", error);
+      throw error;
+    }
   };
 
   const fetchTransactions = async (filters?: { startDate?: string; endDate?: string; status?: string; search?: string; }): Promise<Transaction[]> => {

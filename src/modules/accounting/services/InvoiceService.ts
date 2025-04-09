@@ -47,12 +47,16 @@ export class SupabaseInvoiceService implements IInvoiceService {
         .from('invoices')
         .insert(invoiceData)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error inserting invoice:', error);
         console.error('Error details:', error.details, error.hint, error.message);
         throw error;
+      }
+      
+      if (!insertedInvoice) {
+        throw new Error('Failed to insert invoice - no data returned');
       }
       
       // Insert invoice items
@@ -88,11 +92,15 @@ export class SupabaseInvoiceService implements IInvoiceService {
           items:invoice_items(*)
         `)
         .eq('id', insertedInvoice.id)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching invoice with items:', fetchError);
         throw fetchError;
+      }
+      
+      if (!invoiceWithItems) {
+        throw new Error('Failed to fetch invoice with items');
       }
 
       return mapInvoiceFromApi(invoiceWithItems);
@@ -170,16 +178,14 @@ export class SupabaseInvoiceService implements IInvoiceService {
           items:invoice_items(*)
         `)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') { // Not found error code
-          return null;
-        }
         console.error(`Error fetching invoice ${id}:`, error);
         throw error;
       }
 
+      if (!data) return null;
       return mapInvoiceFromApi(data);
     } catch (error) {
       console.error(`Error in getInvoiceById for ${id}:`, error);
@@ -213,9 +219,10 @@ export class SupabaseInvoiceService implements IInvoiceService {
         .update(updateData)
         .eq('id', id)
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updatedInvoice) throw new Error(`Invoice with id ${id} not found`);
 
       // If there are items to update
       if (updates.items && updates.items.length > 0) {
@@ -253,9 +260,10 @@ export class SupabaseInvoiceService implements IInvoiceService {
           items:invoice_items(*)
         `)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
+      if (!invoiceWithItems) throw new Error(`Could not fetch updated invoice with id ${id}`);
 
       return mapInvoiceFromApi(invoiceWithItems);
     } catch (error) {

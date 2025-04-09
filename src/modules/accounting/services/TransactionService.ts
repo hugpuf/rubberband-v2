@@ -106,7 +106,7 @@ export class SupabaseTransactionService implements ITransactionService {
           lines:transaction_lines(*)
         `)
         .eq('id', insertedTransaction.id)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching transaction with lines:', fetchError);
@@ -214,16 +214,14 @@ export class SupabaseTransactionService implements ITransactionService {
           lines:transaction_lines(*)
         `)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') { // Not found error code
-          return null;
-        }
         console.error(`Error fetching transaction ${id}:`, error);
         throw error;
       }
 
+      if (!data) return null;
       return mapTransactionFromApi(data);
     } catch (error) {
       console.error(`Error in getTransactionById for ${id}:`, error);
@@ -254,7 +252,7 @@ export class SupabaseTransactionService implements ITransactionService {
         const updatedTransaction: any = {
           ...existingTransaction,
           ...updates,
-          organization_id: existingTransaction.createdBy, // Reuse the organization ID
+          organization_id: existingTransaction.createdBy || "test-org-id", // Reuse the organization ID or use default
         };
         
         // Remove fields that shouldn't be in the create call
@@ -280,7 +278,7 @@ export class SupabaseTransactionService implements ITransactionService {
         .update(updateData)
         .eq('id', id)
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
@@ -292,9 +290,10 @@ export class SupabaseTransactionService implements ITransactionService {
           lines:transaction_lines(*)
         `)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
+      if (!transactionWithLines) return null;
 
       return mapTransactionFromApi(transactionWithLines);
     } catch (error) {
@@ -395,8 +394,18 @@ export class SupabaseTransactionService implements ITransactionService {
           description: "Transfer between bank accounts",
           status: "draft",
           lines: [
-            { accountId: "1", description: "Transfer from", debitAmount: 0, creditAmount: 0 },
-            { accountId: "2", description: "Transfer to", debitAmount: 0, creditAmount: 0 }
+            { 
+              accountId: "1", 
+              description: "Transfer from", 
+              debitAmount: 0, 
+              creditAmount: 0 
+            } as Partial<TransactionLine>,
+            { 
+              accountId: "2", 
+              description: "Transfer to", 
+              debitAmount: 0, 
+              creditAmount: 0 
+            } as Partial<TransactionLine>
           ]
         }
       },
@@ -406,8 +415,18 @@ export class SupabaseTransactionService implements ITransactionService {
           description: "Payment for expense",
           status: "draft",
           lines: [
-            { accountId: "6", description: "Expense", debitAmount: 0, creditAmount: 0 },
-            { accountId: "1", description: "Payment", debitAmount: 0, creditAmount: 0 }
+            { 
+              accountId: "6", 
+              description: "Expense", 
+              debitAmount: 0, 
+              creditAmount: 0 
+            } as Partial<TransactionLine>,
+            { 
+              accountId: "1", 
+              description: "Payment", 
+              debitAmount: 0, 
+              creditAmount: 0 
+            } as Partial<TransactionLine>
           ]
         }
       },
@@ -417,8 +436,18 @@ export class SupabaseTransactionService implements ITransactionService {
           description: "Revenue received",
           status: "draft",
           lines: [
-            { accountId: "1", description: "Bank deposit", debitAmount: 0, creditAmount: 0 },
-            { accountId: "5", description: "Revenue", debitAmount: 0, creditAmount: 0 }
+            { 
+              accountId: "1", 
+              description: "Bank deposit", 
+              debitAmount: 0, 
+              creditAmount: 0 
+            } as Partial<TransactionLine>,
+            { 
+              accountId: "5", 
+              description: "Revenue", 
+              debitAmount: 0, 
+              creditAmount: 0 
+            } as Partial<TransactionLine>
           ]
         }
       }
