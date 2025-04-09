@@ -1,5 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Account, Transaction, Invoice, Bill, PayrollRun, AccountingModuleConfig } from "./types";
+import { 
+  Account, 
+  Transaction, 
+  Invoice, 
+  Bill, 
+  PayrollRun, 
+  PayrollItem,
+  AccountingModuleConfig,
+  CreatePayrollRunParams,
+  UpdatePayrollRunParams,
+  PayrollRunFilterParams,
+  CreatePayrollItemParams,
+  UpdatePayrollItemParams,
+  PayrollItemFilterParams,
+  PaginatedResponse
+} from "./types";
 import { 
   mapBillFromApi, 
   mapBillToApiFormat, 
@@ -11,6 +26,7 @@ import {
 } from "./utils/mappers";
 import invoiceService from "./services/InvoiceService";
 import transactionService from "./services/TransactionService";
+import payrollService from "./services/payroll/SupabasePayrollService";
 
 // Use Vite's import.meta.env instead of process.env
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -494,22 +510,60 @@ export const adjustAccountBalance = async (accountId: string, amount: number, de
   });
 };
 
-export const getPayrollRuns = async (): Promise<PayrollRun[]> => {
-  // Mock implementation
-  return Promise.resolve([
-    {
-      id: '1',
-      name: 'January 2024 Payroll',
-      period: 'January 2024',
-      status: 'completed',
-      employeeCount: 15,
-      grossAmount: 45000,
-      netAmount: 36000,
-      paymentDate: '2024-01-31',
-      createdAt: '2024-01-25T00:00:00.000Z',
-      updatedAt: '2024-01-31T00:00:00.000Z',
-    }
-  ]);
+export const getPayrollRuns = async (filters?: PayrollRunFilterParams): Promise<PaginatedResponse<PayrollRun>> => {
+  return payrollService.getPayrollRuns(filters);
+};
+
+export const getPayrollRunById = async (id: string): Promise<PayrollRun | null> => {
+  return payrollService.getPayrollRunById(id);
+};
+
+export const createPayrollRun = async (params: CreatePayrollRunParams & { organization_id: string }): Promise<PayrollRun> => {
+  return payrollService.createPayrollRun(params);
+};
+
+export const updatePayrollRun = async (id: string, updates: UpdatePayrollRunParams): Promise<PayrollRun> => {
+  return payrollService.updatePayrollRun(id, updates);
+};
+
+export const deletePayrollRun = async (id: string): Promise<boolean> => {
+  return payrollService.deletePayrollRun(id);
+};
+
+export const processPayrollRun = async (id: string): Promise<PayrollRun> => {
+  return payrollService.processPayrollRun(id);
+};
+
+export const finalizePayrollRun = async (id: string): Promise<PayrollRun> => {
+  return payrollService.finalizePayrollRun(id);
+};
+
+export const getPayrollItems = async (filters?: PayrollItemFilterParams): Promise<PaginatedResponse<PayrollItem>> => {
+  return payrollService.getPayrollItems(filters);
+};
+
+export const getPayrollItemById = async (id: string): Promise<PayrollItem | null> => {
+  return payrollService.getPayrollItemById(id);
+};
+
+export const getPayrollItemsByRunId = async (runId: string): Promise<PayrollItem[]> => {
+  return payrollService.getPayrollItemsByRunId(runId);
+};
+
+export const createPayrollItem = async (params: CreatePayrollItemParams): Promise<PayrollItem> => {
+  return payrollService.createPayrollItem(params);
+};
+
+export const updatePayrollItem = async (id: string, updates: UpdatePayrollItemParams): Promise<PayrollItem> => {
+  return payrollService.updatePayrollItem(id, updates);
+};
+
+export const deletePayrollItem = async (id: string): Promise<boolean> => {
+  return payrollService.deletePayrollItem(id);
+};
+
+export const exportPayrollRun = async (id: string, format: 'csv' | 'pdf' | 'json'): Promise<string> => {
+  return payrollService.exportPayrollRun(id, format);
 };
 
 export const getCustomerBalance = async (customerId: string): Promise<number> => {

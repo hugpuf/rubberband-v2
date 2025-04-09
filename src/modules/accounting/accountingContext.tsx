@@ -1,6 +1,6 @@
 
 import { createContext, useContext } from "react";
-import { AccountingModuleState, AccountingModuleConfig, Account, Transaction, Invoice, Bill, PayrollRun } from "./types";
+import { AccountingModuleState, AccountingModuleConfig, Account, Transaction, Invoice, Bill, PayrollRun, PayrollItem, CreatePayrollRunParams, UpdatePayrollRunParams, PayrollRunFilterParams, CreatePayrollItemParams, UpdatePayrollItemParams, PayrollItemFilterParams, PaginatedResponse } from "./types";
 
 export type AccountingContextType = {
   // State
@@ -37,7 +37,21 @@ export type AccountingContextType = {
   deleteBill: (id: string) => Promise<boolean>;
   
   // Payroll operations
-  getPayrollRuns: () => Promise<PayrollRun[]>;
+  getPayrollRuns: (filters?: PayrollRunFilterParams) => Promise<PaginatedResponse<PayrollRun>>;
+  getPayrollRunById: (id: string) => Promise<PayrollRun | null>;
+  createPayrollRun: (params: CreatePayrollRunParams) => Promise<PayrollRun>;
+  updatePayrollRun: (id: string, updates: UpdatePayrollRunParams) => Promise<PayrollRun>;
+  deletePayrollRun: (id: string) => Promise<boolean>;
+  processPayrollRun: (id: string) => Promise<PayrollRun>;
+  finalizePayrollRun: (id: string) => Promise<PayrollRun>;
+  
+  getPayrollItems: (filters?: PayrollItemFilterParams) => Promise<PaginatedResponse<PayrollItem>>;
+  getPayrollItemById: (id: string) => Promise<PayrollItem | null>;
+  getPayrollItemsByRunId: (runId: string) => Promise<PayrollItem[]>;
+  createPayrollItem: (params: CreatePayrollItemParams) => Promise<PayrollItem>;
+  updatePayrollItem: (id: string, updates: UpdatePayrollItemParams) => Promise<PayrollItem>;
+  deletePayrollItem: (id: string) => Promise<boolean>;
+  exportPayrollRun: (id: string, format: 'csv' | 'pdf' | 'json') => Promise<string>;
   
   // Cross-module integration
   getCustomerBalance: (customerId: string) => Promise<number>;

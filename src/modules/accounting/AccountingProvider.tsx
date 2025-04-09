@@ -11,9 +11,17 @@ import {
   Invoice, 
   Bill,
   PayrollRun,
-  PayrollItem
+  PayrollItem,
+  CreatePayrollRunParams,
+  UpdatePayrollRunParams,
+  PayrollRunFilterParams,
+  CreatePayrollItemParams,
+  UpdatePayrollItemParams,
+  PayrollItemFilterParams,
+  PaginatedResponse
 } from "./types";
 import * as accountingApi from "./api";
+import payrollService from "./services/payroll/SupabasePayrollService";
 
 const initialState: AccountingModuleState = {
   isLoading: true,
@@ -481,11 +489,19 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const getPayrollRuns = async () => {
-    if (!organization?.id) return [];
+  const getPayrollRuns = async (filters?: PayrollRunFilterParams): Promise<PaginatedResponse<PayrollRun>> => {
+    if (!organization?.id) {
+      return {
+        data: [],
+        total: 0,
+        page: filters?.page || 1,
+        limit: filters?.limit || 10,
+        hasMore: false
+      };
+    }
     
     try {
-      return await accountingApi.getPayrollRuns();
+      return await payrollService.getPayrollRuns(filters);
     } catch (error) {
       console.error("Error fetching payroll runs:", error);
       toast({
@@ -493,49 +509,278 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
         title: "Error",
         description: "Failed to fetch payroll runs."
       });
+      return {
+        data: [],
+        total: 0,
+        page: filters?.page || 1,
+        limit: filters?.limit || 10,
+        hasMore: false
+      };
+    }
+  };
+  
+  const getPayrollRunById = async (id: string): Promise<PayrollRun | null> => {
+    try {
+      return await payrollService.getPayrollRunById(id);
+    } catch (error) {
+      console.error("Error fetching payroll run:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch payroll run details."
+      });
+      return null;
+    }
+  };
+  
+  const createPayrollRun = async (params: CreatePayrollRunParams): Promise<PayrollRun> => {
+    if (!organization?.id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Organization not found. Please refresh the page or contact support."
+      });
+      throw new Error("Organization not found");
+    }
+    
+    try {
+      const newPayrollRun = await payrollService.createPayrollRun({
+        ...params,
+        organization_id: organization.id
+      });
+      
+      toast({
+        title: "Payroll run created",
+        description: `Payroll run "${newPayrollRun.name}" has been created.`
+      });
+      
+      return newPayrollRun;
+    } catch (error) {
+      console.error("Error creating payroll run:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create payroll run."
+      });
+      throw error;
+    }
+  };
+  
+  const updatePayrollRun = async (id: string, updates: UpdatePayrollRunParams): Promise<PayrollRun> => {
+    try {
+      const updatedPayrollRun = await payrollService.updatePayrollRun(id, updates);
+      
+      toast({
+        title: "Payroll run updated",
+        description: `Payroll run "${updatedPayrollRun.name}" has been updated.`
+      });
+      
+      return updatedPayrollRun;
+    } catch (error) {
+      console.error("Error updating payroll run:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update payroll run."
+      });
+      throw error;
+    }
+  };
+  
+  const deletePayrollRun = async (id: string): Promise<boolean> => {
+    try {
+      const success = await payrollService.deletePayrollRun(id);
+      
+      if (success) {
+        toast({
+          title: "Payroll run deleted",
+          description: "The payroll run has been deleted."
+        });
+      }
+      
+      return success;
+    } catch (error) {
+      console.error("Error deleting payroll run:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete payroll run."
+      });
+      throw error;
+    }
+  };
+  
+  const processPayrollRun = async (id: string): Promise<PayrollRun> => {
+    try {
+      const processedRun = await payrollService.processPayrollRun(id);
+      
+      toast({
+        title: "Payroll run processed",
+        description: `Payroll run "${processedRun.name}" has been processed.`
+      });
+      
+      return processedRun;
+    } catch (error) {
+      console.error("Error processing payroll run:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to process payroll run."
+      });
+      throw error;
+    }
+  };
+  
+  const finalizePayrollRun = async (id: string): Promise<PayrollRun> => {
+    try {
+      const finalizedRun = await payrollService.finalizePayrollRun(id);
+      
+      toast({
+        title: "Payroll run finalized",
+        description: `Payroll run "${finalizedRun.name}" has been finalized.`
+      });
+      
+      return finalizedRun;
+    } catch (error) {
+      console.error("Error finalizing payroll run:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to finalize payroll run."
+      });
+      throw error;
+    }
+  };
+  
+  const getPayrollItems = async (filters?: PayrollItemFilterParams): Promise<PaginatedResponse<PayrollItem>> => {
+    try {
+      return await payrollService.getPayrollItems(filters);
+    } catch (error) {
+      console.error("Error fetching payroll items:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch payroll items."
+      });
+      return {
+        data: [],
+        total: 0,
+        page: filters?.page || 1,
+        limit: filters?.limit || 10,
+        hasMore: false
+      };
+    }
+  };
+  
+  const getPayrollItemById = async (id: string): Promise<PayrollItem | null> => {
+    try {
+      return await payrollService.getPayrollItemById(id);
+    } catch (error) {
+      console.error("Error fetching payroll item:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch payroll item details."
+      });
+      return null;
+    }
+  };
+  
+  const getPayrollItemsByRunId = async (runId: string): Promise<PayrollItem[]> => {
+    try {
+      return await payrollService.getPayrollItemsByRunId(runId);
+    } catch (error) {
+      console.error("Error fetching payroll items:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch payroll items."
+      });
       return [];
     }
   };
   
-  const getCustomerBalance = async (customerId: string) => {
-    return accountingApi.getCustomerBalance(customerId);
-  };
-  
-  const getVendorBalance = async (vendorId: string) => {
-    return accountingApi.getVendorBalance(vendorId);
-  };
-
-  const adjustAccountBalance = async (
-    accountId: string,
-    amount: number,
-    description: string
-  ) => {
+  const createPayrollItem = async (params: CreatePayrollItemParams): Promise<PayrollItem> => {
     try {
-      const updatedAccount = await accountingApi.adjustAccountBalance(
-        accountId,
-        amount,
-        description
-      );
-      
-      setState(prev => ({
-        ...prev,
-        accounts: prev.accounts.map(account => 
-          account.id === updatedAccount.id ? updatedAccount : account
-        )
-      }));
+      const newPayrollItem = await payrollService.createPayrollItem(params);
       
       toast({
-        title: "Balance adjusted",
-        description: `Account "${updatedAccount.name}" balance has been adjusted.`
+        title: "Payroll item created",
+        description: "Payroll item has been created."
       });
       
-      return updatedAccount;
+      return newPayrollItem;
     } catch (error) {
-      console.error("Error adjusting account balance:", error);
+      console.error("Error creating payroll item:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to adjust account balance."
+        description: "Failed to create payroll item."
+      });
+      throw error;
+    }
+  };
+  
+  const updatePayrollItem = async (id: string, updates: UpdatePayrollItemParams): Promise<PayrollItem> => {
+    try {
+      const updatedPayrollItem = await payrollService.updatePayrollItem(id, updates);
+      
+      toast({
+        title: "Payroll item updated",
+        description: "Payroll item has been updated."
+      });
+      
+      return updatedPayrollItem;
+    } catch (error) {
+      console.error("Error updating payroll item:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update payroll item."
+      });
+      throw error;
+    }
+  };
+  
+  const deletePayrollItem = async (id: string): Promise<boolean> => {
+    try {
+      const success = await payrollService.deletePayrollItem(id);
+      
+      if (success) {
+        toast({
+          title: "Payroll item deleted",
+          description: "The payroll item has been deleted."
+        });
+      }
+      
+      return success;
+    } catch (error) {
+      console.error("Error deleting payroll item:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete payroll item."
+      });
+      throw error;
+    }
+  };
+  
+  const exportPayrollRun = async (id: string, format: 'csv' | 'pdf' | 'json'): Promise<string> => {
+    try {
+      const exportData = await payrollService.exportPayrollRun(id, format);
+      
+      toast({
+        title: "Payroll run exported",
+        description: `Payroll run has been exported in ${format.toUpperCase()} format.`
+      });
+      
+      return exportData;
+    } catch (error) {
+      console.error("Error exporting payroll run:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to export payroll run."
       });
       throw error;
     }
@@ -564,6 +809,19 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     updateBill,
     deleteBill,
     getPayrollRuns,
+    getPayrollRunById,
+    createPayrollRun,
+    updatePayrollRun,
+    deletePayrollRun,
+    processPayrollRun,
+    finalizePayrollRun,
+    getPayrollItems,
+    getPayrollItemById,
+    getPayrollItemsByRunId,
+    createPayrollItem,
+    updatePayrollItem,
+    deletePayrollItem,
+    exportPayrollRun,
     getCustomerBalance,
     getVendorBalance
   };
