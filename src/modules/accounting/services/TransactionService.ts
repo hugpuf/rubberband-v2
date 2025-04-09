@@ -2,13 +2,14 @@ import { Transaction, TransactionLine } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   mapTransactionFromApi, 
-  mapTransactionToApiFormat, 
-  mapTransactionLineToApiFormat 
+  mapTransactionLineFromApi,
+  mapTransactionToApiFormat,
+  mapTransactionLineToApiFormat
 } from "../utils/mappers";
 
 /**
- * Interface defining standard operations for transactions
- * This abstraction will allow swapping implementations (native, Xero, QuickBooks, etc.)
+ * Interface defining the standard operations for transactions
+ * This abstraction will allow us to swap implementations (native, Xero, etc.)
  */
 export interface ITransactionService {
   createTransaction(transaction: Omit<Transaction, "id" | "createdAt" | "updatedAt"> & { organization_id: string }): Promise<Transaction>;
@@ -25,12 +26,10 @@ export interface ITransactionService {
   getTransactionById(id: string): Promise<Transaction | null>;
   updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction | null>;
   deleteTransaction(id: string): Promise<boolean>;
-  validateTransaction(transaction: Omit<Transaction, "id" | "createdAt" | "updatedAt">): boolean;
-  getTransactionTemplates(): Promise<{ name: string, template: Partial<Transaction> }[]>;
 }
 
 /**
- * Native implementation of TransactionService using Supabase
+ * Native implementation of the TransactionService interface that uses Supabase
  */
 export class SupabaseTransactionService implements ITransactionService {
   /**
@@ -120,7 +119,7 @@ export class SupabaseTransactionService implements ITransactionService {
   }
 
   /**
-   * Retrieves transactions with optional filtering, sorting and pagination
+   * Retrieves all transactions with optional filtering, sorting and pagination
    */
   async getTransactions(options?: { 
     filter?: string; 
@@ -137,7 +136,7 @@ export class SupabaseTransactionService implements ITransactionService {
         .from('transactions')
         .select(`
           *,
-          lines:transaction_lines(*)
+          transaction_lines(*)
         `);
       
       // Apply date range filtering
@@ -193,7 +192,7 @@ export class SupabaseTransactionService implements ITransactionService {
         throw error;
       }
       
-      // Use type assertion to avoid deep instantiation issues
+      // Use explicit type assertion to avoid deep instantiation issues
       return (data || []).map(item => mapTransactionFromApi(item as any));
     } catch (error) {
       console.error('Error in getTransactions:', error);
