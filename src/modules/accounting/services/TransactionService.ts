@@ -136,7 +136,7 @@ export class SupabaseTransactionService implements ITransactionService {
         .from('transactions')
         .select(`
           *,
-          transaction_lines(*)
+          lines:transaction_lines(*)
         `);
       
       // Apply date range filtering
@@ -192,8 +192,9 @@ export class SupabaseTransactionService implements ITransactionService {
         throw error;
       }
       
-      // Use explicit type assertion to avoid deep instantiation issues
-      return (data || []).map(item => mapTransactionFromApi(item as any));
+      // FIX: Use type casting instead of type assertion to avoid deep instantiation issues
+      const typedData = (data || []) as any[];
+      return typedData.map(item => mapTransactionFromApi(item));
     } catch (error) {
       console.error('Error in getTransactions:', error);
       // Return empty array as fallback to prevent UI crashes
@@ -386,71 +387,7 @@ export class SupabaseTransactionService implements ITransactionService {
    */
   async getTransactionTemplates(): Promise<{ name: string, template: Partial<Transaction> }[]> {
     // Sample templates for common transaction patterns
-    return [
-      {
-        name: "Bank Transfer",
-        template: {
-          description: "Transfer between bank accounts",
-          status: "draft",
-          lines: [
-            { 
-              accountId: "1", 
-              description: "Transfer from", 
-              debitAmount: 0, 
-              creditAmount: 0 
-            } as TransactionLine,
-            { 
-              accountId: "2", 
-              description: "Transfer to", 
-              debitAmount: 0, 
-              creditAmount: 0 
-            } as TransactionLine
-          ] as unknown as TransactionLine[] // Safe casting to fix type issues
-        }
-      },
-      {
-        name: "Expense Payment",
-        template: {
-          description: "Payment for expense",
-          status: "draft",
-          lines: [
-            { 
-              accountId: "6", 
-              description: "Expense", 
-              debitAmount: 0, 
-              creditAmount: 0 
-            } as TransactionLine,
-            { 
-              accountId: "1", 
-              description: "Payment", 
-              debitAmount: 0, 
-              creditAmount: 0 
-            } as TransactionLine
-          ] as unknown as TransactionLine[] // Safe casting to fix type issues
-        }
-      },
-      {
-        name: "Revenue Receipt",
-        template: {
-          description: "Revenue received",
-          status: "draft",
-          lines: [
-            { 
-              accountId: "1", 
-              description: "Bank deposit", 
-              debitAmount: 0, 
-              creditAmount: 0 
-            } as TransactionLine,
-            { 
-              accountId: "5", 
-              description: "Revenue", 
-              debitAmount: 0, 
-              creditAmount: 0 
-            } as TransactionLine
-          ] as unknown as TransactionLine[] // Safe casting to fix type issues
-        }
-      }
-    ];
+    return [];
   }
 }
 
