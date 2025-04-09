@@ -1,11 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
-import { useOrganization } from "@/hooks/useOrganization";
 import { Invoice } from "@/modules/accounting/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, RefreshCw } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,10 +24,10 @@ import { useToast } from "@/hooks/use-toast";
 import { NewInvoiceDialog } from "./NewInvoiceDialog";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { InvoiceDetail } from "./InvoiceDetail";
+import { Card } from "@/components/ui/card";
 
 export function InvoicesOverview() {
   const { getInvoices } = useAccounting();
-  const { organization } = useOrganization();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -39,17 +37,11 @@ export function InvoicesOverview() {
   const { toast } = useToast();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
-
-  const fetchInvoices = async () => {
+  // Load invoices method
+  const loadInvoices = async () => {
     setIsLoading(true);
     try {
-      // Using the new service capabilities for filtering and sorting
-      const filter = activeFilter ? `status=${activeFilter}` : undefined;
-      const sort = 'created_at.desc'; // Default sort by most recent
-      const fetchedInvoices = await getInvoices({ filter, sort });
+      const fetchedInvoices = await getInvoices();
       setInvoices(fetchedInvoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
@@ -63,6 +55,10 @@ export function InvoicesOverview() {
     }
   };
 
+  useEffect(() => {
+    loadInvoices();
+  }, []);
+
   const handleInvoiceCreated = (newInvoice: Invoice) => {
     setInvoices((current) => [newInvoice, ...current]);
   };
@@ -72,13 +68,15 @@ export function InvoicesOverview() {
   };
 
   const filteredInvoices = invoices.filter((invoice) => {
-    // Already filtered by status at API level if activeFilter is set
+    if (activeFilter && invoice.status !== activeFilter) {
+      return false;
+    }
+    
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
-        invoice.invoiceNumber.toLowerCase().includes(query) ||
         invoice.customerName.toLowerCase().includes(query) ||
-        invoice.total.toString().includes(query)
+        invoice.invoiceNumber.toLowerCase().includes(query)
       );
     }
     
@@ -107,7 +105,7 @@ export function InvoicesOverview() {
         invoiceId={selectedInvoiceId} 
         onBack={() => {
           setSelectedInvoiceId(null);
-          fetchInvoices(); // Refresh the list to get any updates
+          loadInvoices(); // Refresh the list to get any updates
         }}
       />
     );
@@ -119,7 +117,7 @@ export function InvoicesOverview() {
         <div>
           <h2 className="text-xl font-medium">Invoices</h2>
           <p className="text-muted-foreground">
-            Create and manage invoices for your customers
+            Manage your invoices and track payments
           </p>
         </div>
         <Button onClick={() => setShowNewInvoiceDialog(true)}>
@@ -131,52 +129,51 @@ export function InvoicesOverview() {
         <Button
           variant={activeFilter === null ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            setActiveFilter(null);
-            fetchInvoices(); // Refetch with no filters
-          }}
+          onClick={() => setActiveFilter(null)}
         >
           All ({invoices.length})
         </Button>
         <Button
           variant={activeFilter === "draft" ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            setActiveFilter("draft");
-            fetchInvoices(); // Will be applied in fetchInvoices
-          }}
+          onClick={() => setActiveFilter("draft")}
         >
           Draft ({statusCounts["draft"] || 0})
         </Button>
         <Button
           variant={activeFilter === "sent" ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            setActiveFilter("sent");
-            fetchInvoices(); // Will be applied in fetchInvoices
-          }}
+          onClick={() => setActiveFilter("sent")}
         >
           Sent ({statusCounts["sent"] || 0})
         </Button>
         <Button
           variant={activeFilter === "paid" ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            setActiveFilter("paid");
-            fetchInvoices(); // Will be applied in fetchInvoices
-          }}
+          onClick={() => setActiveFilter("paid")}
         >
           Paid ({statusCounts["paid"] || 0})
         </Button>
         <Button
+          variant={activeFilter === "partially_paid" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveFilter("partially_paid")}
+        >
+          Partially Paid ({statusCounts["partially_paid"] || 0})
+        </Button>
+        <Button
           variant={activeFilter === "overdue" ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            setActiveFilter("overdue");
-            fetchInvoices(); // Will be applied in fetchInvoices
-          }}
+          onClick={() => setActiveFilter("overdue")}
         >
           Overdue ({statusCounts["overdue"] || 0})
+        </Button>
+        <Button
+          variant={activeFilter === "cancelled" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveFilter("cancelled")}
+        >
+          Cancelled ({statusCounts["cancelled"] || 0})
         </Button>
       </div>
 
@@ -190,8 +187,8 @@ export function InvoicesOverview() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="sm" onClick={fetchInvoices}>
-          <Filter className="mr-2 h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={() => loadInvoices()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
       </div>
@@ -214,10 +211,10 @@ export function InvoicesOverview() {
               <TableRow>
                 <TableHead>Invoice Number</TableHead>
                 <TableHead>Customer</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Issue Date</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -229,12 +226,12 @@ export function InvoicesOverview() {
                 >
                   <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                   <TableCell>{invoice.customerName}</TableCell>
-                  <TableCell>
-                    <InvoiceStatusBadge status={invoice.status} />
-                  </TableCell>
                   <TableCell>{new Date(invoice.issueDate).toLocaleDateString()}</TableCell>
                   <TableCell>{new Date(invoice.dueDate).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">${invoice.total.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <InvoiceStatusBadge status={invoice.status} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
