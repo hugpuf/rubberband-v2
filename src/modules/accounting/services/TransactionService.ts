@@ -399,14 +399,14 @@ export class SupabaseTransactionService implements ITransactionService {
               description: "Transfer from", 
               debitAmount: 0, 
               creditAmount: 0 
-            } as Partial<TransactionLine>,
+            } as TransactionLine,
             { 
               accountId: "2", 
               description: "Transfer to", 
               debitAmount: 0, 
               creditAmount: 0 
-            } as Partial<TransactionLine>
-          ]
+            } as TransactionLine
+          ] as unknown as TransactionLine[] // Safe casting to fix type issues
         }
       },
       {
@@ -420,14 +420,14 @@ export class SupabaseTransactionService implements ITransactionService {
               description: "Expense", 
               debitAmount: 0, 
               creditAmount: 0 
-            } as Partial<TransactionLine>,
+            } as TransactionLine,
             { 
               accountId: "1", 
               description: "Payment", 
               debitAmount: 0, 
               creditAmount: 0 
-            } as Partial<TransactionLine>
-          ]
+            } as TransactionLine
+          ] as unknown as TransactionLine[] // Safe casting to fix type issues
         }
       },
       {
@@ -441,14 +441,14 @@ export class SupabaseTransactionService implements ITransactionService {
               description: "Bank deposit", 
               debitAmount: 0, 
               creditAmount: 0 
-            } as Partial<TransactionLine>,
+            } as TransactionLine,
             { 
               accountId: "5", 
               description: "Revenue", 
               debitAmount: 0, 
               creditAmount: 0 
-            } as Partial<TransactionLine>
-          ]
+            } as TransactionLine
+          ] as unknown as TransactionLine[] // Safe casting to fix type issues
         }
       }
     ];

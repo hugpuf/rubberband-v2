@@ -197,9 +197,16 @@ export function AccountingProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const createTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const createTransaction = async (transaction: Omit<Transaction, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const newTransaction = await accountingApi.createTransaction(transaction);
+      if (!organization?.id) {
+        throw new Error("Organization ID is required to create a transaction");
+      }
+      
+      const newTransaction = await accountingApi.createTransaction({
+        ...transaction,
+        organization_id: organization.id
+      });
       
       if (!newTransaction) {
         throw new Error("Failed to create transaction");

@@ -113,7 +113,12 @@ export class SupabaseInvoiceService implements IInvoiceService {
   /**
    * Retrieves all invoices with optional filtering, sorting and pagination
    */
-  async getInvoices(options?: { filter?: string; sort?: string; page?: number; limit?: number }): Promise<Invoice[]> {
+  async getInvoices(options?: { 
+    filter?: string; 
+    sort?: string; 
+    page?: number; 
+    limit?: number 
+  }): Promise<Invoice[]> {
     try {
       let query = supabase
         .from('invoices')
@@ -145,7 +150,7 @@ export class SupabaseInvoiceService implements IInvoiceService {
       }
       
       // Apply pagination if provided
-      if (options?.page && options?.limit) {
+      if (options?.page !== undefined && options?.limit !== undefined) {
         const from = (options.page - 1) * options.limit;
         const to = from + options.limit - 1;
         query = query.range(from, to);
@@ -158,7 +163,8 @@ export class SupabaseInvoiceService implements IInvoiceService {
         throw error;
       }
       
-      return (data || []).map(mapInvoiceFromApi);
+      // Type assertion to avoid deep instantiation issues
+      return (data || []).map(item => mapInvoiceFromApi(item as any));
     } catch (error) {
       console.error('Error in getInvoices:', error);
       // Return empty array as fallback to prevent UI crashes
