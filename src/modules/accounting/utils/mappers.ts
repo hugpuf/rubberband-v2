@@ -143,3 +143,49 @@ export const mapBillToApiFormat = (bill: Omit<Bill, 'id' | 'createdAt' | 'update
   console.log("Mapped bill format:", mappedBill);
   return mappedBill;
 };
+
+// Add mappers for transactions
+export const mapTransactionLineFromApi = (data: any) => ({
+  id: data.id,
+  accountId: data.account_id,
+  description: data.description || "",
+  debitAmount: data.debit_amount || 0,
+  creditAmount: data.credit_amount || 0,
+  createdAt: data.created_at,
+  updatedAt: data.updated_at
+});
+
+export const mapTransactionFromApi = (data: any) => ({
+  id: data.id,
+  date: data.transaction_date,
+  description: data.description,
+  referenceNumber: data.reference_number || "",
+  status: data.status,
+  lines: data.lines ? data.lines.map(mapTransactionLineFromApi) : [],
+  createdAt: data.created_at,
+  updatedAt: data.updated_at
+});
+
+export const mapTransactionToApiFormat = (transaction: any) => {
+  console.log("Mapping transaction to API format:", transaction);
+  
+  const mappedTransaction = {
+    transaction_date: transaction.date,
+    description: transaction.description,
+    reference_number: transaction.referenceNumber,
+    status: transaction.status,
+  };
+  
+  console.log("Mapped transaction format:", mappedTransaction);
+  return mappedTransaction;
+};
+
+export const mapTransactionLineToApiFormat = (line: any, transactionId: string) => {
+  return {
+    transaction_id: transactionId,
+    account_id: line.accountId,
+    description: line.description,
+    debit_amount: line.debitAmount || 0,
+    credit_amount: line.creditAmount || 0
+  };
+};
