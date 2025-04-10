@@ -1,10 +1,12 @@
-import {
+
+import React, {
   createContext,
   useContext,
   useState,
   useEffect,
   useCallback,
   ReactNode,
+  FC,
 } from "react";
 import { useSessionContext } from "@supabase/auth-helpers-react";
 import {
@@ -26,6 +28,7 @@ import {
   PaginatedResponse,
   PayrollRun,
   PayrollItem,
+  TransactionFilterParams,
 } from "./types";
 import { Database } from "@/integrations/supabase/types";
 import { AccountService } from "./services/AccountService";
@@ -34,6 +37,7 @@ import { InvoiceService } from "./services/InvoiceService";
 import { BillService } from "./services/BillService";
 import { SupabasePayrollService } from "./services/payroll/SupabasePayrollService";
 import { PayrollServiceFactory } from "./services/payroll/PayrollServiceFactory";
+import { supabase } from "@/integrations/supabase/client";
 
 type AccountingContextType = {
   isLoading: boolean;
@@ -50,17 +54,17 @@ type AccountingContextType = {
   getAccountsByType: (type: AccountType) => Promise<Account[]>;
   updateAccount: (id: string, updates: Partial<Account>) => Promise<Account>;
   deleteAccount: (id: string) => Promise<boolean>;
-  createTransaction: (transaction: Omit<Transaction, "id">) => Promise<Transaction>;
+  createTransaction: (transaction: Omit<Transaction, "id"> & { organization_id: string }) => Promise<Transaction>;
   getTransactions: () => Promise<Transaction[]>;
   getTransactionById: (id: string) => Promise<Transaction | null>;
   updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<Transaction>;
   deleteTransaction: (id: string) => Promise<boolean>;
-  createInvoice: (invoice: Omit<Invoice, "id">) => Promise<Invoice>;
+  createInvoice: (invoice: Omit<Invoice, "id"> & { organization_id: string }) => Promise<Invoice>;
   getInvoices: () => Promise<Invoice[]>;
   getInvoiceById: (id: string) => Promise<Invoice | null>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<Invoice>;
   deleteInvoice: (id: string) => Promise<boolean>;
-  createBill: (bill: Omit<Bill, "id">) => Promise<Bill>;
+  createBill: (bill: Omit<Bill, "id"> & { organization_id: string }) => Promise<Bill>;
   getBills: () => Promise<Bill[]>;
   getBillById: (id: string) => Promise<Bill | null>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<Bill>;
@@ -68,7 +72,7 @@ type AccountingContextType = {
   adjustAccountBalance: (accountId: string, amount: number, description: string) => Promise<Account>;
   getCustomerBalance: (customerId: string) => Promise<number>;
   getVendorBalance: (vendorId: string) => Promise<number>;
-  createPayrollRun: (params: CreatePayrollRunParams) => Promise<PayrollRun>;
+  createPayrollRun: (params: CreatePayrollRunParams & { organization_id: string }) => Promise<PayrollRun>;
   getPayrollRuns: (filters?: PayrollRunFilterParams) => Promise<PaginatedResponse<PayrollRun>>;
   getPayrollRunsByPage: (page: number, limit: number, filters?: Omit<PayrollRunFilterParams, 'page' | 'limit'>) => Promise<PaginatedResponse<PayrollRun>>;
   getPayrollRunById: (id: string) => Promise<PayrollRun | null>;
@@ -92,7 +96,7 @@ interface AccountingProviderProps {
   children: ReactNode;
 }
 
-export const AccountingProvider = ({ children }: AccountingProviderProps) => {
+export const AccountingProvider: FC<AccountingProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [config, setConfig] = useState<AccountingModuleConfig | null>(null);
@@ -112,11 +116,12 @@ export const AccountingProvider = ({ children }: AccountingProviderProps) => {
     const initializeServices = async () => {
       setIsLoading(true);
       try {
-        setAccountService(new AccountService(supabaseClient));
-        setTransactionService(new TransactionService(supabaseClient));
-        setInvoiceService(new InvoiceService(supabaseClient));
-        setBillService(new BillService(supabaseClient));
-        setPayrollService(PayrollServiceFactory.createPayrollService(supabaseClient) as SupabasePayrollService);
+        const client = supabaseClient || supabase;
+        setAccountService(new AccountService(client));
+        setTransactionService(new TransactionService(client));
+        setInvoiceService(new InvoiceService(client));
+        setBillService(new BillService(client));
+        setPayrollService(PayrollServiceFactory.createPayrollService(client) as SupabasePayrollService);
         setIsInitialized(true);
       } catch (error) {
         console.error("Error initializing accounting services:", error);
@@ -189,7 +194,7 @@ export const AccountingProvider = ({ children }: AccountingProviderProps) => {
   };
 
   const createTransaction = async (
-    transaction: Omit<Transaction, "id">
+    transaction: Omit<Transaction, "id"> & { organization_id: string }
   ): Promise<Transaction> => {
     if (!transactionService) {
       throw new Error("Transaction service not initialized");
@@ -222,7 +227,7 @@ export const AccountingProvider = ({ children }: AccountingProviderProps) => {
     if (!transactionService) {
       throw new Error("Transaction service not initialized");
     }
-    const updatedTransaction = await transactionService.updateTransaction(id, updates);
+    const updatedTransaction = await transactionService.updateTransaction(id, updates) as Transaction;
     setTransactions((prevTransactions) =>
       prevTransactions.map((transaction) =>
         transaction.id === id ? updatedTransaction : transaction
@@ -245,7 +250,7 @@ export const AccountingProvider = ({ children }: AccountingProviderProps) => {
   };
 
   const createInvoice = async (
-    invoice: Omit<Invoice, "id">
+    invoice: Omit<Invoice, "id"> & { organization_id: string }
   ): Promise<Invoice> => {
     if (!invoiceService) {
       throw new Error("Invoice service not initialized");
@@ -298,7 +303,7 @@ export const AccountingProvider = ({ children }: AccountingProviderProps) => {
     return success;
   };
 
-  const createBill = async (bill: Omit<Bill, "id">): Promise<Bill> => {
+  const createBill = async (bill: Omit<Bill, "id"> & { organization_id: string }): Promise<Bill> => {
     if (!billService) {
       throw new Error("Bill service not initialized");
     }
@@ -348,106 +353,97 @@ export const AccountingProvider = ({ children }: AccountingProviderProps) => {
     return success;
   };
 
-// Add implementations for the missing accounting operations
-const adjustAccountBalance = async (accountId: string, amount: number, description: string): Promise<Account> => {
-  if (!accountService) {
-    throw new Error("Account service not initialized");
-  }
-  return accountService.adjustAccountBalance(accountId, amount, description);
-};
+  // Add implementations for the missing accounting operations
+  const adjustAccountBalance = async (accountId: string, amount: number, description: string): Promise<Account> => {
+    if (!accountService) {
+      throw new Error("Account service not initialized");
+    }
+    return accountService.adjustAccountBalance(accountId, amount, description);
+  };
 
-const getCustomerBalance = async (customerId: string): Promise<number> => {
-  // Simple implementation for now
-  return Promise.resolve(0);
-};
+  const getCustomerBalance = async (customerId: string): Promise<number> => {
+    // Simple implementation for now
+    return Promise.resolve(0);
+  };
 
-const getVendorBalance = async (vendorId: string): Promise<number> => {
-  // Simple implementation for now
-  return Promise.resolve(0);
-};
+  const getVendorBalance = async (vendorId: string): Promise<number> => {
+    // Simple implementation for now
+    return Promise.resolve(0);
+  };
 
-// Update PaginatedResponse return values to not include hasMore
-const getPayrollRuns = async (filters?: PayrollRunFilterParams): Promise<PaginatedResponse<PayrollRun>> => {
-  try {
+  // Update PaginatedResponse return values to not include hasMore
+  const getPayrollRuns = async (filters?: PayrollRunFilterParams): Promise<PaginatedResponse<PayrollRun>> => {
+    try {
+      if (!payrollService) {
+        throw new Error("Payroll service not initialized");
+      }
+      
+      const result = await payrollService.getPayrollRuns(filters);
+      return {
+        data: result.data,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages
+      };
+    } catch (error: any) {
+      console.error("Error fetching payroll runs:", error);
+      throw error;
+    }
+  };
+
+  const getPayrollRunsByPage = async (page: number, limit: number, filters?: Omit<PayrollRunFilterParams, 'page' | 'limit'>): Promise<PaginatedResponse<PayrollRun>> => {
+    try {
+      if (!payrollService) {
+        throw new Error("Payroll service not initialized");
+      }
+      
+      const result = await payrollService.getPayrollRuns({
+        ...filters,
+        page,
+        limit
+      });
+      
+      return {
+        data: result.data,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages
+      };
+    } catch (error: any) {
+      console.error("Error fetching payroll runs:", error);
+      throw error;
+    }
+  };
+
+  // Update the getPayrollItems function to not include hasMore
+  const getPayrollItems = async (filters?: PayrollItemFilterParams): Promise<PaginatedResponse<PayrollItem>> => {
+    try {
+      if (!payrollService) {
+        throw new Error("Payroll service not initialized");
+      }
+      
+      const result = await payrollService.getPayrollItems(filters);
+      return {
+        data: result.data,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages
+      };
+    } catch (error: any) {
+      console.error("Error fetching payroll items:", error);
+      throw error;
+    }
+  };
+
+  const createPayrollRun = async (params: CreatePayrollRunParams & { organization_id: string }): Promise<PayrollRun> => {
     if (!payrollService) {
       throw new Error("Payroll service not initialized");
     }
     
-    const result = await payrollService.getPayrollRuns(filters);
-    return {
-      data: result.data,
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: result.totalPages
-    };
-  } catch (error: any) {
-    console.error("Error fetching payroll runs:", error);
-    throw error;
-  }
-};
-
-const getPayrollRunsByPage = async (page: number, limit: number, filters?: Omit<PayrollRunFilterParams, 'page' | 'limit'>): Promise<PaginatedResponse<PayrollRun>> => {
-  try {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
-    }
-    
-    const result = await payrollService.getPayrollRuns({
-      ...filters,
-      page,
-      limit
-    });
-    
-    return {
-      data: result.data,
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: result.totalPages
-    };
-  } catch (error: any) {
-    console.error("Error fetching payroll runs:", error);
-    throw error;
-  }
-};
-
-// Update the getPayrollItems function to not include hasMore
-const getPayrollItems = async (filters?: PayrollItemFilterParams): Promise<PaginatedResponse<PayrollItem>> => {
-  try {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
-    }
-    
-    const result = await payrollService.getPayrollItems(filters);
-    return {
-      data: result.data,
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: result.totalPages
-    };
-  } catch (error: any) {
-    console.error("Error fetching payroll items:", error);
-    throw error;
-  }
-};
-
-  const createPayrollRun = async (params: CreatePayrollRunParams): Promise<PayrollRun> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
-    }
-    
-    // Ensure organizationId is provided
-    const organizationId =
-      params.organizationId ||
-      config?.defaultCurrency || // Use default currency as fallback
-      "default-org-id"; // Provide a default organization ID
-    
-    const newPayrollRun = await payrollService.createPayrollRun({
-      ...params,
-      organization_id: organizationId,
-    });
+    const newPayrollRun = await payrollService.createPayrollRun(params);
     return newPayrollRun;
   };
 
@@ -527,7 +523,7 @@ const getPayrollItems = async (filters?: PayrollItemFilterParams): Promise<Pagin
     return payrollService.deletePayrollItem(id);
   };
 
-  return {
+  const value = {
     isLoading,
     isError,
     config,
@@ -575,6 +571,12 @@ const getPayrollItems = async (filters?: PayrollItemFilterParams): Promise<Pagin
     updatePayrollItem,
     deletePayrollItem,
   };
+
+  return (
+    <AccountingContext.Provider value={value}>
+      {children}
+    </AccountingContext.Provider>
+  );
 };
 
 export const useAccounting = (): AccountingContextType => {

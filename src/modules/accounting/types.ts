@@ -99,23 +99,21 @@ export type Bill = {
   updatedAt: string;
 };
 
-// Re-export types from the subdirectory
-export {
-  PayrollItem,
-  PayrollRun,
-  PayrollRunStatus,
-  PAYROLL_RUN_STATUS,
-  CreatePayrollRunParams,
-  UpdatePayrollRunParams,
-  PayrollRunFilterParams,
-  CreatePayrollItemParams,
-  UpdatePayrollItemParams,
-  PayrollItemFilterParams,
-  TaxCalculationResult
-} from './types/payroll';
+// Re-export types from the subdirectory - using export type for TypeScript compatibility
+export type { PayrollItem } from './types/payroll';
+export type { PayrollRun } from './types/payroll';
+export type { PayrollRunStatus } from './types/payroll';
+export { PAYROLL_RUN_STATUS } from './types/payroll';
+export type { CreatePayrollRunParams } from './types/payroll';
+export type { UpdatePayrollRunParams } from './types/payroll';
+export type { PayrollRunFilterParams } from './types/payroll';
+export type { CreatePayrollItemParams } from './types/payroll';
+export type { UpdatePayrollItemParams } from './types/payroll';
+export type { PayrollItemFilterParams } from './types/payroll';
+export type { TaxCalculationResult } from './types/payroll';
 
 // Re-export common types
-export { BaseEntity, PaginatedResponse } from './types/common';
+export type { BaseEntity, PaginatedResponse } from './types/common';
 
 export type AccountingModuleState = {
   isLoading: boolean;

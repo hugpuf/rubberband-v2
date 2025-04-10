@@ -1,8 +1,9 @@
+
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { Invoice, InvoiceItem } from "../types";
 
-export type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
+export type InvoiceWithItems = Invoice;
 
 export interface InvoiceFilterParams {
   customerId?: string;
@@ -22,15 +23,20 @@ export class InvoiceService {
     this.supabase = supabaseClient;
   }
 
-  async createInvoice(invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>): Promise<Invoice> {
+  async createInvoice(invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'> & { organization_id?: string }): Promise<Invoice> {
     try {
+      if (!invoice.organization_id) {
+        throw new Error("Organization ID is required");
+      }
+      
       const { data, error } = await this.supabase
         .from('invoices')
         .insert([
           {
+            organization_id: invoice.organization_id,
             invoice_number: invoice.invoiceNumber,
             contact_id: invoice.customerId,
-            contact_name: invoice.customerName,
+            contact_type: 'customer',
             issue_date: invoice.issueDate,
             due_date: invoice.dueDate,
             subtotal: invoice.subtotal,
@@ -47,7 +53,13 @@ export class InvoiceService {
         throw error;
       }
 
-      return data as Invoice;
+      // Insert invoice items if they exist
+      if (invoice.items && invoice.items.length > 0) {
+        await this.addItemsToInvoice(data.id, invoice.items);
+      }
+      
+      // Get the full invoice with items
+      return await this.getInvoiceById(data.id) as Invoice;
     } catch (error) {
       console.error('Error creating invoice:', error);
       throw error;
@@ -74,16 +86,10 @@ export class InvoiceService {
 
       if (itemsError) {
         console.error('Error fetching invoice items:', itemsError);
-        return {
-          ...invoice,
-          items: []
-        } as InvoiceWithItems;
+        return this.mapInvoiceFromDB(invoice, []);
       }
 
-      return {
-        ...invoice,
-        items: items || []
-      } as InvoiceWithItems;
+      return this.mapInvoiceFromDB(invoice, items || []);
     } catch (error) {
       console.error('Error fetching invoice:', error);
       return null;
@@ -128,8 +134,10 @@ export class InvoiceService {
         return [];
       }
       
-      // Cast to any[] to avoid type instantiation error
-      const result = await Promise.all((invoices as any[]).map(async (invoice) => {
+      // Avoid type instantiation error by using any[] casting
+      const result: InvoiceWithItems[] = [];
+      
+      for (const invoice of (invoices as any[])) {
         const { data: items, error: itemsError } = await this.supabase
           .from('invoice_items')
           .select('*')
@@ -137,17 +145,11 @@ export class InvoiceService {
           
         if (itemsError) {
           console.error('Error fetching invoice items:', itemsError);
-          return {
-            ...invoice,
-            items: []
-          };
+          result.push(this.mapInvoiceFromDB(invoice, []));
+        } else {
+          result.push(this.mapInvoiceFromDB(invoice, items || []));
         }
-        
-        return {
-          ...invoice,
-          items: items || []
-        };
-      }));
+      }
       
       return result;
     } catch (error) {
@@ -158,22 +160,22 @@ export class InvoiceService {
 
   async updateInvoice(id: string, invoice: Partial<Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Invoice> {
     try {
+      const updateData: any = {};
+      
+      if (invoice.invoiceNumber !== undefined) updateData.invoice_number = invoice.invoiceNumber;
+      if (invoice.customerId !== undefined) updateData.contact_id = invoice.customerId;
+      if (invoice.customerName !== undefined) updateData.contact_name = invoice.customerName;
+      if (invoice.issueDate !== undefined) updateData.issue_date = invoice.issueDate;
+      if (invoice.dueDate !== undefined) updateData.due_date = invoice.dueDate;
+      if (invoice.subtotal !== undefined) updateData.subtotal = invoice.subtotal;
+      if (invoice.taxAmount !== undefined) updateData.tax_amount = invoice.taxAmount;
+      if (invoice.total !== undefined) updateData.total = invoice.total;
+      if (invoice.status !== undefined) updateData.status = invoice.status;
+      if (invoice.notes !== undefined) updateData.notes = invoice.notes;
+      
       const { data, error } = await this.supabase
         .from('invoices')
-        .update(
-          {
-            invoice_number: invoice.invoiceNumber,
-            contact_id: invoice.customerId,
-            contact_name: invoice.customerName,
-            issue_date: invoice.issueDate,
-            due_date: invoice.dueDate,
-            subtotal: invoice.subtotal,
-            tax_amount: invoice.taxAmount,
-            total: invoice.total,
-            status: invoice.status,
-            notes: invoice.notes,
-          }
-        )
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -182,7 +184,20 @@ export class InvoiceService {
         throw error;
       }
 
-      return data as Invoice;
+      // If there are items to update
+      if (invoice.items && invoice.items.length > 0) {
+        // First delete existing items
+        await this.supabase
+          .from('invoice_items')
+          .delete()
+          .eq('invoice_id', id);
+          
+        // Then add new items
+        await this.addItemsToInvoice(id, invoice.items);
+      }
+      
+      // Get the updated invoice with items
+      return await this.getInvoiceById(id) as Invoice;
     } catch (error) {
       console.error('Error updating invoice:', error);
       throw error;
@@ -191,6 +206,13 @@ export class InvoiceService {
 
   async deleteInvoice(id: string): Promise<boolean> {
     try {
+      // Delete invoice items first
+      await this.supabase
+        .from('invoice_items')
+        .delete()
+        .eq('invoice_id', id);
+        
+      // Then delete the invoice
       const { error } = await this.supabase
         .from('invoices')
         .delete()
@@ -229,14 +251,14 @@ export class InvoiceService {
         throw error;
       }
 
-      return data as InvoiceItem;
+      return this.mapInvoiceItemFromDB(data);
     } catch (error) {
       console.error('Error adding item to invoice:', error);
       throw error;
     }
   }
 
-  async addItemsToInvoice(invoiceId: string, items: any[]): Promise<any[]> {
+  async addItemsToInvoice(invoiceId: string, items: Omit<InvoiceItem, 'id'>[]): Promise<InvoiceItem[]> {
     try {
       const preparedItems = items.map(item => ({
         invoice_id: invoiceId,
@@ -257,7 +279,7 @@ export class InvoiceService {
         throw error;
       }
       
-      return data || [];
+      return (data as any[]).map(this.mapInvoiceItemFromDB);
     } catch (error) {
       console.error('Error adding items to invoice:', error);
       throw error;
@@ -266,18 +288,18 @@ export class InvoiceService {
 
   async updateItemInInvoice(id: string, item: Partial<Omit<InvoiceItem, 'id'>>): Promise<InvoiceItem> {
     try {
+      const updateData: any = {};
+      
+      if (item.description !== undefined) updateData.description = item.description;
+      if (item.quantity !== undefined) updateData.quantity = item.quantity;
+      if (item.unitPrice !== undefined) updateData.unit_price = item.unitPrice;
+      if (item.taxRate !== undefined) updateData.tax_rate = item.taxRate;
+      if (item.amount !== undefined) updateData.amount = item.amount;
+      if (item.accountId !== undefined) updateData.account_id = item.accountId;
+      
       const { data, error } = await this.supabase
         .from('invoice_items')
-        .update(
-          {
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unitPrice,
-            tax_rate: item.taxRate,
-            amount: item.amount,
-            account_id: item.accountId
-          }
-        )
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -286,7 +308,7 @@ export class InvoiceService {
         throw error;
       }
 
-      return data as InvoiceItem;
+      return this.mapInvoiceItemFromDB(data);
     } catch (error) {
       console.error('Error updating item in invoice:', error);
       throw error;
@@ -309,5 +331,36 @@ export class InvoiceService {
       console.error('Error deleting item from invoice:', error);
       return false;
     }
+  }
+  
+  private mapInvoiceFromDB(invoice: any, items: any[]): Invoice {
+    return {
+      id: invoice.id,
+      invoiceNumber: invoice.invoice_number,
+      customerId: invoice.contact_id,
+      customerName: invoice.contact_name || '',
+      issueDate: invoice.issue_date,
+      dueDate: invoice.due_date,
+      subtotal: invoice.subtotal,
+      taxAmount: invoice.tax_amount,
+      total: invoice.total,
+      status: invoice.status,
+      notes: invoice.notes || '',
+      items: items.map(this.mapInvoiceItemFromDB),
+      createdAt: invoice.created_at,
+      updatedAt: invoice.updated_at
+    };
+  }
+  
+  private mapInvoiceItemFromDB(item: any): InvoiceItem {
+    return {
+      id: item.id,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      taxRate: item.tax_rate,
+      amount: item.amount,
+      accountId: item.account_id || ''
+    };
   }
 }

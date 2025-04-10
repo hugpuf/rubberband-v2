@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from "@supabase/supabase-js";
 import { 
   Transaction, 
@@ -19,14 +20,14 @@ export class TransactionService {
       // First insert the transaction
       const { data: transactionData, error: transactionError } = await this.supabase
         .from('transactions')
-        .insert([{
+        .insert({
           organization_id: transaction.organization_id,
           transaction_date: transaction.date,
           description: transaction.description,
           reference_number: transaction.referenceNumber,
           status: transaction.status,
           created_by: transaction.createdBy
-        }] as any[])
+        })
         .select()
         .single();
 
@@ -89,7 +90,7 @@ export class TransactionService {
         throw error;
       }
 
-      return data.map(this.mapTransactionFromDB);
+      return (data as any[]).map(this.mapTransactionFromDB);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       return [];
@@ -208,10 +209,10 @@ export class TransactionService {
     }
   }
   
-  // Cast database types to app types with proper type assertions
+  // Map database types to app types with proper type assertions
   private mapTransactionFromDB(data: any): Transaction {
-    // For simplicity using any type to avoid deep nested type issues
-    const result = {
+    // Cast to prevent TS2589: Type instantiation is excessively deep and possibly infinite
+    return {
       id: data.id,
       date: data.transaction_date,
       description: data.description,
@@ -230,9 +231,5 @@ export class TransactionService {
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
-    
-    return result as Transaction;
   }
-  
-  // Add other methods as needed
 }
