@@ -13,7 +13,7 @@ export function createServices(client: SupabaseClient<Database>, organizationId:
   const transactionService = new TransactionService(client, organizationId);
   const invoiceService = new InvoiceService(client, organizationId);
   const billService = new BillService(client, organizationId);
-  const payrollService = new SupabasePayrollService(client);
+  const payrollService = new SupabasePayrollService(client, organizationId);
   
   return {
     accountService,

@@ -141,16 +141,17 @@ export class AccountService {
       const account = await this.getAccountById(accountId);
       if (!account) throw new Error(`Account ${accountId} not found`);
       
-      // Instead of directly updating the balance field, we'll update or insert into the account_balances table
+      // Update or insert into account_balances table with only the fields that exist
       const { data: balanceData, error: balanceError } = await this.supabase
         .from('account_balances')
         .upsert({
           account_id: accountId,
           organization_id: this.organizationId,
           balance: amount,
+          // Only include fields that exist in the account_balances table
           type: account.type,
-          code: account.code,
-          name: account.name
+          name: account.name,
+          code: account.code
         })
         .select();
         

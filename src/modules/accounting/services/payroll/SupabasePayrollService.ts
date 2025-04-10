@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import {
@@ -9,24 +10,27 @@ import {
   UpdatePayrollItemParams,
   PayrollRunFilterParams,
   PayrollItemFilterParams,
-  PaginatedResponse,
+  TaxCalculationResult,
   PAYROLL_RUN_STATUS
 } from "../../types/payroll";
-import { PayrollServiceInterface } from "./PayrollServiceInterface";
+import { PaginatedResponse } from "../../types/common";
+import { IPayrollService } from "./PayrollServiceInterface";
 
-export class SupabasePayrollService implements PayrollServiceInterface {
+export class SupabasePayrollService implements IPayrollService {
   private supabase: SupabaseClient<Database>;
+  private organizationId: string;
 
-  constructor(client: SupabaseClient<Database>) {
+  constructor(client: SupabaseClient<Database>, organizationId: string) {
     this.supabase = client;
+    this.organizationId = organizationId;
   }
 
-  // Simplified implementation to fix type instantiation issues
   async getPayrollRuns(filters?: PayrollRunFilterParams): Promise<PaginatedResponse<PayrollRun>> {
     try {
       let query = this.supabase
         .from('payroll_runs')
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'exact' })
+        .eq('organization_id', this.organizationId); // Filter by organization_id
 
       // Apply filters if provided
       if (filters) {
@@ -70,12 +74,13 @@ export class SupabasePayrollService implements PayrollServiceInterface {
     }
   }
 
-  // Simplified implementation to return all items rather than paginated
   async getPayrollItems(filters?: PayrollItemFilterParams): Promise<PaginatedResponse<PayrollItem>> {
     try {
+      // Start with base query including organization filter through the payroll run
       let query = this.supabase
         .from('payroll_items')
-        .select('*', { count: 'exact' });
+        .select('*, payroll_runs!inner(organization_id)', { count: 'exact' })
+        .eq('payroll_runs.organization_id', this.organizationId);
 
       // Apply filters if provided
       if (filters) {
@@ -87,11 +92,6 @@ export class SupabasePayrollService implements PayrollServiceInterface {
         }
         if (filters.status) {
           query = query.eq('status', filters.status);
-        }
-        if (filters.search) {
-          // Since employee name isn't directly searchable, we'd need a join or filter on client side
-          // This is a simplification
-          query = query.or(`id.eq.${filters.search},contact_id.eq.${filters.search}`);
         }
         
         // Pagination
@@ -107,7 +107,13 @@ export class SupabasePayrollService implements PayrollServiceInterface {
 
       if (error) throw error;
 
-      const mappedData = data.map(this.mapPayrollItemFromDB);
+      // Filter out the joined payroll_runs data
+      const filteredData = data.map(item => {
+        const { payroll_runs, ...rest } = item;
+        return rest;
+      });
+
+      const mappedData = filteredData.map(this.mapPayrollItemFromDB);
       
       return {
         data: mappedData,
@@ -127,14 +133,15 @@ export class SupabasePayrollService implements PayrollServiceInterface {
         .from('payroll_runs')
         .select('*')
         .eq('id', id)
-        .single();
+        .eq('organization_id', this.organizationId) // Filter by organization_id
+        .maybeSingle();
 
       if (error) {
         console.error(`Error fetching payroll run ${id}:`, error);
         return null;
       }
 
-      return this.mapPayrollRunFromDB(data);
+      return data ? this.mapPayrollRunFromDB(data) : null;
     } catch (error) {
       console.error(`Error fetching payroll run ${id}:`, error);
       return null;
@@ -143,12 +150,15 @@ export class SupabasePayrollService implements PayrollServiceInterface {
 
   async createPayrollRun(params: CreatePayrollRunParams): Promise<PayrollRun> {
     try {
+      // Use the organizationId from the service instance
+      const organizationId = params.organizationId || this.organizationId;
+      
       const { data, error } = await this.supabase
         .from('payroll_runs')
         .insert([
           {
             name: params.name,
-            organization_id: params.organizationId,
+            organization_id: organizationId,
             period_start: params.periodStart,
             period_end: params.periodEnd,
             status: params.status || PAYROLL_RUN_STATUS.DRAFT,
@@ -181,6 +191,7 @@ export class SupabasePayrollService implements PayrollServiceInterface {
           notes: updates.notes,
         })
         .eq('id', id)
+        .eq('organization_id', this.organizationId) // Filter by organization_id
         .select('*')
         .single();
 
@@ -198,7 +209,8 @@ export class SupabasePayrollService implements PayrollServiceInterface {
       const { error } = await this.supabase
         .from('payroll_runs')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', this.organizationId); // Filter by organization_id
 
       if (error) throw error;
 
@@ -211,26 +223,76 @@ export class SupabasePayrollService implements PayrollServiceInterface {
 
   async getPayrollItemById(id: string): Promise<PayrollItem | null> {
     try {
+      // Join with payroll_runs to filter by organization_id
       const { data, error } = await this.supabase
         .from('payroll_items')
-        .select('*')
+        .select('*, payroll_runs!inner(organization_id)')
         .eq('id', id)
-        .single();
+        .eq('payroll_runs.organization_id', this.organizationId)
+        .maybeSingle();
 
       if (error) {
         console.error(`Error fetching payroll item ${id}:`, error);
         return null;
       }
 
-      return this.mapPayrollItemFromDB(data);
+      if (!data) return null;
+
+      // Remove the joined payroll_runs data
+      const { payroll_runs, ...itemData } = data;
+      return this.mapPayrollItemFromDB(itemData);
     } catch (error) {
       console.error(`Error fetching payroll item ${id}:`, error);
       return null;
     }
   }
 
+  async getPayrollItemsByRunId(runId: string): Promise<PayrollItem[]> {
+    try {
+      // First, verify the run belongs to the organization
+      const { data: runData, error: runError } = await this.supabase
+        .from('payroll_runs')
+        .select('id')
+        .eq('id', runId)
+        .eq('organization_id', this.organizationId)
+        .maybeSingle();
+
+      if (runError || !runData) {
+        console.error(`Error or unauthorized payroll run ${runId}`);
+        return [];
+      }
+
+      const { data, error } = await this.supabase
+        .from('payroll_items')
+        .select('*')
+        .eq('payroll_run_id', runId);
+
+      if (error) {
+        console.error(`Error fetching payroll items for run ${runId}:`, error);
+        return [];
+      }
+
+      return data.map(this.mapPayrollItemFromDB);
+    } catch (error) {
+      console.error(`Error fetching payroll items for run ${runId}:`, error);
+      return [];
+    }
+  }
+
   async createPayrollItem(params: CreatePayrollItemParams): Promise<PayrollItem> {
     try {
+      // First, verify the run belongs to the organization
+      const { data: runData, error: runError } = await this.supabase
+        .from('payroll_runs')
+        .select('id')
+        .eq('id', params.payrollRunId)
+        .eq('organization_id', this.organizationId)
+        .maybeSingle();
+
+      if (runError || !runData) {
+        throw new Error(`Unauthorized or invalid payroll run ${params.payrollRunId}`);
+      }
+
       const { data, error } = await this.supabase
         .from('payroll_items')
         .insert([
@@ -266,6 +328,28 @@ export class SupabasePayrollService implements PayrollServiceInterface {
 
   async updatePayrollItem(id: string, updates: UpdatePayrollItemParams): Promise<PayrollItem> {
     try {
+      // First, verify this item belongs to a run in the organization
+      const { data: itemData, error: itemError } = await this.supabase
+        .from('payroll_items')
+        .select('payroll_run_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (itemError || !itemData) {
+        throw new Error(`Payroll item ${id} not found`);
+      }
+
+      const { data: runData, error: runError } = await this.supabase
+        .from('payroll_runs')
+        .select('id')
+        .eq('id', itemData.payroll_run_id)
+        .eq('organization_id', this.organizationId)
+        .maybeSingle();
+
+      if (runError || !runData) {
+        throw new Error(`Unauthorized access to payroll item ${id}`);
+      }
+
       const { data, error } = await this.supabase
         .from('payroll_items')
         .update({
@@ -300,6 +384,30 @@ export class SupabasePayrollService implements PayrollServiceInterface {
 
   async deletePayrollItem(id: string): Promise<boolean> {
     try {
+      // First, verify this item belongs to a run in the organization
+      const { data: itemData, error: itemError } = await this.supabase
+        .from('payroll_items')
+        .select('payroll_run_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (itemError || !itemData) {
+        console.error(`Payroll item ${id} not found`);
+        return false;
+      }
+
+      const { data: runData, error: runError } = await this.supabase
+        .from('payroll_runs')
+        .select('id')
+        .eq('id', itemData.payroll_run_id)
+        .eq('organization_id', this.organizationId)
+        .maybeSingle();
+
+      if (runError || !runData) {
+        console.error(`Unauthorized access to payroll item ${id}`);
+        return false;
+      }
+
       const { error } = await this.supabase
         .from('payroll_items')
         .delete()
@@ -316,12 +424,11 @@ export class SupabasePayrollService implements PayrollServiceInterface {
 
   async processPayrollRun(id: string): Promise<PayrollRun> {
     try {
-      // Placeholder for processing logic - in a real app, this would calculate payroll
-      // For now, we simply update the status to 'processing'
       const { data, error } = await this.supabase
         .from('payroll_runs')
         .update({ status: PAYROLL_RUN_STATUS.PROCESSING })
         .eq('id', id)
+        .eq('organization_id', this.organizationId) // Filter by organization_id
         .select('*')
         .single();
 
@@ -336,12 +443,11 @@ export class SupabasePayrollService implements PayrollServiceInterface {
 
   async finalizePayrollRun(id: string): Promise<PayrollRun> {
     try {
-      // Placeholder for finalization logic - in a real app, this would lock the payroll
-      // For now, we simply update the status to 'completed'
       const { data, error } = await this.supabase
         .from('payroll_runs')
         .update({ status: PAYROLL_RUN_STATUS.COMPLETED })
         .eq('id', id)
+        .eq('organization_id', this.organizationId) // Filter by organization_id
         .select('*')
         .single();
 
@@ -354,14 +460,200 @@ export class SupabasePayrollService implements PayrollServiceInterface {
     }
   }
 
+  async calculateTaxes(grossAmount: number, employeeId: string): Promise<TaxCalculationResult> {
+    // Simple tax calculation implementation
+    // In a real app, this would use complex tax tables and employee information
+    try {
+      const federalTaxRate = 0.15; // 15% federal tax
+      const stateTaxRate = 0.05;   // 5% state tax
+      const medicareTaxRate = 0.0145; // 1.45% Medicare
+      const socialSecurityTaxRate = 0.062; // 6.2% Social Security
+      
+      const federalTax = grossAmount * federalTaxRate;
+      const stateTax = grossAmount * stateTaxRate;
+      const medicareTax = grossAmount * medicareTaxRate;
+      const socialSecurityTax = grossAmount * socialSecurityTaxRate;
+      
+      const totalTax = federalTax + stateTax + medicareTax + socialSecurityTax;
+      
+      return {
+        federalTax,
+        stateTax,
+        localTax: 0, // No local tax in this simple example
+        medicareTax,
+        socialSecurityTax,
+        totalTax
+      };
+    } catch (error) {
+      console.error(`Error calculating taxes for employee ${employeeId}:`, error);
+      // Return zero taxes in case of error
+      return {
+        federalTax: 0,
+        stateTax: 0,
+        localTax: 0,
+        medicareTax: 0,
+        socialSecurityTax: 0,
+        totalTax: 0
+      };
+    }
+  }
+
+  async recalculatePayrollItem(id: string): Promise<PayrollItem> {
+    try {
+      // Get the payroll item
+      const payrollItem = await this.getPayrollItemById(id);
+      if (!payrollItem) {
+        throw new Error(`Payroll item ${id} not found`);
+      }
+      
+      // Recalculate taxes
+      const taxResult = await this.calculateTaxes(payrollItem.grossSalary, payrollItem.employeeId);
+      
+      // Calculate total deductions (tax + other deductions)
+      let deductionAmount = taxResult.totalTax;
+      (payrollItem.deductions || []).forEach(d => {
+        deductionAmount += d.amount;
+      });
+      
+      // Calculate net salary
+      const netSalary = payrollItem.grossSalary - deductionAmount;
+      
+      // Update the payroll item
+      const updatedItem = await this.updatePayrollItem(id, {
+        taxAmount: taxResult.totalTax,
+        deductionAmount,
+        netSalary
+      });
+      
+      return updatedItem;
+    } catch (error) {
+      console.error(`Error recalculating payroll item ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async recalculatePayrollRun(id: string): Promise<PayrollRun> {
+    try {
+      // Get all items for this run
+      const items = await this.getPayrollItemsByRunId(id);
+      
+      // Recalculate each item
+      const updatedItems = await Promise.all(
+        items.map(item => this.recalculatePayrollItem(item.id))
+      );
+      
+      // Calculate totals
+      const employeeCount = updatedItems.length;
+      const grossAmount = updatedItems.reduce((sum, item) => sum + item.grossSalary, 0);
+      const taxAmount = updatedItems.reduce((sum, item) => sum + item.taxAmount, 0);
+      const deductionAmount = updatedItems.reduce((sum, item) => sum + item.deductionAmount, 0);
+      const netAmount = updatedItems.reduce((sum, item) => sum + item.netSalary, 0);
+      
+      // Update the payroll run
+      const { data, error } = await this.supabase
+        .from('payroll_runs')
+        .update({
+          employee_count: employeeCount,
+          gross_amount: grossAmount,
+          tax_amount: taxAmount,
+          deduction_amount: deductionAmount,
+          net_amount: netAmount
+        })
+        .eq('id', id)
+        .eq('organization_id', this.organizationId)
+        .select('*')
+        .single();
+        
+      if (error) throw error;
+      
+      return this.mapPayrollRunFromDB(data);
+    } catch (error) {
+      console.error(`Error recalculating payroll run ${id}:`, error);
+      throw error;
+    }
+  }
+
   async exportPayrollRun(id: string, format: 'csv' | 'pdf' | 'json'): Promise<string> {
     try {
-      // Placeholder for export logic - in a real app, this would generate a file
-      // For now, we simply return a string indicating the export type
+      // Verify run belongs to organization
+      const run = await this.getPayrollRunById(id);
+      if (!run) {
+        throw new Error(`Payroll run ${id} not found or unauthorized`);
+      }
+      
+      // In a real app, this would generate a file and return a download URL
+      // For now, return a placeholder message
       return `Payroll run ${id} exported as ${format}`;
     } catch (error) {
       console.error(`Error exporting payroll run ${id}:`, error);
       throw error;
+    }
+  }
+
+  async importPayrollItems(runId: string, data: any[]): Promise<{ success: boolean; imported: number; errors: any[] }> {
+    try {
+      // Verify run belongs to organization
+      const run = await this.getPayrollRunById(runId);
+      if (!run) {
+        throw new Error(`Payroll run ${runId} not found or unauthorized`);
+      }
+      
+      const errors: any[] = [];
+      const importedItems: PayrollItem[] = [];
+      
+      // Process each item in the data array
+      for (const item of data) {
+        try {
+          // Create basic payroll item data structure
+          const payrollItemData: CreatePayrollItemParams = {
+            payrollRunId: runId,
+            employeeId: item.employeeId,
+            employeeName: item.employeeName,
+            grossSalary: parseFloat(item.grossSalary) || 0,
+            taxAmount: parseFloat(item.taxAmount) || 0,
+            deductions: item.deductions || [],
+            deductionAmount: parseFloat(item.deductionAmount) || 0,
+            netSalary: parseFloat(item.netSalary) || 0,
+            status: 'pending'
+          };
+          
+          // Add optional fields if present
+          if (item.regularHours) payrollItemData.regularHours = parseFloat(item.regularHours);
+          if (item.overtimeHours) payrollItemData.overtimeHours = parseFloat(item.overtimeHours);
+          if (item.hourlyRate) payrollItemData.hourlyRate = parseFloat(item.hourlyRate);
+          if (item.baseSalary) payrollItemData.baseSalary = parseFloat(item.baseSalary);
+          if (item.benefits) payrollItemData.benefits = item.benefits;
+          if (item.notes) payrollItemData.notes = item.notes;
+          
+          // Create the payroll item
+          const createdItem = await this.createPayrollItem(payrollItemData);
+          importedItems.push(createdItem);
+        } catch (itemError) {
+          console.error(`Error importing payroll item:`, itemError);
+          errors.push({
+            item,
+            error: (itemError as Error).message
+          });
+        }
+      }
+      
+      // Recalculate the payroll run totals
+      await this.recalculatePayrollRun(runId);
+      
+      return {
+        success: errors.length === 0,
+        imported: importedItems.length,
+        errors
+      };
+    } catch (error) {
+      console.error(`Error importing payroll items to run ${runId}:`, error);
+      return {
+        success: false,
+        imported: 0,
+        errors: [{
+          error: (error as Error).message
+        }]
+      };
     }
   }
 

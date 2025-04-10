@@ -1,6 +1,7 @@
 
-// Common types used across multiple modules
-
+/**
+ * Base entity interface for all accounting entities with common properties
+ */
 export interface BaseEntity {
   id: string;
   createdAt: string;
@@ -8,12 +9,11 @@ export interface BaseEntity {
 }
 
 /**
- * Generic paginated response type
+ * Generic interface for paginated responses from the API
  */
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
   page: number;
   limit: number;
-  totalPages: number;
 }

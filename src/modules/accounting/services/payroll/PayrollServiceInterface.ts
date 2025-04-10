@@ -8,9 +8,9 @@ import {
   UpdatePayrollItemParams,
   PayrollRunFilterParams,
   PayrollItemFilterParams,
-  PaginatedResponse,
   TaxCalculationResult
-} from "../../types";
+} from "../../types/payroll";
+import { PaginatedResponse } from "../../types/common";
 
 /**
  * Interface defining the standard operations for the payroll service
@@ -18,7 +18,7 @@ import {
  */
 export interface IPayrollService {
   // Payroll Run operations
-  createPayrollRun(params: CreatePayrollRunParams & { organization_id: string }): Promise<PayrollRun>;
+  createPayrollRun(params: CreatePayrollRunParams & { organization_id?: string }): Promise<PayrollRun>;
   getPayrollRuns(filters?: PayrollRunFilterParams): Promise<PaginatedResponse<PayrollRun>>;
   getPayrollRunById(id: string): Promise<PayrollRun | null>;
   updatePayrollRun(id: string, updates: UpdatePayrollRunParams): Promise<PayrollRun>;
