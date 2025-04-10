@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,12 +31,10 @@ export function PayrollOverview() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  // Summary metrics
   const [metrics, setMetrics] = useState({
     totalEmployees: 0,
     monthlyPayroll: 0,
@@ -45,7 +42,6 @@ export function PayrollOverview() {
     upcomingPayments: 0
   });
   
-  // Fetch payroll runs with filtering and pagination
   const fetchPayrollRuns = async () => {
     setIsLoading(true);
     
@@ -69,7 +65,6 @@ export function PayrollOverview() {
       setTotalCount(result.total);
       setTotalPages(Math.ceil(result.total / itemsPerPage));
       
-      // Calculate metrics
       calculateMetrics(result.data);
     } catch (error) {
       console.error("Error fetching payroll runs:", error);
@@ -83,19 +78,13 @@ export function PayrollOverview() {
     }
   };
   
-  // Calculate summary metrics based on payroll runs
   const calculateMetrics = (runs: PayrollRun[]) => {
-    // In a real app, these would come from API calls
-    // For this example, we'll calculate them from the payroll runs we have
-    
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
-    // Set of unique employee IDs
     const employeeSet = new Set<string>();
     
-    // Total payroll amounts
     let monthlyPayroll = 0;
     let ytdPayroll = 0;
     let upcomingPayments = 0;
@@ -105,20 +94,16 @@ export function PayrollOverview() {
       const runMonth = runDate.getMonth();
       const runYear = runDate.getFullYear();
       
-      // Count employees for total unique employees
       run.employeeCount && employeeSet.add(run.id);
       
-      // Current month payroll
       if (runMonth === currentMonth && runYear === currentYear) {
         monthlyPayroll += run.netAmount;
       }
       
-      // YTD payroll
       if (runYear === currentYear) {
         ytdPayroll += run.netAmount;
       }
       
-      // Upcoming payments (future payment dates)
       const paymentDate = new Date(run.paymentDate);
       if (paymentDate > now) {
         upcomingPayments++;
@@ -126,19 +111,17 @@ export function PayrollOverview() {
     });
     
     setMetrics({
-      totalEmployees: Math.max(employeeSet.size, 12), // Fallback to at least 12
-      monthlyPayroll: Math.max(monthlyPayroll, 45500), // Fallback to reasonable values
+      totalEmployees: Math.max(employeeSet.size, 12),
+      monthlyPayroll: Math.max(monthlyPayroll, 45500),
       ytdPayroll: Math.max(ytdPayroll, 167000),
       upcomingPayments: Math.max(upcomingPayments, 1)
     });
   };
   
-  // Load initial data
   useEffect(() => {
     fetchPayrollRuns();
   }, [currentPage, statusFilter]);
   
-  // Handle search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchPayrollRuns();
@@ -175,7 +158,6 @@ export function PayrollOverview() {
     fetchPayrollRuns();
   };
   
-  // If a specific payroll run is selected, show the detail view
   if (selectedRunId) {
     return (
       <div className="space-y-4">
@@ -344,12 +326,12 @@ export function PayrollOverview() {
                 <PaginationItem>
                   <PaginationPrevious 
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
+                    aria-disabled={currentPage === 1}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
                 
                 {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                  // Show at most 5 pages, ensure current page is in the middle if possible
                   let pageNum = currentPage;
                   if (currentPage <= 3) {
                     pageNum = i + 1;
@@ -359,7 +341,6 @@ export function PayrollOverview() {
                     pageNum = currentPage - 2 + i;
                   }
                   
-                  // Don't show negative or exceeding page numbers
                   if (pageNum < 1 || pageNum > totalPages) return null;
                   
                   return (
@@ -377,7 +358,8 @@ export function PayrollOverview() {
                 <PaginationItem>
                   <PaginationNext 
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
+                    aria-disabled={currentPage === totalPages}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -386,12 +368,10 @@ export function PayrollOverview() {
         )}
       </div>
       
-      {/* Create Payroll Run Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <PayrollRunDialog onClose={handleDialogClose} />
       </Dialog>
       
-      {/* Edit Payroll Run Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <PayrollRunDialog payrollRun={selectedPayrollRun!} onClose={handleDialogClose} />
       </Dialog>

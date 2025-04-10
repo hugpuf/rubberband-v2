@@ -6,7 +6,7 @@ import {
   UpdatePayrollRunParams,
   CreatePayrollItemParams,
   UpdatePayrollItemParams
-} from "../types";
+} from "../types/payroll";
 
 /**
  * Maps a payroll run from the API format to the application model
@@ -89,6 +89,7 @@ export const mapPayrollItemToApiFormat = (payrollItem: Partial<PayrollItem>): an
 
   if (payrollItem.payrollRunId !== undefined) result.payroll_run_id = payrollItem.payrollRunId;
   if (payrollItem.employeeId !== undefined) result.contact_id = payrollItem.employeeId;
+  if (payrollItem.employeeName !== undefined) result.employee_name = payrollItem.employeeName;
   if (payrollItem.grossSalary !== undefined) result.gross_salary = payrollItem.grossSalary;
   if (payrollItem.regularHours !== undefined) result.regular_hours = payrollItem.regularHours;
   if (payrollItem.overtimeHours !== undefined) result.overtime_hours = payrollItem.overtimeHours;

@@ -1,4 +1,3 @@
-
 import { Invoice } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { mapInvoiceFromApi, mapInvoiceToApiFormat } from "../utils/mappers";
@@ -309,3 +308,23 @@ export class SupabaseInvoiceService implements IInvoiceService {
 
 // Default export of the native implementation
 export default new SupabaseInvoiceService();
+
+export const mapInvoicesFromApi = (data: any[]): Invoice[] => {
+  // Cast data to any[] to avoid "Type instantiation is excessively deep" error
+  return (data as any[]).map(invoice => ({
+    id: invoice.id,
+    invoiceNumber: invoice.invoice_number,
+    customerId: invoice.contact_id,
+    customerName: invoice.customer_name || 'Unknown Customer',
+    issueDate: invoice.issue_date,
+    dueDate: invoice.due_date,
+    items: invoice.items ? mapInvoiceItemsFromApi(invoice.items) : [],
+    subtotal: invoice.subtotal,
+    taxAmount: invoice.tax_amount,
+    total: invoice.total,
+    status: invoice.status,
+    notes: invoice.notes,
+    createdAt: invoice.created_at,
+    updatedAt: invoice.updated_at
+  }));
+};

@@ -10,7 +10,7 @@ import {
   PayrollItemFilterParams,
   PaginatedResponse,
   TaxCalculationResult
-} from "../../types";
+} from "../../types/payroll";
 
 /**
  * Interface defining the standard operations for the payroll service

@@ -1,4 +1,3 @@
-
 export type AccountingModuleConfig = {
   defaultCurrency: string;
   fiscalYearStart: string;
@@ -96,29 +95,17 @@ export type Bill = {
   updatedAt: string;
 };
 
-export type PayrollItem = {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  grossSalary: number;
-  taxAmount: number;
-  deductionAmount: number;
-  netSalary: number;
-  notes?: string;
-};
+import { 
+  PayrollItem as EnhancedPayrollItem,
+  PayrollRun as EnhancedPayrollRun,
+  PayrollRunStatus
+} from './types/payroll';
 
-export type PayrollRun = {
-  id: string;
-  name: string;
-  period: string;
-  status: 'draft' | 'processing' | 'completed' | 'error';
-  employeeCount: number;
-  grossAmount: number;
-  netAmount: number;
-  paymentDate: string;
-  createdAt: string;
-  updatedAt: string;
-};
+export type PayrollItem = EnhancedPayrollItem;
+
+export type PayrollRun = EnhancedPayrollRun;
+
+export { PayrollRunStatus };
 
 export type AccountingModuleState = {
   isLoading: boolean;

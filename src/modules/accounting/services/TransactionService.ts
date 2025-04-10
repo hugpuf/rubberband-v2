@@ -1,4 +1,3 @@
-
 import { Transaction, TransactionLine } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -393,3 +392,18 @@ export class SupabaseTransactionService implements ITransactionService {
 
 // Default export of the native implementation
 export default new SupabaseTransactionService();
+
+export const mapTransactionsFromApi = (data: any[]): Transaction[] => {
+  // Cast data to any[] to avoid "Type instantiation is excessively deep" error
+  return (data as any[]).map(transaction => ({
+    id: transaction.id,
+    date: transaction.transaction_date,
+    description: transaction.description,
+    referenceNumber: transaction.reference_number,
+    status: transaction.status,
+    createdBy: transaction.created_by,
+    createdAt: transaction.created_at,
+    updatedAt: transaction.updated_at,
+    lines: transaction.lines ? mapTransactionLinesFromApi(transaction.lines) : []
+  }));
+};
