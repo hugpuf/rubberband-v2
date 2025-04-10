@@ -1,102 +1,94 @@
-
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
   useCallback,
-  ReactNode,
-  FC,
-} from "react";
-import { useSessionContext } from "@supabase/auth-helpers-react";
+} from 'react';
+import { SupabaseClient } from '@supabase/supabase-js';
+
 import {
   AccountingModuleConfig,
   Account,
-  AccountType,
   Transaction,
-  TransactionLine,
   Invoice,
-  InvoiceItem,
   Bill,
-  BillItem,
-  CreatePayrollRunParams,
-  UpdatePayrollRunParams,
-  PayrollRunFilterParams,
-  CreatePayrollItemParams,
-  UpdatePayrollItemParams,
-  PayrollItemFilterParams,
-  PaginatedResponse,
-  PayrollRun,
   PayrollItem,
+  PayrollRun,
   TransactionFilterParams,
-} from "./types";
-import { Database } from "@/integrations/supabase/types";
-import { AccountService } from "./services/AccountService";
-import { TransactionService } from "./services/TransactionService";
-import { InvoiceService } from "./services/InvoiceService";
-import { BillService } from "./services/BillService";
-import { SupabasePayrollService } from "./services/payroll/SupabasePayrollService";
-import { PayrollServiceFactory } from "./services/payroll/PayrollServiceFactory";
-import { supabase } from "@/integrations/supabase/client";
+} from './types';
+import { createServices } from './api';
 
+// Define the context type
 type AccountingContextType = {
-  isLoading: boolean;
-  isError: boolean;
-  config: AccountingModuleConfig | null;
-  accounts: Account[];
-  transactions: Transaction[];
-  invoices: Invoice[];
-  bills: Bill[];
-  isInitialized: boolean;
-  createAccount: (account: Omit<Account, "id">) => Promise<Account>;
+  state: {
+    isLoading: boolean;
+    isError: boolean;
+    config: AccountingModuleConfig | null;
+    accounts: Account[];
+    transactions: Transaction[];
+    invoices: Invoice[];
+    bills: Bill[];
+    payrolls: {
+      items: PayrollItem[];
+      runs: PayrollRun[];
+    };
+    isInitialized: boolean;
+  };
+  getModuleConfig: () => Promise<AccountingModuleConfig | null>;
   getAccounts: () => Promise<Account[]>;
-  getAccountById: (id: string) => Promise<Account | null>;
-  getAccountsByType: (type: AccountType) => Promise<Account[]>;
+  createAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => Promise<Account>;
   updateAccount: (id: string, updates: Partial<Account>) => Promise<Account>;
   deleteAccount: (id: string) => Promise<boolean>;
-  createTransaction: (transaction: Omit<Transaction, "id"> & { organization_id: string }) => Promise<Transaction>;
-  getTransactions: () => Promise<Transaction[]>;
-  getTransactionById: (id: string) => Promise<Transaction | null>;
+  adjustAccountBalance: (accountId: string, amount: number, description: string) => Promise<Account>;
+  getTransactions: (filters?: TransactionFilterParams) => Promise<Transaction[]>;
+  createTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
   updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<Transaction>;
   deleteTransaction: (id: string) => Promise<boolean>;
-  createInvoice: (invoice: Omit<Invoice, "id"> & { organization_id: string }) => Promise<Invoice>;
   getInvoices: () => Promise<Invoice[]>;
-  getInvoiceById: (id: string) => Promise<Invoice | null>;
+  createInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Invoice>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<Invoice>;
   deleteInvoice: (id: string) => Promise<boolean>;
-  createBill: (bill: Omit<Bill, "id"> & { organization_id: string }) => Promise<Bill>;
   getBills: () => Promise<Bill[]>;
-  getBillById: (id: string) => Promise<Bill | null>;
+  createBill: (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Bill>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<Bill>;
   deleteBill: (id: string) => Promise<boolean>;
-  adjustAccountBalance: (accountId: string, amount: number, description: string) => Promise<Account>;
-  getCustomerBalance: (customerId: string) => Promise<number>;
-  getVendorBalance: (vendorId: string) => Promise<number>;
-  createPayrollRun: (params: CreatePayrollRunParams & { organization_id: string }) => Promise<PayrollRun>;
-  getPayrollRuns: (filters?: PayrollRunFilterParams) => Promise<PaginatedResponse<PayrollRun>>;
-  getPayrollRunsByPage: (page: number, limit: number, filters?: Omit<PayrollRunFilterParams, 'page' | 'limit'>) => Promise<PaginatedResponse<PayrollRun>>;
-  getPayrollRunById: (id: string) => Promise<PayrollRun | null>;
-  updatePayrollRun: (id: string, updates: UpdatePayrollRunParams) => Promise<PayrollRun>;
-  deletePayrollRun: (id: string) => Promise<boolean>;
-  processPayrollRun: (id: string) => Promise<PayrollRun>;
-  finalizePayrollRun: (id: string) => Promise<PayrollRun>;
-  createPayrollItem: (params: CreatePayrollItemParams) => Promise<PayrollItem>;
-  getPayrollItems: (filters?: PayrollItemFilterParams) => Promise<PaginatedResponse<PayrollItem>>;
-  getPayrollItemById: (id: string) => Promise<PayrollItem | null>;
-  getPayrollItemsByRunId: (runId: string) => Promise<PayrollItem[]>;
-  updatePayrollItem: (id: string, updates: UpdatePayrollItemParams) => Promise<PayrollItem>;
+  getPayrollItems: () => Promise<PayrollItem[]>;
+  createPayrollItem: (item: Omit<PayrollItem, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PayrollItem>;
+  updatePayrollItem: (id: string, updates: Partial<PayrollItem>) => Promise<PayrollItem>;
   deletePayrollItem: (id: string) => Promise<boolean>;
+  getPayrollRuns: () => Promise<PayrollRun[]>;
+  createPayrollRun: (run: Omit<PayrollRun, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PayrollRun>;
+  updatePayrollRun: (id: string, updates: Partial<PayrollRun>) => Promise<PayrollRun>;
+  deletePayrollRun: (id: string) => Promise<boolean>;
 };
 
+// Create the context
 const AccountingContext = createContext<AccountingContextType | undefined>(
   undefined
 );
 
-interface AccountingProviderProps {
-  children: ReactNode;
-}
+// Hook for using the context
+export const useAccounting = (): AccountingContextType => {
+  const context = useContext(AccountingContext);
+  if (!context) {
+    throw new Error(
+      'useAccounting must be used within an AccountingProvider'
+    );
+  }
+  return context;
+};
 
-export const AccountingProvider: FC<AccountingProviderProps> = ({ children }) => {
+// Define the provider props
+type AccountingProviderProps = {
+  supabase: SupabaseClient;
+  children: React.ReactNode;
+};
+
+// Add useUser or equivalent to get the organization ID
+import { useUser } from '@supabase/auth-helpers-react';
+
+export function AccountingProvider({ children }: AccountingProviderProps): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [config, setConfig] = useState<AccountingModuleConfig | null>(null);
@@ -104,485 +96,367 @@ export const AccountingProvider: FC<AccountingProviderProps> = ({ children }) =>
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
+  const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
+  const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const { supabaseClient } = useSessionContext();
-  const [accountService, setAccountService] = useState<AccountService | null>(null);
-  const [transactionService, setTransactionService] = useState<TransactionService | null>(null);
-  const [invoiceService, setInvoiceService] = useState<InvoiceService | null>(null);
-  const [billService, setBillService] = useState<BillService | null>(null);
-  const [payrollService, setPayrollService] = useState<SupabasePayrollService | null>(null);
-
+  
+  const user = useUser();
+  const organizationId = user?.id || ''; // In a real application, this would come from the user's organization
+  
   useEffect(() => {
-    const initializeServices = async () => {
-      setIsLoading(true);
-      try {
-        const client = supabaseClient || supabase;
-        setAccountService(new AccountService(client));
-        setTransactionService(new TransactionService(client));
-        setInvoiceService(new InvoiceService(client));
-        setBillService(new BillService(client));
-        setPayrollService(PayrollServiceFactory.createPayrollService(client) as SupabasePayrollService);
-        setIsInitialized(true);
-      } catch (error) {
-        console.error("Error initializing accounting services:", error);
-        setIsError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeServices();
-  }, [supabaseClient]);
-
-  const createAccount = async (account: Omit<Account, "id">): Promise<Account> => {
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-    const newAccount = await accountService.createAccount(account);
-    setAccounts((prevAccounts) => [...prevAccounts, newAccount]);
-    return newAccount;
-  };
-
-  const getAccounts = async (): Promise<Account[]> => {
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-    const fetchedAccounts = await accountService.getAccounts();
-    setAccounts(fetchedAccounts);
-    return fetchedAccounts;
-  };
-
-  const getAccountById = async (id: string): Promise<Account | null> => {
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-    return accountService.getAccountById(id);
-  };
-
-  const getAccountsByType = async (type: AccountType): Promise<Account[]> => {
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-    return accountService.getAccountsByType(type);
-  };
-
-  const updateAccount = async (
-    id: string,
-    updates: Partial<Account>
-  ): Promise<Account> => {
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-    const updatedAccount = await accountService.updateAccount(id, updates);
-    setAccounts((prevAccounts) =>
-      prevAccounts.map((account) => (account.id === id ? updatedAccount : account))
-    );
-    return updatedAccount;
-  };
-
-  const deleteAccount = async (id: string): Promise<boolean> => {
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-    const success = await accountService.deleteAccount(id);
-    if (success) {
-      setAccounts((prevAccounts) =>
-        prevAccounts.filter((account) => account.id !== id)
-      );
-    }
-    return success;
-  };
-
-  const createTransaction = async (
-    transaction: Omit<Transaction, "id"> & { organization_id: string }
-  ): Promise<Transaction> => {
-    if (!transactionService) {
-      throw new Error("Transaction service not initialized");
-    }
-    const newTransaction = await transactionService.createTransaction(transaction);
-    setTransactions((prevTransactions) => [...prevTransactions, newTransaction]);
-    return newTransaction;
-  };
-
-  const getTransactions = async (): Promise<Transaction[]> => {
-    if (!transactionService) {
-      throw new Error("Transaction service not initialized");
-    }
-    const fetchedTransactions = await transactionService.getTransactions();
-    setTransactions(fetchedTransactions);
-    return fetchedTransactions;
-  };
-
-  const getTransactionById = async (id: string): Promise<Transaction | null> => {
-    if (!transactionService) {
-      throw new Error("Transaction service not initialized");
-    }
-    return transactionService.getTransactionById(id);
-  };
-
-  const updateTransaction = async (
-    id: string,
-    updates: Partial<Transaction>
-  ): Promise<Transaction> => {
-    if (!transactionService) {
-      throw new Error("Transaction service not initialized");
-    }
-    const updatedTransaction = await transactionService.updateTransaction(id, updates) as Transaction;
-    setTransactions((prevTransactions) =>
-      prevTransactions.map((transaction) =>
-        transaction.id === id ? updatedTransaction : transaction
-      )
-    );
-    return updatedTransaction;
-  };
-
-  const deleteTransaction = async (id: string): Promise<boolean> => {
-    if (!transactionService) {
-      throw new Error("Transaction service not initialized");
-    }
-    const success = await transactionService.deleteTransaction(id);
-    if (success) {
-      setTransactions((prevTransactions) =>
-        prevTransactions.filter((transaction) => transaction.id !== id)
-      );
-    }
-    return success;
-  };
-
-  const createInvoice = async (
-    invoice: Omit<Invoice, "id"> & { organization_id: string }
-  ): Promise<Invoice> => {
-    if (!invoiceService) {
-      throw new Error("Invoice service not initialized");
-    }
-    const newInvoice = await invoiceService.createInvoice(invoice);
-    setInvoices((prevInvoices) => [...prevInvoices, newInvoice]);
-    return newInvoice;
-  };
-
-  const getInvoices = async (): Promise<Invoice[]> => {
-    if (!invoiceService) {
-      throw new Error("Invoice service not initialized");
-    }
-    const fetchedInvoices = await invoiceService.getInvoices();
-    setInvoices(fetchedInvoices);
-    return fetchedInvoices;
-  };
-
-  const getInvoiceById = async (id: string): Promise<Invoice | null> => {
-    if (!invoiceService) {
-      throw new Error("Invoice service not initialized");
-    }
-    return invoiceService.getInvoiceById(id);
-  };
-
-  const updateInvoice = async (
-    id: string,
-    updates: Partial<Invoice>
-  ): Promise<Invoice> => {
-    if (!invoiceService) {
-      throw new Error("Invoice service not initialized");
-    }
-    const updatedInvoice = await invoiceService.updateInvoice(id, updates);
-    setInvoices((prevInvoices) =>
-      prevInvoices.map((invoice) => (invoice.id === id ? updatedInvoice : invoice))
-    );
-    return updatedInvoice;
-  };
-
-  const deleteInvoice = async (id: string): Promise<boolean> => {
-    if (!invoiceService) {
-      throw new Error("Invoice service not initialized");
-    }
-    const success = await invoiceService.deleteInvoice(id);
-    if (success) {
-      setInvoices((prevInvoices) =>
-        prevInvoices.filter((invoice) => invoice.id !== id)
-      );
-    }
-    return success;
-  };
-
-  const createBill = async (bill: Omit<Bill, "id"> & { organization_id: string }): Promise<Bill> => {
-    if (!billService) {
-      throw new Error("Bill service not initialized");
-    }
-    const newBill = await billService.createBill(bill);
-    setBills((prevBills) => [...prevBills, newBill]);
-    return newBill;
-  };
-
-  const getBills = async (): Promise<Bill[]> => {
-    if (!billService) {
-      throw new Error("Bill service not initialized");
-    }
-    const fetchedBills = await billService.getBills();
-    setBills(fetchedBills);
-    return fetchedBills;
-  };
-
-  const getBillById = async (id: string): Promise<Bill | null> => {
-    if (!billService) {
-      throw new Error("Bill service not initialized");
-    }
-    return billService.getBillById(id);
-  };
-
-  const updateBill = async (
-    id: string,
-    updates: Partial<Bill>
-  ): Promise<Bill> => {
-    if (!billService) {
-      throw new Error("Bill service not initialized");
-    }
-    const updatedBill = await billService.updateBill(id, updates);
-    setBills((prevBills) =>
-      prevBills.map((bill) => (bill.id === id ? updatedBill : bill))
-    );
-    return updatedBill;
-  };
-
-  const deleteBill = async (id: string): Promise<boolean> => {
-    if (!billService) {
-      throw new Error("Bill service not initialized");
-    }
-    const success = await billService.deleteBill(id);
-    if (success) {
-      setBills((prevBills) => prevBills.filter((bill) => bill.id !== id));
-    }
-    return success;
-  };
-
-  // Add implementations for the missing accounting operations
-  const adjustAccountBalance = async (accountId: string, amount: number, description: string): Promise<Account> => {
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-    return accountService.adjustAccountBalance(accountId, amount, description);
-  };
-
-  const getCustomerBalance = async (customerId: string): Promise<number> => {
-    // Simple implementation for now
-    return Promise.resolve(0);
-  };
-
-  const getVendorBalance = async (vendorId: string): Promise<number> => {
-    // Simple implementation for now
-    return Promise.resolve(0);
-  };
-
-  // Update PaginatedResponse return values to not include hasMore
-  const getPayrollRuns = async (filters?: PayrollRunFilterParams): Promise<PaginatedResponse<PayrollRun>> => {
-    try {
-      if (!payrollService) {
-        throw new Error("Payroll service not initialized");
-      }
-      
-      const result = await payrollService.getPayrollRuns(filters);
-      return {
-        data: result.data,
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-        totalPages: result.totalPages
-      };
-    } catch (error: any) {
-      console.error("Error fetching payroll runs:", error);
-      throw error;
-    }
-  };
-
-  const getPayrollRunsByPage = async (page: number, limit: number, filters?: Omit<PayrollRunFilterParams, 'page' | 'limit'>): Promise<PaginatedResponse<PayrollRun>> => {
-    try {
-      if (!payrollService) {
-        throw new Error("Payroll service not initialized");
-      }
-      
-      const result = await payrollService.getPayrollRuns({
-        ...filters,
-        page,
-        limit
-      });
-      
-      return {
-        data: result.data,
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-        totalPages: result.totalPages
-      };
-    } catch (error: any) {
-      console.error("Error fetching payroll runs:", error);
-      throw error;
-    }
-  };
-
-  // Update the getPayrollItems function to not include hasMore
-  const getPayrollItems = async (filters?: PayrollItemFilterParams): Promise<PaginatedResponse<PayrollItem>> => {
-    try {
-      if (!payrollService) {
-        throw new Error("Payroll service not initialized");
-      }
-      
-      const result = await payrollService.getPayrollItems(filters);
-      return {
-        data: result.data,
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-        totalPages: result.totalPages
-      };
-    } catch (error: any) {
-      console.error("Error fetching payroll items:", error);
-      throw error;
-    }
-  };
-
-  const createPayrollRun = async (params: CreatePayrollRunParams & { organization_id: string }): Promise<PayrollRun> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+    // Ensure we have an organization ID
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return;
     }
     
-    const newPayrollRun = await payrollService.createPayrollRun(params);
-    return newPayrollRun;
-  };
+    // Initialize services with the organization ID
+    const services = createServices(supabase, organizationId);
+    const {
+      accountService,
+      transactionService,
+      invoiceService,
+      billService,
+      payrollService
+    } = services;
+    
+    setIsLoading(true);
+    Promise.all([
+      accountService.getAccounts(),
+      transactionService.getTransactions(),
+    ])
+    .then(([accounts, transactions]) => {
+      setAccounts(accounts);
+      setTransactions(transactions);
+      setIsInitialized(true);
+    })
+    .catch((error) => {
+      console.error("Error initializing accounting module:", error);
+      setIsError(true);
+    })
+    .finally(() => {
+      setIsLoading(false);
+    });
+  }, [organizationId]);
+  
+  const getModuleConfig = useCallback(async () => {
+    // TODO: Implement fetching module config from Supabase
+    return {
+      defaultCurrency: 'USD',
+      fiscalYearStart: '2023-01-01',
+      taxRate: 0.0825,
+      isEnabled: true,
+    };
+  }, []);
 
-  const getPayrollRunById = async (id: string): Promise<PayrollRun | null> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const getAccounts = useCallback(async () => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return [];
     }
-    return payrollService.getPayrollRunById(id);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.accountService.getAccounts();
+  }, [supabase, organizationId]);
 
-  const updatePayrollRun = async (
-    id: string,
-    updates: UpdatePayrollRunParams
-  ): Promise<PayrollRun> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const createAccount = useCallback(
+    async (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.accountService.createAccount(account);
+    },
+    [supabase, organizationId]
+  );
+
+  const updateAccount = useCallback(
+    async (id: string, updates: Partial<Account>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.accountService.updateAccount(id, updates);
+    },
+    [supabase, organizationId]
+  );
+
+  const deleteAccount = useCallback(async (id: string) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return false;
     }
-    return payrollService.updatePayrollRun(id, updates);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.accountService.deleteAccount(id);
+  }, [supabase, organizationId]);
 
-  const deletePayrollRun = async (id: string): Promise<boolean> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const adjustAccountBalance = useCallback(async (accountId: string, amount: number, description: string) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      throw new Error('Organization ID is required');
     }
-    return payrollService.deletePayrollRun(id);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.accountService.adjustAccountBalance(accountId, amount, description);
+  }, [supabase, organizationId]);
 
-  const processPayrollRun = async (id: string): Promise<PayrollRun> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const getTransactions = useCallback(async (filters?: TransactionFilterParams) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return [];
     }
-    return payrollService.processPayrollRun(id);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.transactionService.getTransactions(filters);
+  }, [supabase, organizationId]);
 
-  const finalizePayrollRun = async (id: string): Promise<PayrollRun> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const createTransaction = useCallback(
+    async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.transactionService.createTransaction(transaction);
+    },
+    [supabase, organizationId]
+  );
+
+  const updateTransaction = useCallback(
+    async (id: string, updates: Partial<Transaction>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.transactionService.updateTransaction(id, updates);
+    },
+    [supabase, organizationId]
+  );
+
+  const deleteTransaction = useCallback(async (id: string) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return false;
     }
-    return payrollService.finalizePayrollRun(id);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.transactionService.deleteTransaction(id);
+  }, [supabase, organizationId]);
 
-  const createPayrollItem = async (params: CreatePayrollItemParams): Promise<PayrollItem> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const getInvoices = useCallback(async () => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return [];
     }
-    return payrollService.createPayrollItem(params);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.invoiceService.getInvoices();
+  }, [supabase, organizationId]);
 
-  const getPayrollItemById = async (id: string): Promise<PayrollItem | null> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const createInvoice = useCallback(
+    async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.invoiceService.createInvoice(invoice);
+    },
+    [supabase, organizationId]
+  );
+
+  const updateInvoice = useCallback(
+    async (id: string, updates: Partial<Invoice>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.invoiceService.updateInvoice(id, updates);
+    },
+    [supabase, organizationId]
+  );
+
+  const deleteInvoice = useCallback(async (id: string) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return false;
     }
-    return payrollService.getPayrollItemById(id);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.invoiceService.deleteInvoice(id);
+  }, [supabase, organizationId]);
 
-  const getPayrollItemsByRunId = async (runId: string): Promise<PayrollItem[]> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const getBills = useCallback(async () => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return [];
     }
-    return payrollService.getPayrollItemsByRunId(runId);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.billService.getBills();
+  }, [supabase, organizationId]);
 
-  const updatePayrollItem = async (
-    id: string,
-    updates: UpdatePayrollItemParams
-  ): Promise<PayrollItem> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const createBill = useCallback(
+    async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.billService.createBill(bill);
+    },
+    [supabase, organizationId]
+  );
+
+  const updateBill = useCallback(
+    async (id: string, updates: Partial<Bill>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.billService.updateBill(id, updates);
+    },
+    [supabase, organizationId]
+  );
+
+  const deleteBill = useCallback(async (id: string) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return false;
     }
-    return payrollService.updatePayrollItem(id, updates);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.billService.deleteBill(id);
+  }, [supabase, organizationId]);
 
-  const deletePayrollItem = async (id: string): Promise<boolean> => {
-    if (!payrollService) {
-      throw new Error("Payroll service not initialized");
+  const getPayrollItems = useCallback(async () => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return [];
     }
-    return payrollService.deletePayrollItem(id);
-  };
+    const services = createServices(supabase, organizationId);
+    return await services.payrollService.getPayrollItems();
+  }, [supabase, organizationId]);
 
-  const value = {
-    isLoading,
-    isError,
-    config,
-    accounts,
-    transactions,
-    invoices,
-    bills,
-    isInitialized,
-    createAccount,
+  const createPayrollItem = useCallback(
+    async (item: Omit<PayrollItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.payrollService.createPayrollItem(item);
+    },
+    [supabase, organizationId]
+  );
+
+  const updatePayrollItem = useCallback(
+    async (id: string, updates: Partial<PayrollItem>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.payrollService.updatePayrollItem(id, updates);
+    },
+    [supabase, organizationId]
+  );
+
+  const deletePayrollItem = useCallback(async (id: string) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return false;
+    }
+    const services = createServices(supabase, organizationId);
+    return await services.payrollService.deletePayrollItem(id);
+  }, [supabase, organizationId]);
+
+  const getPayrollRuns = useCallback(async () => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return [];
+    }
+    const services = createServices(supabase, organizationId);
+    return await services.payrollService.getPayrollRuns();
+  }, [supabase, organizationId]);
+
+  const createPayrollRun = useCallback(
+    async (run: Omit<PayrollRun, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.payrollService.createPayrollRun(run);
+    },
+    [supabase, organizationId]
+  );
+
+  const updatePayrollRun = useCallback(
+    async (id: string, updates: Partial<PayrollRun>) => {
+      if (!organizationId) {
+        console.error('No organization ID available');
+        throw new Error('Organization ID is required');
+      }
+      const services = createServices(supabase, organizationId);
+      return await services.payrollService.updatePayrollRun(id, updates);
+    },
+    [supabase, organizationId]
+  );
+
+  const deletePayrollRun = useCallback(async (id: string) => {
+    if (!organizationId) {
+      console.error('No organization ID available');
+      return false;
+    }
+    const services = createServices(supabase, organizationId);
+    return await services.payrollService.deletePayrollRun(id);
+  }, [supabase, organizationId]);
+
+  // Define the context value
+  const contextValue: AccountingContextType = {
+    state: {
+      isLoading,
+      isError,
+      config,
+      accounts,
+      transactions,
+      invoices,
+      bills,
+      payrolls: {
+        items: payrollItems,
+        runs: payrollRuns,
+      },
+      isInitialized,
+    },
+    getModuleConfig,
     getAccounts,
-    getAccountById,
-    getAccountsByType,
+    createAccount,
     updateAccount,
     deleteAccount,
-    createTransaction,
+    adjustAccountBalance,
     getTransactions,
-    getTransactionById,
+    createTransaction,
     updateTransaction,
     deleteTransaction,
-    createInvoice,
     getInvoices,
-    getInvoiceById,
+    createInvoice,
     updateInvoice,
     deleteInvoice,
-    createBill,
     getBills,
-    getBillById,
+    createBill,
     updateBill,
     deleteBill,
-    adjustAccountBalance,
-    getCustomerBalance,
-    getVendorBalance,
-    createPayrollRun,
-    getPayrollRuns,
-    getPayrollRunsByPage,
-    getPayrollRunById,
-    updatePayrollRun,
-    deletePayrollRun,
-    processPayrollRun,
-    finalizePayrollRun,
-    createPayrollItem,
     getPayrollItems,
-    getPayrollItemById,
-    getPayrollItemsByRunId,
+    createPayrollItem,
     updatePayrollItem,
     deletePayrollItem,
+    getPayrollRuns,
+    createPayrollRun,
+    updatePayrollRun,
+    deletePayrollRun,
   };
-
+  
   return (
-    <AccountingContext.Provider value={value}>
+    <AccountingContext.Provider value={contextValue}>
       {children}
     </AccountingContext.Provider>
   );
-};
-
-export const useAccounting = (): AccountingContextType => {
-  const context = useContext(AccountingContext);
-  if (context === undefined) {
-    throw new Error("useAccounting must be used within an AccountingProvider");
-  }
-  return context;
-};
+}

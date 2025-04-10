@@ -353,7 +353,26 @@ export class SupabasePayrollService implements IPayrollService {
       const startIndex = (page - 1) * limit;
       const endIndex = page * limit - 1;
       
-      const { data, error, count } = await query.range(startIndex, endIndex);
+      const countQuery = this.supabase
+        .from('payroll_items')
+        .select('*', { count: 'exact' });
+        
+      if (filters?.payrollRunId) {
+        countQuery.eq('payroll_run_id', filters.payrollRunId);
+      }
+      if (filters?.employeeId) {
+        countQuery.eq('contact_id', filters.employeeId);
+      }
+      if (filters?.status) {
+        countQuery.eq('status', filters.status);
+      }
+      if (filters?.search) {
+        countQuery.ilike('employee_name', `%${filters.search}%`);
+      }
+      
+      const { count } = await countQuery;
+      
+      const { data, error } = await query.range(startIndex, endIndex);
       
       if (error) {
         console.error("Error fetching payroll items:", error);

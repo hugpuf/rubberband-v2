@@ -5,9 +5,11 @@ import { Database } from "@/integrations/supabase/types";
 
 export class AccountService {
   private supabase: SupabaseClient<Database>;
+  private organizationId: string;
 
-  constructor(client: SupabaseClient<Database>) {
+  constructor(client: SupabaseClient<Database>, organizationId: string) {
     this.supabase = client;
+    this.organizationId = organizationId;
   }
 
   async createAccount(account: Omit<Account, "id" | "createdAt" | "updatedAt" | "balance">): Promise<Account> {
@@ -19,7 +21,8 @@ export class AccountService {
           name: account.name,
           description: account.description,
           type: account.type,
-          is_active: account.isActive
+          is_active: account.isActive,
+          organization_id: this.organizationId // Adding organization_id which is required
         }])
         .select('*')
         .single();
@@ -38,6 +41,7 @@ export class AccountService {
       const { data, error } = await this.supabase
         .from('accounts')
         .select('*')
+        .eq('organization_id', this.organizationId) // Filter by organization_id
         .order('code', { ascending: true });
 
       if (error) throw error;
@@ -55,6 +59,7 @@ export class AccountService {
         .from('accounts')
         .select('*')
         .eq('id', id)
+        .eq('organization_id', this.organizationId) // Filter by organization_id
         .single();
 
       if (error) throw error;
@@ -72,6 +77,7 @@ export class AccountService {
         .from('accounts')
         .select('*')
         .eq('type', type)
+        .eq('organization_id', this.organizationId) // Filter by organization_id
         .order('code', { ascending: true });
 
       if (error) throw error;
@@ -85,17 +91,20 @@ export class AccountService {
 
   async updateAccount(id: string, updates: Partial<Account>): Promise<Account> {
     try {
+      // Create a database-compatible update object
       const updateData: any = {};
       if (updates.code !== undefined) updateData.code = updates.code;
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.type !== undefined) updateData.type = updates.type;
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+      // Removed the balance property as it's not accepted by the accounts table schema
 
       const { data, error } = await this.supabase
         .from('accounts')
         .update(updateData)
         .eq('id', id)
+        .eq('organization_id', this.organizationId) // Filter by organization_id
         .select('*')
         .single();
 
@@ -113,7 +122,8 @@ export class AccountService {
       const { error } = await this.supabase
         .from('accounts')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('organization_id', this.organizationId); // Filter by organization_id
 
       if (error) throw error;
 
@@ -126,23 +136,32 @@ export class AccountService {
 
   async adjustAccountBalance(accountId: string, amount: number, description: string): Promise<Account> {
     // This would typically involve creating a transaction rather than directly updating the balance
-    // For now, we'll implement a simplified version
+    // For now, we'll implement a simplified version using the account_balances table
     try {
       const account = await this.getAccountById(accountId);
       if (!account) throw new Error(`Account ${accountId} not found`);
       
-      const newBalance = account.balance + amount;
-      
-      const { data, error } = await this.supabase
-        .from('accounts')
-        .update({ balance: newBalance })
-        .eq('id', accountId)
+      // Instead of directly updating the balance field, we'll update or insert into the account_balances table
+      const { data: balanceData, error: balanceError } = await this.supabase
+        .from('account_balances')
+        .upsert({
+          account_id: accountId,
+          organization_id: this.organizationId,
+          balance: amount,
+          type: account.type,
+          code: account.code,
+          name: account.name
+        })
         .select('*')
         .single();
         
-      if (error) throw error;
+      if (balanceError) throw balanceError;
       
-      return this.mapAccountFromDB(data);
+      // Re-fetch the account to get the latest data
+      const updatedAccount = await this.getAccountById(accountId);
+      if (!updatedAccount) throw new Error(`Account ${accountId} not found after balance adjustment`);
+      
+      return updatedAccount;
     } catch (error) {
       console.error(`Error adjusting account balance ${accountId}:`, error);
       throw error;
