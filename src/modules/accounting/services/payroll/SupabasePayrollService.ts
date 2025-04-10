@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { 
@@ -50,8 +51,8 @@ export class SupabasePayrollService implements IPayrollService {
     return (data as any[]).map(item => ({
       id: item.id,
       payrollRunId: item.payroll_run_id,
-      employeeId: item.employee_id,
-      employeeName: item.employee_name,
+      employeeId: item.contact_id, // Map from contact_id to employeeId
+      employeeName: item.employee_name || 'Unknown Employee',
       grossSalary: parseFloat(item.gross_salary) || 0,
       regularHours: parseFloat(item.regular_hours) || undefined,
       overtimeHours: parseFloat(item.overtime_hours) || undefined,
@@ -63,13 +64,13 @@ export class SupabasePayrollService implements IPayrollService {
       deductionAmount: parseFloat(item.deduction_amount) || 0,
       netSalary: parseFloat(item.net_salary) || 0,
       notes: item.notes,
-      status: item.status,
+      status: item.status || 'pending',
       createdAt: item.created_at,
       updatedAt: item.updated_at
     }));
   }
   
-  async createPayrollRun(params: CreatePayrollRunParams & { organization_id: string }): Promise<PayrollRun> {
+  async createPayrollRun(params: CreatePayrollRunParams & { organization_id?: string }): Promise<PayrollRun> {
     try {
       const { employeeIds, ...payrollRunParams } = params;
       
@@ -77,7 +78,7 @@ export class SupabasePayrollService implements IPayrollService {
         .from('payroll_runs')
         .insert([{
           name: params.name,
-          organization_id: params.organization_id,
+          organization_id: params.organizationId || params.organization_id, // Handle both property names
           period_start: params.periodStart,
           period_end: params.periodEnd,
           status: params.status || PayrollRunStatus.DRAFT,
@@ -86,9 +87,9 @@ export class SupabasePayrollService implements IPayrollService {
           tax_amount: 0,
           deduction_amount: 0,
           net_amount: 0,
-          employee_count: 0, // Adding this even though it might not exist in the table
+          employee_count: 0,
           notes: params.notes
-        } as any]) // Cast to any to avoid property errors
+        }] as any[]) // Cast to any[] to bypass strict type checking
         .select()
         .single();
       
@@ -178,9 +179,26 @@ export class SupabasePayrollService implements IPayrollService {
   
   async updatePayrollRun(id: string, updates: UpdatePayrollRunParams): Promise<PayrollRun> {
     try {
+      // Convert from our internal model to the database schema
+      const dbUpdates: any = {};
+      
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.organizationId !== undefined) dbUpdates.organization_id = updates.organizationId;
+      if (updates.periodStart !== undefined) dbUpdates.period_start = updates.periodStart;
+      if (updates.periodEnd !== undefined) dbUpdates.period_end = updates.periodEnd;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.employeeCount !== undefined) dbUpdates.employee_count = updates.employeeCount;
+      if (updates.grossAmount !== undefined) dbUpdates.gross_amount = updates.grossAmount;
+      if (updates.taxAmount !== undefined) dbUpdates.tax_amount = updates.taxAmount;
+      if (updates.deductionAmount !== undefined) dbUpdates.deduction_amount = updates.deductionAmount;
+      if (updates.netAmount !== undefined) dbUpdates.net_amount = updates.netAmount;
+      if (updates.paymentDate !== undefined) dbUpdates.payment_date = updates.paymentDate;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+      if (updates.processingErrors !== undefined) dbUpdates.processing_errors = JSON.stringify(updates.processingErrors);
+      
       const { data, error } = await this.supabase
         .from('payroll_runs')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', id)
         .select()
         .single();
@@ -222,7 +240,7 @@ export class SupabasePayrollService implements IPayrollService {
         .from('payroll_runs')
         .update({
           status: PayrollRunStatus.PROCESSING
-        } as any) // Cast to any to avoid property errors
+        })
         .eq('id', id)
         .select()
         .single();
@@ -245,7 +263,7 @@ export class SupabasePayrollService implements IPayrollService {
         .from('payroll_runs')
         .update({
           status: PayrollRunStatus.COMPLETED
-        } as any) // Cast to any to avoid property errors
+        })
         .eq('id', id)
         .select()
         .single();
@@ -264,25 +282,29 @@ export class SupabasePayrollService implements IPayrollService {
   
   async createPayrollItem(params: CreatePayrollItemParams): Promise<PayrollItem> {
     try {
+      // Map our internal model to the database schema
+      const dbItem = {
+        payroll_run_id: params.payrollRunId,
+        contact_id: params.employeeId, // Map employeeId to contact_id
+        contact_type: 'employee',
+        employee_name: params.employeeName,
+        gross_salary: params.grossSalary,
+        regular_hours: params.regularHours,
+        overtime_hours: params.overtimeHours,
+        hourly_rate: params.hourlyRate,
+        base_salary: params.baseSalary,
+        tax_amount: params.taxAmount,
+        deductions: JSON.stringify(params.deductions),
+        benefits: JSON.stringify(params.benefits),
+        deduction_amount: params.deductionAmount,
+        net_salary: params.netSalary,
+        notes: params.notes,
+        status: params.status || 'pending'
+      };
+      
       const { data, error } = await this.supabase
         .from('payroll_items')
-        .insert([{
-          payroll_run_id: params.payrollRunId,
-          employee_id: params.employeeId,
-          employee_name: params.employeeName,
-          gross_salary: params.grossSalary,
-          regular_hours: params.regularHours,
-          overtime_hours: params.overtimeHours,
-          hourly_rate: params.hourlyRate,
-          base_salary: params.baseSalary,
-          tax_amount: params.taxAmount,
-          deductions: JSON.stringify(params.deductions),
-          benefits: JSON.stringify(params.benefits),
-          deduction_amount: params.deductionAmount,
-          net_salary: params.netSalary,
-          notes: params.notes,
-          status: params.status
-        }])
+        .insert([dbItem] as any[])
         .select()
         .single();
       
@@ -569,9 +591,7 @@ export class SupabasePayrollService implements IPayrollService {
             deductions: [],
             benefits: [],
             deductionAmount: 0,
-            netSalary: 0,
-            notes: itemData.notes || '',
-            status: 'pending'
+            netSalary: 0
           };
           
           await this.createPayrollItem(createParams);

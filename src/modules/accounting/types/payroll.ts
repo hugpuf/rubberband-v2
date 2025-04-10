@@ -14,13 +14,15 @@ export type BenefitType = 'health' | 'dental' | 'vision' | 'retirement' | 'bonus
 /**
  * Valid payroll run statuses
  */
-export enum PayrollRunStatus {
-  DRAFT = 'draft',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  ERROR = 'error',
-  CANCELLED = 'cancelled'
-}
+export const PayrollRunStatus = {
+  DRAFT: 'draft',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  ERROR: 'error',
+  CANCELLED: 'cancelled'
+} as const;
+
+export type PayrollRunStatus = typeof PayrollRunStatus[keyof typeof PayrollRunStatus];
 
 /**
  * Represents a single deduction in a payroll item
@@ -50,8 +52,8 @@ export interface PayrollBenefit {
  */
 export interface PayrollItem extends BaseEntity {
   id: string;
-  payrollRunId: string;
-  employeeId: string;
+  payrollRunId: string; // Maps to payroll_run_id in database
+  employeeId: string; // Maps to contact_id in database
   employeeName: string;
   grossSalary: number;
   regularHours?: number;
@@ -70,7 +72,23 @@ export interface PayrollItem extends BaseEntity {
 /**
  * Parameters for creating a new payroll item
  */
-export type CreatePayrollItemParams = Omit<PayrollItem, 'id' | 'createdAt' | 'updatedAt' | 'status'>;
+export interface CreatePayrollItemParams {
+  payrollRunId: string;
+  employeeId: string;
+  employeeName: string;
+  grossSalary: number;
+  regularHours?: number;
+  overtimeHours?: number;
+  hourlyRate?: number;
+  baseSalary?: number;
+  taxAmount: number;
+  deductions: PayrollDeduction[];
+  benefits?: PayrollBenefit[];
+  deductionAmount: number;
+  netSalary: number;
+  notes?: string;
+  status?: 'pending' | 'processed' | 'error';
+}
 
 /**
  * Parameters for updating a payroll item
@@ -86,7 +104,7 @@ export interface PayrollRun extends BaseEntity {
   organizationId: string;
   periodStart: string;
   periodEnd: string;
-  status: keyof typeof PayrollRunStatus | string;
+  status: PayrollRunStatus | string;
   employeeCount: number;
   grossAmount: number;
   taxAmount: number;
@@ -100,9 +118,16 @@ export interface PayrollRun extends BaseEntity {
 /**
  * Parameters for creating a new payroll run
  */
-export type CreatePayrollRunParams = Omit<PayrollRun, 'id' | 'createdAt' | 'updatedAt' | 'employeeCount' | 'grossAmount' | 'taxAmount' | 'deductionAmount' | 'netAmount' | 'processingErrors'> & {
+export interface CreatePayrollRunParams {
+  name: string;
+  organizationId?: string;
+  periodStart: string;
+  periodEnd: string;
+  status?: PayrollRunStatus | string;
+  paymentDate: string;
+  notes?: string;
   employeeIds?: string[];
-};
+}
 
 /**
  * Parameters for updating a payroll run
@@ -113,7 +138,7 @@ export type UpdatePayrollRunParams = Partial<Omit<PayrollRun, 'id' | 'createdAt'
  * Parameters for filtering payroll runs
  */
 export interface PayrollRunFilterParams {
-  status?: keyof typeof PayrollRunStatus | string;
+  status?: PayrollRunStatus | string;
   startDate?: string;
   endDate?: string;
   search?: string;

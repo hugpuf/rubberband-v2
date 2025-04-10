@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { 
   Account, 
   Transaction, 
@@ -15,18 +14,12 @@ import {
   PayrollItemFilterParams,
   PaginatedResponse
 } from "./types";
-import { 
-  mapBillFromApi, 
-  mapBillToApiFormat, 
-  mapInvoiceFromApi, 
-  mapInvoiceToApiFormat,
-  mapTransactionFromApi,
-  mapTransactionToApiFormat,
-  mapTransactionLineToApiFormat
-} from "./utils/mappers";
-import invoiceService from "./services/InvoiceService";
-import transactionService from "./services/TransactionService";
-import payrollService from "./services/payroll/SupabasePayrollService";
+import { Database } from "@/integrations/supabase/types";
+import { AccountService } from "./services/AccountService";
+import { TransactionService } from "./services/TransactionService";
+import { InvoiceService } from "./services/InvoiceService";
+import { BillService } from "./services/BillService";
+import { SupabasePayrollService } from "./services/payroll/SupabasePayrollService";
 
 // Use Vite's import.meta.env instead of process.env
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";

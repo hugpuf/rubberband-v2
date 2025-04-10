@@ -1,341 +1,313 @@
-import { Invoice } from "../types";
-import { supabase } from "@/integrations/supabase/client";
-import { mapInvoiceFromApi, mapInvoiceToApiFormat } from "../utils/mappers";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/integrations/supabase/types";
+import { Invoice, InvoiceItem } from "../types";
 
-/**
- * Interface defining the standard operations for invoices
- * This abstraction will allow us to swap implementations (native, Xero, etc.)
- */
-export interface IInvoiceService {
-  createInvoice(invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt"> & { organization_id: string }): Promise<Invoice>;
-  getInvoices(options?: { filter?: string; sort?: string; page?: number; limit?: number }): Promise<Invoice[]>;
-  getInvoiceById(id: string): Promise<Invoice | null>;
-  updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice>;
-  deleteInvoice(id: string): Promise<boolean>;
+export type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
+
+export interface InvoiceFilterParams {
+  customerId?: string;
+  status?: Invoice['status'];
+  dateRange?: {
+    from?: string;
+    to?: string;
+  };
+  search?: string;
+  limit?: number;
 }
 
-/**
- * Native implementation of the InvoiceService interface that uses Supabase
- * This implementation will be used when no external integrations are configured
- */
-export class SupabaseInvoiceService implements IInvoiceService {
-  /**
-   * Creates a new invoice in the database
-   */
-  async createInvoice(invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt"> & { organization_id: string }): Promise<Invoice> {
-    try {
-      console.log('Creating invoice with data:', invoice);
-      
-      // Map invoice to database format
-      const invoiceData = {
-        ...mapInvoiceToApiFormat(invoice),
-        organization_id: invoice.organization_id,
-        contact_type: 'customer'
-      };
+export class InvoiceService {
+  private supabase: SupabaseClient<Database>;
 
-      // Check for null values in required fields
-      const requiredFields = ['organization_id', 'contact_type', 'status', 'issue_date', 'due_date'];
-      const missingFields = requiredFields.filter(field => invoiceData[field] === null || invoiceData[field] === undefined);
-      if (missingFields.length > 0) {
-        console.error('Missing required fields:', missingFields);
-        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-      }
-      
-      // Insert invoice
-      const { data: insertedInvoice, error } = await supabase
+  constructor(supabaseClient: SupabaseClient<Database>) {
+    this.supabase = supabaseClient;
+  }
+
+  async createInvoice(invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>): Promise<Invoice> {
+    try {
+      const { data, error } = await this.supabase
         .from('invoices')
-        .insert(invoiceData)
+        .insert([
+          {
+            invoice_number: invoice.invoiceNumber,
+            contact_id: invoice.customerId,
+            contact_name: invoice.customerName,
+            issue_date: invoice.issueDate,
+            due_date: invoice.dueDate,
+            subtotal: invoice.subtotal,
+            tax_amount: invoice.taxAmount,
+            total: invoice.total,
+            status: invoice.status,
+            notes: invoice.notes,
+          }
+        ])
         .select()
-        .maybeSingle();
+        .single();
 
       if (error) {
-        console.error('Error inserting invoice:', error);
-        console.error('Error details:', error.details, error.hint, error.message);
         throw error;
       }
-      
-      if (!insertedInvoice) {
-        throw new Error('Failed to insert invoice - no data returned');
-      }
-      
-      // Insert invoice items
-      if (invoice.items && invoice.items.length > 0) {
-        const invoiceItems = invoice.items.map(item => ({
-          invoice_id: insertedInvoice.id,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          tax_rate: item.taxRate,
-          amount: item.amount,
-          account_id: item.accountId
-        }));
 
-        console.log('Invoice items data:', invoiceItems);
-
-        const { error: itemsError } = await supabase
-          .from('invoice_items')
-          .insert(invoiceItems);
-
-        if (itemsError) {
-          console.error('Error inserting invoice items:', itemsError);
-          console.error('Error details:', itemsError.details, itemsError.hint, itemsError.message);
-          throw itemsError;
-        }
-      }
-
-      // Fetch the inserted invoice with its items
-      const { data: invoiceWithItems, error: fetchError } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          items:invoice_items(*)
-        `)
-        .eq('id', insertedInvoice.id)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('Error fetching invoice with items:', fetchError);
-        throw fetchError;
-      }
-      
-      if (!invoiceWithItems) {
-        throw new Error('Failed to fetch invoice with items');
-      }
-
-      return mapInvoiceFromApi(invoiceWithItems);
+      return data as Invoice;
     } catch (error) {
-      console.error(`Error creating invoice:`, error);
+      console.error('Error creating invoice:', error);
       throw error;
     }
   }
 
-  /**
-   * Retrieves all invoices with optional filtering, sorting and pagination
-   */
-  async getInvoices(options?: { 
-    filter?: string; 
-    sort?: string; 
-    page?: number; 
-    limit?: number 
-  }): Promise<Invoice[]> {
+  async getInvoiceById(id: string): Promise<InvoiceWithItems | null> {
     try {
-      let query = supabase
+      const { data: invoice, error: invoiceError } = await this.supabase
         .from('invoices')
-        .select(`
-          *,
-          items:invoice_items(*)
-        `);
-      
-      // Apply filtering if provided
-      if (options?.filter) {
-        // Example: status=draft or customer=xyz
-        const [field, value] = options.filter.split('=');
-        if (field && value) {
-          query = query.eq(field, value);
-        }
-      }
-      
-      // Apply sorting if provided
-      if (options?.sort) {
-        // Example: created_at.desc or due_date.asc
-        const [field, direction] = options.sort.split('.');
-        if (field) {
-          const isAsc = direction !== 'desc';
-          query = query.order(field, { ascending: isAsc });
-        }
-      } else {
-        // Default sorting by created_at, descending
-        query = query.order('created_at', { ascending: false });
-      }
-      
-      // Apply pagination if provided
-      if (options?.page !== undefined && options?.limit !== undefined) {
-        const from = (options.page - 1) * options.limit;
-        const to = from + options.limit - 1;
-        query = query.range(from, to);
-      }
-      
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching invoices:', error);
-        throw error;
-      }
-      
-      // Cast the data to any[] explicitly to avoid deep type instantiation
-      return (data || []).map((item: any) => mapInvoiceFromApi(item));
-    } catch (error) {
-      console.error('Error in getInvoices:', error);
-      // Return empty array as fallback to prevent UI crashes
-      return [];
-    }
-  }
-
-  /**
-   * Retrieves a single invoice by ID
-   */
-  async getInvoiceById(id: string): Promise<Invoice | null> {
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          items:invoice_items(*)
-        `)
+        .select('*')
         .eq('id', id)
-        .maybeSingle();
+        .single();
 
-      if (error) {
-        console.error(`Error fetching invoice ${id}:`, error);
-        throw error;
+      if (invoiceError) {
+        console.error('Error fetching invoice:', invoiceError);
+        return null;
       }
 
-      if (!data) return null;
-      return mapInvoiceFromApi(data);
+      const { data: items, error: itemsError } = await this.supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', id);
+
+      if (itemsError) {
+        console.error('Error fetching invoice items:', itemsError);
+        return {
+          ...invoice,
+          items: []
+        } as InvoiceWithItems;
+      }
+
+      return {
+        ...invoice,
+        items: items || []
+      } as InvoiceWithItems;
     } catch (error) {
-      console.error(`Error in getInvoiceById for ${id}:`, error);
+      console.error('Error fetching invoice:', error);
       return null;
     }
   }
 
-  /**
-   * Updates an existing invoice
-   */
-  async updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice> {
+  async getInvoices(filters?: InvoiceFilterParams): Promise<InvoiceWithItems[]> {
     try {
-      // Convert updates to database format
-      const updateData: any = {};
-      if (updates.customerName !== undefined) updateData.contact_name = updates.customerName;
-      if (updates.customerId !== undefined) updateData.contact_id = updates.customerId;
-      if (updates.invoiceNumber !== undefined) updateData.invoice_number = updates.invoiceNumber;
-      if (updates.issueDate !== undefined) updateData.issue_date = updates.issueDate;
-      if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate;
-      if (updates.notes !== undefined) updateData.notes = updates.notes;
-      if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.subtotal !== undefined) updateData.subtotal = updates.subtotal;
-      if (updates.taxAmount !== undefined) updateData.tax_amount = updates.taxAmount;
-      if (updates.total !== undefined) updateData.total = updates.total;
-      
-      updateData.updated_at = new Date().toISOString();
-
-      // Update the invoice
-      const { data: updatedInvoice, error } = await supabase
+      let query = this.supabase
         .from('invoices')
-        .update(updateData)
-        .eq('id', id)
         .select('*')
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!updatedInvoice) throw new Error(`Invoice with id ${id} not found`);
-
-      // If there are items to update
-      if (updates.items && updates.items.length > 0) {
-        // First, delete existing items
-        const { error: deleteError } = await supabase
+        .order('issue_date', { ascending: false });
+      
+      if (filters?.customerId) {
+        query = query.eq('contact_id', filters.customerId);
+      }
+      
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+      
+      if (filters?.dateRange?.from) {
+        query = query.gte('issue_date', filters.dateRange.from);
+      }
+      
+      if (filters?.dateRange?.to) {
+        query = query.lte('issue_date', filters.dateRange.to);
+      }
+      
+      if (filters?.search) {
+        query = query.or(`invoice_number.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`);
+      }
+      
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
+      
+      const { data: invoices, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching invoices:', error);
+        return [];
+      }
+      
+      // Cast to any[] to avoid type instantiation error
+      const result = await Promise.all((invoices as any[]).map(async (invoice) => {
+        const { data: items, error: itemsError } = await this.supabase
           .from('invoice_items')
-          .delete()
-          .eq('invoice_id', id);
+          .select('*')
+          .eq('invoice_id', invoice.id);
+          
+        if (itemsError) {
+          console.error('Error fetching invoice items:', itemsError);
+          return {
+            ...invoice,
+            items: []
+          };
+        }
+        
+        return {
+          ...invoice,
+          items: items || []
+        };
+      }));
+      
+      return result;
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      return [];
+    }
+  }
 
-        if (deleteError) throw deleteError;
+  async updateInvoice(id: string, invoice: Partial<Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Invoice> {
+    try {
+      const { data, error } = await this.supabase
+        .from('invoices')
+        .update(
+          {
+            invoice_number: invoice.invoiceNumber,
+            contact_id: invoice.customerId,
+            contact_name: invoice.customerName,
+            issue_date: invoice.issueDate,
+            due_date: invoice.dueDate,
+            subtotal: invoice.subtotal,
+            tax_amount: invoice.taxAmount,
+            total: invoice.total,
+            status: invoice.status,
+            notes: invoice.notes,
+          }
+        )
+        .eq('id', id)
+        .select()
+        .single();
 
-        // Then insert new items
-        const invoiceItems = updates.items.map(item => ({
-          invoice_id: id,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          tax_rate: item.taxRate,
-          amount: item.amount,
-          account_id: item.accountId
-        }));
-
-        const { error: insertError } = await supabase
-          .from('invoice_items')
-          .insert(invoiceItems);
-
-        if (insertError) throw insertError;
+      if (error) {
+        throw error;
       }
 
-      // Fetch the updated invoice with its items
-      const { data: invoiceWithItems, error: fetchError } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          items:invoice_items(*)
-        `)
-        .eq('id', id)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-      if (!invoiceWithItems) throw new Error(`Could not fetch updated invoice with id ${id}`);
-
-      return mapInvoiceFromApi(invoiceWithItems);
+      return data as Invoice;
     } catch (error) {
-      console.error(`Error updating invoice ${id}:`, error);
+      console.error('Error updating invoice:', error);
       throw error;
     }
   }
 
-  /**
-   * Deletes an invoice and its items
-   */
   async deleteInvoice(id: string): Promise<boolean> {
     try {
-      // Delete invoice items first (should cascade, but just to be safe)
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .delete()
-        .eq('invoice_id', id);
-
-      if (itemsError) throw itemsError;
-
-      // Delete the invoice
-      const { error } = await supabase
+      const { error } = await this.supabase
         .from('invoices')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       return true;
     } catch (error) {
-      console.error(`Error deleting invoice ${id}:`, error);
+      console.error('Error deleting invoice:', error);
+      return false;
+    }
+  }
+
+  async addItemToInvoice(invoiceId: string, item: Omit<InvoiceItem, 'id'>): Promise<InvoiceItem> {
+    try {
+      const { data, error } = await this.supabase
+        .from('invoice_items')
+        .insert([
+          {
+            invoice_id: invoiceId,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            tax_rate: item.taxRate,
+            amount: item.amount,
+            account_id: item.accountId
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data as InvoiceItem;
+    } catch (error) {
+      console.error('Error adding item to invoice:', error);
       throw error;
     }
   }
+
+  async addItemsToInvoice(invoiceId: string, items: any[]): Promise<any[]> {
+    try {
+      const preparedItems = items.map(item => ({
+        invoice_id: invoiceId,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        tax_rate: item.taxRate,
+        amount: item.amount,
+        account_id: item.accountId
+      }));
+      
+      const { data, error } = await this.supabase
+        .from('invoice_items')
+        .insert(preparedItems)
+        .select();
+        
+      if (error) {
+        throw error;
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error adding items to invoice:', error);
+      throw error;
+    }
+  }
+
+  async updateItemInInvoice(id: string, item: Partial<Omit<InvoiceItem, 'id'>>): Promise<InvoiceItem> {
+    try {
+      const { data, error } = await this.supabase
+        .from('invoice_items')
+        .update(
+          {
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            tax_rate: item.taxRate,
+            amount: item.amount,
+            account_id: item.accountId
+          }
+        )
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data as InvoiceItem;
+    } catch (error) {
+      console.error('Error updating item in invoice:', error);
+      throw error;
+    }
+  }
+
+  async deleteItemFromInvoice(id: string): Promise<boolean> {
+    try {
+      const { error } = await this.supabase
+        .from('invoice_items')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting item from invoice:', error);
+      return false;
+    }
+  }
 }
-
-// Default export of the native implementation
-export default new SupabaseInvoiceService();
-
-export const mapInvoicesFromApi = (data: any[]): Invoice[] => {
-  return (data as any[]).map(item => ({
-    id: item.id,
-    invoiceNumber: item.invoice_number,
-    customerId: item.customer_id,
-    customerName: item.customer_name,
-    issueDate: item.issue_date,
-    dueDate: item.due_date,
-    items: mapInvoiceItemsFromApi(item.items || []),
-    subtotal: parseFloat(item.subtotal) || 0,
-    taxAmount: parseFloat(item.tax_amount) || 0,
-    total: parseFloat(item.total) || 0,
-    status: item.status,
-    notes: item.notes,
-    createdAt: item.created_at,
-    updatedAt: item.updated_at
-  }));
-};
-
-export const mapInvoiceItemsFromApi = (data: any[]): InvoiceItem[] => {
-  return (data as any[]).map(item => ({
-    id: item.id,
-    description: item.description,
-    quantity: parseFloat(item.quantity) || 0,
-    unitPrice: parseFloat(item.unit_price) || 0,
-    taxRate: parseFloat(item.tax_rate) || 0,
-    amount: parseFloat(item.amount) || 0,
-    accountId: item.account_id
-  }));
-};

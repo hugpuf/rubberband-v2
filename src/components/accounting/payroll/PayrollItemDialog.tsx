@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAccounting } from "@/modules/accounting";
 import { useToast } from "@/hooks/use-toast";
@@ -106,9 +105,7 @@ export function PayrollItemDialog({ payrollRun, payrollItem, onClose }: PayrollI
         deductions: [],
         benefits: [],
         deductionAmount: parseFloat(deductionAmount) || 0,
-        netSalary: 0, // Will be calculated by the service
-        notes,
-        status: 'pending'
+        netSalary: 0 // Will be calculated by the service
       };
       
       if (isEdit && payrollItem) {

@@ -32,7 +32,7 @@ export function PayrollStatusBadge({ status }: PayrollStatusBadgeProps) {
 
   // Handle cases where status might not be in our config
   const config = statusConfig[status as keyof typeof statusConfig] || {
-    label: status,
+    label: status as string,
     className: "bg-gray-100 text-gray-800 hover:bg-gray-100 hover:text-gray-800",
   };
   
