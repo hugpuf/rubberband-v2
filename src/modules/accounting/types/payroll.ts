@@ -14,15 +14,16 @@ export type BenefitType = 'health' | 'dental' | 'vision' | 'retirement' | 'bonus
 /**
  * Valid payroll run statuses
  */
-export const PayrollRunStatus = {
+export type PayrollRunStatus = 'draft' | 'processing' | 'completed' | 'error' | 'cancelled';
+
+// Define the status constants for use as values
+export const PAYROLL_RUN_STATUS = {
   DRAFT: 'draft',
   PROCESSING: 'processing',
   COMPLETED: 'completed',
   ERROR: 'error',
   CANCELLED: 'cancelled'
 } as const;
-
-export type PayrollRunStatus = typeof PayrollRunStatus[keyof typeof PayrollRunStatus];
 
 /**
  * Represents a single deduction in a payroll item
@@ -104,7 +105,7 @@ export interface PayrollRun extends BaseEntity {
   organizationId: string;
   periodStart: string;
   periodEnd: string;
-  status: PayrollRunStatus | string;
+  status: PayrollRunStatus;
   employeeCount: number;
   grossAmount: number;
   taxAmount: number;
@@ -123,7 +124,7 @@ export interface CreatePayrollRunParams {
   organizationId?: string;
   periodStart: string;
   periodEnd: string;
-  status?: PayrollRunStatus | string;
+  status?: PayrollRunStatus;
   paymentDate: string;
   notes?: string;
   employeeIds?: string[];
@@ -138,7 +139,7 @@ export type UpdatePayrollRunParams = Partial<Omit<PayrollRun, 'id' | 'createdAt'
  * Parameters for filtering payroll runs
  */
 export interface PayrollRunFilterParams {
-  status?: PayrollRunStatus | string;
+  status?: PayrollRunStatus;
   startDate?: string;
   endDate?: string;
   search?: string;
@@ -183,15 +184,4 @@ export interface TaxCalculationResult {
   medicareTax: number;
   socialSecurityTax: number;
   totalTax: number;
-}
-
-/**
- * Generic paginated response type
- */
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }

@@ -1,4 +1,3 @@
-
 import { Database } from "@/integrations/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { 
@@ -11,10 +10,17 @@ import {
   PayrollRunFilterParams,
   PayrollItemFilterParams,
   PaginatedResponse,
-  TaxCalculationResult,
-  PayrollRunStatus
+  TaxCalculationResult
 } from "../../types";
 import { IPayrollService } from "./PayrollServiceInterface";
+
+const PAYROLL_STATUS = {
+  DRAFT: 'draft',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  ERROR: 'error',
+  CANCELLED: 'cancelled'
+} as const;
 
 /**
  * Supabase implementation of the payroll service
@@ -74,22 +80,24 @@ export class SupabasePayrollService implements IPayrollService {
     try {
       const { employeeIds, ...payrollRunParams } = params;
       
+      const payrollData = {
+        name: params.name,
+        organization_id: params.organizationId || params.organization_id, // Handle both property names
+        period_start: params.periodStart,
+        period_end: params.periodEnd,
+        status: params.status || PAYROLL_STATUS.DRAFT,
+        payment_date: params.paymentDate,
+        gross_amount: 0,
+        tax_amount: 0,
+        deduction_amount: 0,
+        net_amount: 0,
+        employee_count: 0,
+        notes: params.notes
+      };
+      
       const { data, error } = await this.supabase
         .from('payroll_runs')
-        .insert([{
-          name: params.name,
-          organization_id: params.organizationId || params.organization_id, // Handle both property names
-          period_start: params.periodStart,
-          period_end: params.periodEnd,
-          status: params.status || PayrollRunStatus.DRAFT,
-          payment_date: params.paymentDate,
-          gross_amount: 0,
-          tax_amount: 0,
-          deduction_amount: 0,
-          net_amount: 0,
-          employee_count: 0,
-          notes: params.notes
-        }] as any[]) // Cast to any[] to bypass strict type checking
+        .insert([payrollData])
         .select()
         .single();
       
@@ -179,7 +187,6 @@ export class SupabasePayrollService implements IPayrollService {
   
   async updatePayrollRun(id: string, updates: UpdatePayrollRunParams): Promise<PayrollRun> {
     try {
-      // Convert from our internal model to the database schema
       const dbUpdates: any = {};
       
       if (updates.name !== undefined) dbUpdates.name = updates.name;
@@ -239,7 +246,7 @@ export class SupabasePayrollService implements IPayrollService {
       const { data, error } = await this.supabase
         .from('payroll_runs')
         .update({
-          status: PayrollRunStatus.PROCESSING
+          status: PAYROLL_STATUS.PROCESSING
         })
         .eq('id', id)
         .select()
@@ -262,7 +269,7 @@ export class SupabasePayrollService implements IPayrollService {
       const { data, error } = await this.supabase
         .from('payroll_runs')
         .update({
-          status: PayrollRunStatus.COMPLETED
+          status: PAYROLL_STATUS.COMPLETED
         })
         .eq('id', id)
         .select()
@@ -282,7 +289,6 @@ export class SupabasePayrollService implements IPayrollService {
   
   async createPayrollItem(params: CreatePayrollItemParams): Promise<PayrollItem> {
     try {
-      // Map our internal model to the database schema
       const dbItem = {
         payroll_run_id: params.payrollRunId,
         contact_id: params.employeeId, // Map employeeId to contact_id
@@ -304,7 +310,7 @@ export class SupabasePayrollService implements IPayrollService {
       
       const { data, error } = await this.supabase
         .from('payroll_items')
-        .insert([dbItem] as any[])
+        .insert([dbItem])
         .select()
         .single();
       
@@ -331,7 +337,7 @@ export class SupabasePayrollService implements IPayrollService {
       }
       
       if (filters?.employeeId) {
-        query = query.eq('employee_id', filters.employeeId);
+        query = query.eq('contact_id', filters.employeeId);
       }
       
       if (filters?.status) {
@@ -347,9 +353,7 @@ export class SupabasePayrollService implements IPayrollService {
       const startIndex = (page - 1) * limit;
       const endIndex = page * limit - 1;
       
-      query = query.range(startIndex, endIndex);
-      
-      const { data, error, count } = await query;
+      const { data, error, count } = await query.range(startIndex, endIndex);
       
       if (error) {
         console.error("Error fetching payroll items:", error);
@@ -452,7 +456,6 @@ export class SupabasePayrollService implements IPayrollService {
   }
   
   async calculateTaxes(grossAmount: number, employeeId: string): Promise<TaxCalculationResult> {
-    // Placeholder implementation
     return {
       federalTax: grossAmount * 0.25,
       stateTax: grossAmount * 0.05,
@@ -554,8 +557,6 @@ export class SupabasePayrollService implements IPayrollService {
       }
       
       if (format === 'pdf') {
-        // In a real application, you would generate a PDF here
-        // This is just a placeholder
         return "PDF content would be generated here";
       }
       
@@ -573,7 +574,6 @@ export class SupabasePayrollService implements IPayrollService {
       
       for (const itemData of data) {
         try {
-          // Validate the itemData
           if (!itemData.employeeId || !itemData.grossSalary) {
             errors.push({ message: "Missing employeeId or grossSalary", item: itemData });
             continue;

@@ -1,19 +1,19 @@
 
-/**
- * Base entity interface with common properties for all entities
- */
+// Common types used across multiple modules
+
 export interface BaseEntity {
+  id: string;
   createdAt: string;
   updatedAt: string;
 }
 
 /**
- * Common pagination response structure
+ * Generic paginated response type
  */
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
   page: number;
   limit: number;
-  hasMore: boolean;
+  totalPages: number;
 }

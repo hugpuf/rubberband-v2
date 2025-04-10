@@ -1,7 +1,7 @@
 
 import { 
   PayrollRun, 
-  PayrollItem, 
+  PayrollItem,
   CreatePayrollRunParams, 
   UpdatePayrollRunParams,
   CreatePayrollItemParams,
@@ -10,7 +10,7 @@ import {
   PayrollItemFilterParams,
   PaginatedResponse,
   TaxCalculationResult
-} from "../../types/payroll";
+} from "../../types";
 
 /**
  * Interface defining the standard operations for the payroll service

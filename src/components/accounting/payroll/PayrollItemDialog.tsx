@@ -36,7 +36,6 @@ export function PayrollItemDialog({ payrollRun, payrollItem, onClose }: PayrollI
   const [saving, setSaving] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   
-  // Form state
   const [employeeId, setEmployeeId] = useState(payrollItem?.employeeId || '');
   const [grossSalary, setGrossSalary] = useState(payrollItem?.grossSalary?.toString() || '0');
   const [regularHours, setRegularHours] = useState(payrollItem?.regularHours?.toString() || '');
@@ -47,7 +46,6 @@ export function PayrollItemDialog({ payrollRun, payrollItem, onClose }: PayrollI
   
   const isEdit = !!payrollItem;
   
-  // Fetch available employees
   useEffect(() => {
     const fetchEmployees = async () => {
       setLoading(true);
@@ -135,14 +133,12 @@ export function PayrollItemDialog({ payrollRun, payrollItem, onClose }: PayrollI
     }
   };
   
-  // Calculate gross salary when hours and rate change
   useEffect(() => {
     if (regularHours && hourlyRate) {
       const regular = parseFloat(regularHours) || 0;
       const overtime = parseFloat(overtimeHours) || 0;
       const rate = parseFloat(hourlyRate) || 0;
       
-      // Regular hours at normal rate, overtime at 1.5x
       const gross = (regular * rate) + (overtime * rate * 1.5);
       setGrossSalary(gross.toFixed(2));
     }

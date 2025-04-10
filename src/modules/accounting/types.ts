@@ -1,4 +1,7 @@
 
+// This file re-exports all types from the types subdirectory
+// In the future, we should migrate fully to the types subdirectory
+
 export type AccountingModuleConfig = {
   defaultCurrency: string;
   fiscalYearStart: string;
@@ -96,31 +99,23 @@ export type Bill = {
   updatedAt: string;
 };
 
-import { 
-  PayrollItem as EnhancedPayrollItem,
-  PayrollRun as EnhancedPayrollRun,
-  PayrollRunStatus as EnhancedPayrollRunStatus,
-  CreatePayrollRunParams as EnhancedCreatePayrollRunParams,
-  UpdatePayrollRunParams as EnhancedUpdatePayrollRunParams,
-  PayrollRunFilterParams as EnhancedPayrollRunFilterParams,
-  CreatePayrollItemParams as EnhancedCreatePayrollItemParams,
-  UpdatePayrollItemParams as EnhancedUpdatePayrollItemParams,
-  PayrollItemFilterParams as EnhancedPayrollItemFilterParams,
-  PaginatedResponse as EnhancedPaginatedResponse,
-  TaxCalculationResult as EnhancedTaxCalculationResult
+// Re-export types from the subdirectory
+export {
+  PayrollItem,
+  PayrollRun,
+  PayrollRunStatus,
+  PAYROLL_RUN_STATUS,
+  CreatePayrollRunParams,
+  UpdatePayrollRunParams,
+  PayrollRunFilterParams,
+  CreatePayrollItemParams,
+  UpdatePayrollItemParams,
+  PayrollItemFilterParams,
+  TaxCalculationResult
 } from './types/payroll';
 
-export type PayrollItem = EnhancedPayrollItem;
-export type PayrollRun = EnhancedPayrollRun;
-export type PayrollRunStatus = EnhancedPayrollRunStatus;
-export type CreatePayrollRunParams = EnhancedCreatePayrollRunParams;
-export type UpdatePayrollRunParams = EnhancedUpdatePayrollRunParams;
-export type PayrollRunFilterParams = EnhancedPayrollRunFilterParams;
-export type CreatePayrollItemParams = EnhancedCreatePayrollItemParams;
-export type UpdatePayrollItemParams = EnhancedUpdatePayrollItemParams;
-export type PayrollItemFilterParams = EnhancedPayrollItemFilterParams;
-export type PaginatedResponse<T> = EnhancedPaginatedResponse<T>;
-export type TaxCalculationResult = EnhancedTaxCalculationResult;
+// Re-export common types
+export { BaseEntity, PaginatedResponse } from './types/common';
 
 export type AccountingModuleState = {
   isLoading: boolean;
@@ -129,3 +124,15 @@ export type AccountingModuleState = {
   accounts: Account[];
   isInitialized: boolean;
 };
+
+// Add missing TransactionFilterParams type
+export interface TransactionFilterParams {
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  search?: string;
+  filter?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}

@@ -1,313 +1,238 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/integrations/supabase/types";
-import {
-  Transaction,
+import { 
+  Transaction, 
   TransactionLine,
   Account,
-  TransactionFilterParams,
+  TransactionFilterParams
 } from "../types";
-
-export type TransactionWithLines = Transaction & {
-  lines: (TransactionLine & { accounts: Pick<Account, 'id' | 'name' | 'code'> | null })[];
-};
+import { Database } from "@/integrations/supabase/types";
 
 export class TransactionService {
   private supabase: SupabaseClient<Database>;
 
-  constructor(supabaseClient: SupabaseClient<Database>) {
-    this.supabase = supabaseClient;
+  constructor(client: SupabaseClient<Database>) {
+    this.supabase = client;
   }
 
-  async createTransaction(transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
+  async createTransaction(transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { organization_id: string }): Promise<Transaction> {
     try {
-      const { data, error } = await this.supabase
+      // First insert the transaction
+      const { data: transactionData, error: transactionError } = await this.supabase
         .from('transactions')
-        .insert([
-          {
-            transaction_date: transaction.date,
-            description: transaction.description,
-            reference_number: transaction.referenceNumber,
-            status: transaction.status,
-            created_by: transaction.createdBy,
-          },
-        ])
+        .insert([{
+          organization_id: transaction.organization_id,
+          transaction_date: transaction.date,
+          description: transaction.description,
+          reference_number: transaction.referenceNumber,
+          status: transaction.status,
+          created_by: transaction.createdBy
+        }] as any[])
         .select()
         .single();
 
-      if (error) {
-        throw error;
+      if (transactionError) throw transactionError;
+
+      // Then insert the transaction lines
+      if (transaction.lines && transaction.lines.length > 0) {
+        const transactionLines = transaction.lines.map(line => ({
+          transaction_id: transactionData.id,
+          account_id: line.accountId,
+          description: line.description,
+          debit_amount: line.debitAmount,
+          credit_amount: line.creditAmount
+        }));
+
+        const { error: linesError } = await this.supabase
+          .from('transaction_lines')
+          .insert(transactionLines as any[]);
+
+        if (linesError) throw linesError;
       }
 
-      return {
-        id: data.id,
-        date: data.transaction_date,
-        description: data.description,
-        referenceNumber: data.reference_number,
-        status: data.status,
-        lines: [],
-        createdBy: data.created_by,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
+      // Fetch the complete transaction with its lines
+      return this.getTransactionById(transactionData.id) as Promise<Transaction>;
     } catch (error) {
-      console.error('Error creating transaction:', error);
+      console.error("Error creating transaction:", error);
       throw error;
     }
   }
 
-  async getTransactionById(id: string): Promise<TransactionWithLines | null> {
-    try {
-      const { data: transaction, error: transactionError } = await this.supabase
-        .from('transactions')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (transactionError) {
-        console.error('Error fetching transaction:', transactionError);
-        return null;
-      }
-
-      const { data: lines, error: linesError } = await this.supabase
-        .from('transaction_lines')
-        .select('*, accounts(id, name, code)')
-        .eq('transaction_id', id);
-
-      if (linesError) {
-        console.error('Error fetching transaction lines:', linesError);
-        return {
-          id: transaction.id,
-          date: transaction.transaction_date,
-          description: transaction.description,
-          referenceNumber: transaction.reference_number,
-          status: transaction.status,
-          lines: [],
-          createdBy: transaction.created_by,
-          createdAt: transaction.created_at,
-          updatedAt: transaction.updated_at,
-        };
-      }
-
-      return {
-        id: transaction.id,
-        date: transaction.transaction_date,
-        description: transaction.description,
-        referenceNumber: transaction.reference_number,
-        status: transaction.status,
-        lines: lines as TransactionLine[],
-        createdBy: transaction.created_by,
-        createdAt: transaction.created_at,
-        updatedAt: transaction.updated_at,
-      };
-    } catch (error) {
-      console.error('Error fetching transaction:', error);
-      return null;
-    }
-  }
-
-  async getTransactions(filters?: TransactionFilterParams): Promise<TransactionWithLines[]> {
+  async getTransactions(filters?: TransactionFilterParams): Promise<Transaction[]> {
     try {
       let query = this.supabase
         .from('transactions')
-        .select('*')
-        .order('transaction_date', { ascending: false });
-      
+        .select(`
+          *,
+          lines:transaction_lines(*)
+        `);
+
+      if (filters?.startDate) {
+        query = query.gte('transaction_date', filters.startDate);
+      }
+
+      if (filters?.endDate) {
+        query = query.lte('transaction_date', filters.endDate);
+      }
+
       if (filters?.status) {
         query = query.eq('status', filters.status);
       }
-      
-      if (filters?.dateRange?.from) {
-        query = query.gte('transaction_date', filters.dateRange.from);
-      }
-      
-      if (filters?.dateRange?.to) {
-        query = query.lte('transaction_date', filters.dateRange.to);
-      }
-      
+
       if (filters?.search) {
-        query = query.or(`description.ilike.%${filters.search}%,reference_number.ilike.%${filters.search}%`);
+        query = query.ilike('description', `%${filters.search}%`);
       }
-      
-      if (filters?.limit) {
-        query = query.limit(filters.limit);
-      }
-      
-      const { data: transactions, error } = await query;
-      
+
+      const { data, error } = await query;
+
       if (error) {
-        console.error('Error fetching transactions:', error);
-        return [];
+        console.error("Error fetching transactions:", error);
+        throw error;
       }
-      
-      // Cast to any[] to avoid the excessively deep type instantiation
-      const result = await Promise.all((transactions as any[]).map(async (transaction) => {
-        const { data: lines, error: linesError } = await this.supabase
-          .from('transaction_lines')
-          .select('*, accounts(id, name, code)')
-          .eq('transaction_id', transaction.id);
-          
-        if (linesError) {
-          console.error('Error fetching transaction lines:', linesError);
-          return {
-            ...transaction,
-            lines: []
-          };
-        }
-        
-        return {
-          ...transaction,
-          lines: lines || []
-        };
-      }));
-      
-      return result;
+
+      return data.map(this.mapTransactionFromDB);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error("Error fetching transactions:", error);
       return [];
     }
   }
 
-  async updateTransaction(id: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Transaction | null> {
+  async getTransactionById(id: string): Promise<Transaction | null> {
     try {
       const { data, error } = await this.supabase
         .from('transactions')
-        .update({
-          transaction_date: updates.date,
-          description: updates.description,
-          reference_number: updates.referenceNumber,
-          status: updates.status,
-        })
+        .select(`
+          *,
+          lines:transaction_lines(*)
+        `)
         .eq('id', id)
-        .select()
         .single();
 
       if (error) {
-        console.error('Error updating transaction:', error);
+        console.error("Error fetching transaction:", error);
         return null;
       }
 
-      return {
-        id: data.id,
-        date: data.transaction_date,
-        description: data.description,
-        referenceNumber: data.reference_number,
-        status: data.status,
-        lines: [],
-        createdBy: data.created_by,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
+      return this.mapTransactionFromDB(data);
     } catch (error) {
-      console.error('Error updating transaction:', error);
+      console.error("Error fetching transaction:", error);
       return null;
+    }
+  }
+
+  async updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction | null> {
+    try {
+      // Convert updates to database format
+      const updateData: any = {};
+      if (updates.date !== undefined) updateData.transaction_date = updates.date;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.referenceNumber !== undefined) updateData.reference_number = updates.referenceNumber;
+      if (updates.status !== undefined) updateData.status = updates.status;
+
+      // Update the transaction
+      const { data: updatedTransaction, error } = await this.supabase
+        .from('transactions')
+        .update(updateData)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // If there are lines to update
+      if (updates.lines && updates.lines.length > 0) {
+        // First, delete existing lines
+        const { error: deleteError } = await this.supabase
+          .from('transaction_lines')
+          .delete()
+          .eq('transaction_id', id);
+
+        if (deleteError) throw deleteError;
+
+        // Then insert new lines
+        const transactionLines = updates.lines.map(line => ({
+          transaction_id: id,
+          account_id: line.accountId,
+          description: line.description,
+          debit_amount: line.debitAmount,
+          credit_amount: line.creditAmount
+        }));
+
+        const { error: insertError } = await this.supabase
+          .from('transaction_lines')
+          .insert(transactionLines);
+
+        if (insertError) throw insertError;
+      }
+
+      // Fetch the updated transaction with its lines
+      const { data: transactionWithLines, error: fetchError } = await this.supabase
+        .from('transactions')
+        .select(`
+          *,
+          lines:transaction_lines(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      return this.mapTransactionFromDB(transactionWithLines);
+    } catch (error) {
+      console.error(`Error updating transaction ${id}:`, error);
+      throw error;
     }
   }
 
   async deleteTransaction(id: string): Promise<boolean> {
     try {
+      // Delete transaction lines first (should cascade, but just to be safe)
+      const { error: linesError } = await this.supabase
+        .from('transaction_lines')
+        .delete()
+        .eq('transaction_id', id);
+
+      if (linesError) throw linesError;
+
+      // Delete the transaction
       const { error } = await this.supabase
         .from('transactions')
         .delete()
         .eq('id', id);
 
-      if (error) {
-        console.error('Error deleting transaction:', error);
-        return false;
-      }
+      if (error) throw error;
 
       return true;
     } catch (error) {
-      console.error('Error deleting transaction:', error);
+      console.error(`Error deleting transaction ${id}:`, error);
       return false;
     }
   }
-
-  async createTransactionLine(line: Omit<TransactionLine, 'id' | 'createdAt' | 'updatedAt'>): Promise<TransactionLine> {
-    try {
-      const { data, error } = await this.supabase
-        .from('transaction_lines')
-        .insert([
-          {
-            transaction_id: line.accountId, // Corrected: should be transaction_id
-            account_id: line.accountId,
-            description: line.description,
-            debit_amount: line.debitAmount,
-            credit_amount: line.creditAmount,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating transaction line:', error);
-        throw error;
-      }
-
-      return {
-        id: data.id,
-        accountId: data.account_id,
-        description: data.description,
-        debitAmount: data.debit_amount,
-        creditAmount: data.credit_amount,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
-    } catch (error) {
-      console.error('Error creating transaction line:', error);
-      throw error;
-    }
+  
+  // Cast database types to app types with proper type assertions
+  private mapTransactionFromDB(data: any): Transaction {
+    // For simplicity using any type to avoid deep nested type issues
+    const result = {
+      id: data.id,
+      date: data.transaction_date,
+      description: data.description,
+      referenceNumber: data.reference_number,
+      status: data.status as 'draft' | 'posted' | 'voided',
+      lines: (data.lines || []).map((line: any) => ({
+        id: line.id,
+        accountId: line.account_id,
+        description: line.description,
+        debitAmount: line.debit_amount,
+        creditAmount: line.credit_amount,
+        createdAt: line.created_at,
+        updatedAt: line.updated_at
+      })),
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+    
+    return result as Transaction;
   }
-
-  async updateTransactionLine(id: string, updates: Partial<Omit<TransactionLine, 'id' | 'createdAt' | 'updatedAt'>>): Promise<TransactionLine | null> {
-    try {
-      const { data, error } = await this.supabase
-        .from('transaction_lines')
-        .update({
-          account_id: updates.accountId,
-          description: updates.description,
-          debit_amount: updates.debitAmount,
-          credit_amount: updates.creditAmount,
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating transaction line:', error);
-        return null;
-      }
-
-      return {
-        id: data.id,
-        accountId: data.account_id,
-        description: data.description,
-        debitAmount: data.debit_amount,
-        creditAmount: data.credit_amount,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
-    } catch (error) {
-      console.error('Error updating transaction line:', error);
-      return null;
-    }
-  }
-
-  async deleteTransactionLine(id: string): Promise<boolean> {
-    try {
-      const { error } = await this.supabase
-        .from('transaction_lines')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting transaction line:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error deleting transaction line:', error);
-      return false;
-    }
-  }
+  
+  // Add other methods as needed
 }
