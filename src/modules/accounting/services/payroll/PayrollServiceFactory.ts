@@ -1,11 +1,12 @@
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/integrations/supabase/types";
 import { IPayrollService } from "./PayrollServiceInterface";
 import { SupabasePayrollService } from "./SupabasePayrollService";
-import { Database } from "@/integrations/supabase/types";
 
 export class PayrollServiceFactory {
-  static createPayrollService(client: SupabaseClient<Database>): IPayrollService {
-    return new SupabasePayrollService(client);
+  static createPayrollService(client: SupabaseClient<Database>, organizationId: string): IPayrollService {
+    // Currently only supporting Supabase implementation
+    return new SupabasePayrollService(client, organizationId);
   }
 }

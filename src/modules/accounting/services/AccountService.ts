@@ -1,7 +1,6 @@
-
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Account, AccountType } from "../types";
-import { Database } from "@/integrations/supabase/types";
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/integrations/supabase/types';
+import { Account } from '@/modules/accounting/types';
 
 export class AccountService {
   private supabase: SupabaseClient<Database>;
@@ -12,43 +11,21 @@ export class AccountService {
     this.organizationId = organizationId;
   }
 
-  async createAccount(account: Omit<Account, "id" | "createdAt" | "updatedAt" | "balance">): Promise<Account> {
-    try {
-      const { data, error } = await this.supabase
-        .from('accounts')
-        .insert([{
-          code: account.code,
-          name: account.name,
-          description: account.description,
-          type: account.type,
-          is_active: account.isActive,
-          organization_id: this.organizationId // Adding organization_id which is required
-        }])
-        .select('*')
-        .single();
-
-      if (error) throw error;
-
-      return this.mapAccountFromDB(data);
-    } catch (error) {
-      console.error("Error creating account:", error);
-      throw error;
-    }
-  }
-
   async getAccounts(): Promise<Account[]> {
     try {
       const { data, error } = await this.supabase
         .from('accounts')
         .select('*')
-        .eq('organization_id', this.organizationId) // Filter by organization_id
-        .order('code', { ascending: true });
+        .eq('organization_id', this.organizationId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching accounts:', error);
+        return [];
+      }
 
-      return (data as any[]).map(this.mapAccountFromDB);
+      return data.map(this.mapAccountFromDB);
     } catch (error) {
-      console.error("Error fetching accounts:", error);
+      console.error('Error fetching accounts:', error);
       return [];
     }
   }
@@ -59,61 +36,65 @@ export class AccountService {
         .from('accounts')
         .select('*')
         .eq('id', id)
-        .eq('organization_id', this.organizationId) // Filter by organization_id
-        .single();
+        .eq('organization_id', this.organizationId)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error(`Error fetching account ${id}:`, error);
+        return null;
+      }
 
-      return this.mapAccountFromDB(data);
+      return data ? this.mapAccountFromDB(data) : null;
     } catch (error) {
       console.error(`Error fetching account ${id}:`, error);
       return null;
     }
   }
 
-  async getAccountsByType(type: AccountType): Promise<Account[]> {
+  async createAccount(account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>): Promise<Account | null> {
     try {
       const { data, error } = await this.supabase
         .from('accounts')
-        .select('*')
-        .eq('type', type)
-        .eq('organization_id', this.organizationId) // Filter by organization_id
-        .order('code', { ascending: true });
-
-      if (error) throw error;
-
-      return (data as any[]).map(this.mapAccountFromDB);
-    } catch (error) {
-      console.error(`Error fetching accounts by type ${type}:`, error);
-      return [];
-    }
-  }
-
-  async updateAccount(id: string, updates: Partial<Account>): Promise<Account> {
-    try {
-      // Create a database-compatible update object
-      const updateData: any = {};
-      if (updates.code !== undefined) updateData.code = updates.code;
-      if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.description !== undefined) updateData.description = updates.description;
-      if (updates.type !== undefined) updateData.type = updates.type;
-      if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
-      // Removed the balance property as it's not accepted by the accounts table schema
-
-      const { data, error } = await this.supabase
-        .from('accounts')
-        .update(updateData)
-        .eq('id', id)
-        .eq('organization_id', this.organizationId) // Filter by organization_id
+        .insert([
+          {
+            ...account,
+            organization_id: this.organizationId,
+          },
+        ])
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating account:', error);
+        return null;
+      }
+
+      return this.mapAccountFromDB(data);
+    } catch (error) {
+      console.error('Error creating account:', error);
+      return null;
+    }
+  }
+
+  async updateAccount(id: string, updates: Partial<Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>>): Promise<Account | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from('accounts')
+        .update(updates)
+        .eq('id', id)
+        .eq('organization_id', this.organizationId)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error(`Error updating account ${id}:`, error);
+        return null;
+      }
 
       return this.mapAccountFromDB(data);
     } catch (error) {
       console.error(`Error updating account ${id}:`, error);
-      throw error;
+      return null;
     }
   }
 
@@ -123,9 +104,12 @@ export class AccountService {
         .from('accounts')
         .delete()
         .eq('id', id)
-        .eq('organization_id', this.organizationId); // Filter by organization_id
+        .eq('organization_id', this.organizationId);
 
-      if (error) throw error;
+      if (error) {
+        console.error(`Error deleting account ${id}:`, error);
+        return false;
+      }
 
       return true;
     } catch (error) {
@@ -134,37 +118,39 @@ export class AccountService {
     }
   }
 
-  async adjustAccountBalance(accountId: string, amount: number, description: string): Promise<Account> {
-    // This would typically involve creating a transaction rather than directly updating the balance
-    // For now, we'll implement a simplified version using the account_balances table
+  async adjustAccountBalance(
+    accountId: string,
+    amount: number
+  ): Promise<boolean> {
     try {
+      // Get current account to verify it belongs to the organization
       const account = await this.getAccountById(accountId);
-      if (!account) throw new Error(`Account ${accountId} not found`);
-      
-      // Update or insert into account_balances table with only the fields that exist
-      const { data: balanceData, error: balanceError } = await this.supabase
+
+      if (!account) {
+        throw new Error(`Account ${accountId} not found or not accessible`);
+      }
+
+      // Record the balance adjustment in account_balances table
+      const { error } = await this.supabase
         .from('account_balances')
-        .upsert({
+        .insert({
           account_id: accountId,
           organization_id: this.organizationId,
           balance: amount,
-          // Only include fields that exist in the account_balances table
           type: account.type,
           name: account.name,
           code: account.code
-        })
-        .select();
-        
-      if (balanceError) throw balanceError;
-      
-      // Re-fetch the account to get the latest data
-      const updatedAccount = await this.getAccountById(accountId);
-      if (!updatedAccount) throw new Error(`Account ${accountId} not found after balance adjustment`);
-      
-      return updatedAccount;
+        });
+
+      if (error) {
+        console.error('Error adjusting account balance:', error);
+        return false;
+      }
+
+      return true;
     } catch (error) {
-      console.error(`Error adjusting account balance ${accountId}:`, error);
-      throw error;
+      console.error('Error in adjustAccountBalance:', error);
+      return false;
     }
   }
 
@@ -173,12 +159,12 @@ export class AccountService {
       id: data.id,
       code: data.code,
       name: data.name,
-      description: data.description || '',
-      type: data.type as AccountType,
-      balance: data.balance || 0,
+      type: data.type,
+      description: data.description,
       isActive: data.is_active,
+      balance: data.balance || 0,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
     };
   }
 }
