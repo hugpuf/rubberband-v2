@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -6,6 +7,7 @@ import React, {
   useCallback,
 } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { useUser } from '@supabase/auth-helpers-react';
 
 import {
   AccountingModuleConfig,
@@ -18,6 +20,7 @@ import {
   TransactionFilterParams,
 } from './types';
 import { createServices } from './api';
+import { Database } from '@/integrations/supabase/types';
 
 // Define the context type
 type AccountingContextType = {
@@ -42,7 +45,7 @@ type AccountingContextType = {
   deleteAccount: (id: string) => Promise<boolean>;
   adjustAccountBalance: (accountId: string, amount: number, description: string) => Promise<Account>;
   getTransactions: (filters?: TransactionFilterParams) => Promise<Transaction[]>;
-  createTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
+  createTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { organization_id: string }) => Promise<Transaction>;
   updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<Transaction>;
   deleteTransaction: (id: string) => Promise<boolean>;
   getInvoices: () => Promise<Invoice[]>;
@@ -50,7 +53,7 @@ type AccountingContextType = {
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<Invoice>;
   deleteInvoice: (id: string) => Promise<boolean>;
   getBills: () => Promise<Bill[]>;
-  createBill: (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Bill>;
+  createBill: (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'> & { organization_id: string }) => Promise<Bill>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<Bill>;
   deleteBill: (id: string) => Promise<boolean>;
   getPayrollItems: () => Promise<PayrollItem[]>;
@@ -81,14 +84,11 @@ export const useAccounting = (): AccountingContextType => {
 
 // Define the provider props
 type AccountingProviderProps = {
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
   children: React.ReactNode;
 };
 
-// Add useUser or equivalent to get the organization ID
-import { useUser } from '@supabase/auth-helpers-react';
-
-export function AccountingProvider({ children }: AccountingProviderProps): JSX.Element {
+export function AccountingProvider({ children, supabase }: AccountingProviderProps): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [config, setConfig] = useState<AccountingModuleConfig | null>(null);
@@ -115,9 +115,6 @@ export function AccountingProvider({ children }: AccountingProviderProps): JSX.E
     const {
       accountService,
       transactionService,
-      invoiceService,
-      billService,
-      payrollService
     } = services;
     
     setIsLoading(true);
@@ -137,7 +134,7 @@ export function AccountingProvider({ children }: AccountingProviderProps): JSX.E
     .finally(() => {
       setIsLoading(false);
     });
-  }, [organizationId]);
+  }, [organizationId, supabase]);
   
   const getModuleConfig = useCallback(async () => {
     // TODO: Implement fetching module config from Supabase
@@ -210,7 +207,7 @@ export function AccountingProvider({ children }: AccountingProviderProps): JSX.E
   }, [supabase, organizationId]);
 
   const createTransaction = useCallback(
-    async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { organization_id: string }) => {
       if (!organizationId) {
         console.error('No organization ID available');
         throw new Error('Organization ID is required');
@@ -258,7 +255,10 @@ export function AccountingProvider({ children }: AccountingProviderProps): JSX.E
         throw new Error('Organization ID is required');
       }
       const services = createServices(supabase, organizationId);
-      return await services.invoiceService.createInvoice(invoice);
+      return await services.invoiceService.createInvoice({
+        ...invoice,
+        organization_id: organizationId
+      });
     },
     [supabase, organizationId]
   );
@@ -294,7 +294,7 @@ export function AccountingProvider({ children }: AccountingProviderProps): JSX.E
   }, [supabase, organizationId]);
 
   const createBill = useCallback(
-    async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (bill: Omit<Bill, 'id' | 'createdAt' | 'updatedAt'> & { organization_id: string }) => {
       if (!organizationId) {
         console.error('No organization ID available');
         throw new Error('Organization ID is required');
@@ -332,7 +332,8 @@ export function AccountingProvider({ children }: AccountingProviderProps): JSX.E
       return [];
     }
     const services = createServices(supabase, organizationId);
-    return await services.payrollService.getPayrollItems();
+    const response = await services.payrollService.getPayrollItems();
+    return Array.isArray(response) ? response : response.data;
   }, [supabase, organizationId]);
 
   const createPayrollItem = useCallback(
@@ -374,7 +375,8 @@ export function AccountingProvider({ children }: AccountingProviderProps): JSX.E
       return [];
     }
     const services = createServices(supabase, organizationId);
-    return await services.payrollService.getPayrollRuns();
+    const response = await services.payrollService.getPayrollRuns();
+    return Array.isArray(response) ? response : response.data;
   }, [supabase, organizationId]);
 
   const createPayrollRun = useCallback(

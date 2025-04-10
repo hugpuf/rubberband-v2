@@ -152,8 +152,7 @@ export class AccountService {
           code: account.code,
           name: account.name
         })
-        .select('*')
-        .single();
+        .select();
         
       if (balanceError) throw balanceError;
       

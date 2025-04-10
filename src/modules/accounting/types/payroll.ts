@@ -1,4 +1,3 @@
-
 import { BaseEntity } from "./common";
 
 /**
@@ -18,11 +17,11 @@ export type PayrollRunStatus = 'draft' | 'processing' | 'completed' | 'error' | 
 
 // Define the status constants for use as values
 export const PAYROLL_RUN_STATUS = {
-  DRAFT: 'draft',
-  PROCESSING: 'processing',
-  COMPLETED: 'completed',
-  ERROR: 'error',
-  CANCELLED: 'cancelled'
+  DRAFT: 'draft' as PayrollRunStatus,
+  PROCESSING: 'processing' as PayrollRunStatus,
+  COMPLETED: 'completed' as PayrollRunStatus,
+  ERROR: 'error' as PayrollRunStatus,
+  CANCELLED: 'cancelled' as PayrollRunStatus
 } as const;
 
 /**

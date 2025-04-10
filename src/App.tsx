@@ -11,6 +11,7 @@ import { OnboardingProvider } from "@/hooks/onboarding";
 import { TeamProvider } from "@/hooks/teams";
 import { AccountingProvider } from "@/modules/accounting";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -159,7 +160,7 @@ const App = () => {
             <OnboardingProvider>
               <OrganizationProvider>
                 <TeamProvider>
-                  <AccountingProvider>
+                  <AccountingProvider supabase={supabase}>
                     <TooltipProvider>
                       <Toaster />
                       <Sonner />
