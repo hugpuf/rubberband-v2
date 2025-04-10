@@ -27,13 +27,14 @@ export abstract class PayrollServiceBase {
       netAmount: data.net_amount || 0,
       paymentDate: data.payment_date,
       notes: data.notes,
-      processingErrors: data.processing_errors,
+      processingErrors: data.processing_errors ? data.processing_errors : [],
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
   }
 
   protected mapPayrollItemFromDB(data: any): PayrollItem {
+    // Ensure we handle potential undefined fields properly
     return {
       id: data.id,
       payrollRunId: data.payroll_run_id,

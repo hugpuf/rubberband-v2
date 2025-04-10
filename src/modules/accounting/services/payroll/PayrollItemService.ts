@@ -54,7 +54,7 @@ export class PayrollItemService extends PayrollServiceBase {
         return rest;
       });
 
-      const mappedData = filteredData.map(this.mapPayrollItemFromDB);
+      const mappedData = filteredData.map(item => this.mapPayrollItemFromDB(item));
       
       return {
         data: mappedData,

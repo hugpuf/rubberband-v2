@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -43,7 +42,7 @@ type AccountingContextType = {
   createAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'balance'>) => Promise<Account>;
   updateAccount: (id: string, updates: Partial<Account>) => Promise<Account>;
   deleteAccount: (id: string) => Promise<boolean>;
-  adjustAccountBalance: (accountId: string, amount: number, description: string) => Promise<Account>;
+  adjustAccountBalance: (accountId: string, amount: number) => Promise<boolean>;
   getTransactions: (filters?: TransactionFilterParams) => Promise<Transaction[]>;
   createTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { organization_id: string }) => Promise<Transaction>;
   updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<Transaction>;
@@ -188,13 +187,13 @@ export function AccountingProvider({ children, supabase }: AccountingProviderPro
     return await services.accountService.deleteAccount(id);
   }, [supabase, organizationId]);
 
-  const adjustAccountBalance = useCallback(async (accountId: string, amount: number, description: string) => {
+  const adjustAccountBalance = useCallback(async (accountId: string, amount: number) => {
     if (!organizationId) {
       console.error('No organization ID available');
-      throw new Error('Organization ID is required');
+      return false;
     }
     const services = createServices(supabase, organizationId);
-    return await services.accountService.adjustAccountBalance(accountId, amount, description);
+    return await services.accountService.adjustAccountBalance(accountId, amount);
   }, [supabase, organizationId]);
 
   const getTransactions = useCallback(async (filters?: TransactionFilterParams) => {

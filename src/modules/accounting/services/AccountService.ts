@@ -130,17 +130,15 @@ export class AccountService {
         throw new Error(`Account ${accountId} not found or not accessible`);
       }
 
-      // Record the balance adjustment in account_balances table
-      const { error } = await this.supabase
-        .from('account_balances')
-        .insert({
-          account_id: accountId,
-          organization_id: this.organizationId,
-          balance: amount,
-          type: account.type,
-          name: account.name,
-          code: account.code
-        });
+      // In a real implementation, you would probably use a transaction here
+      // and update a balance history table rather than a view.
+      // For now, we'll update the view directly, but note that this
+      // might not be the most robust solution in a production environment.
+      const { error } = await this.supabase.rpc('update_account_balance', {
+        p_account_id: accountId,
+        p_organization_id: this.organizationId,
+        p_amount: amount
+      });
 
       if (error) {
         console.error('Error adjusting account balance:', error);
