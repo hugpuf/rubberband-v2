@@ -394,16 +394,27 @@ export class SupabaseTransactionService implements ITransactionService {
 export default new SupabaseTransactionService();
 
 export const mapTransactionsFromApi = (data: any[]): Transaction[] => {
-  // Cast data to any[] to avoid "Type instantiation is excessively deep" error
-  return (data as any[]).map(transaction => ({
-    id: transaction.id,
-    date: transaction.transaction_date,
-    description: transaction.description,
-    referenceNumber: transaction.reference_number,
-    status: transaction.status,
-    createdBy: transaction.created_by,
-    createdAt: transaction.created_at,
-    updatedAt: transaction.updated_at,
-    lines: transaction.lines ? mapTransactionLinesFromApi(transaction.lines) : []
+  return (data as any[]).map(item => ({
+    id: item.id,
+    date: item.date,
+    description: item.description,
+    referenceNumber: item.reference_number,
+    status: item.status,
+    lines: mapTransactionLinesFromApi(item.lines || []),
+    createdBy: item.created_by,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at
+  }));
+};
+
+export const mapTransactionLinesFromApi = (data: any[]): TransactionLine[] => {
+  return (data as any[]).map(line => ({
+    id: line.id,
+    accountId: line.account_id,
+    description: line.description,
+    debitAmount: parseFloat(line.debit_amount) || 0,
+    creditAmount: parseFloat(line.credit_amount) || 0,
+    createdAt: line.created_at,
+    updatedAt: line.updated_at
   }));
 };

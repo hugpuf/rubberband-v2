@@ -1,3 +1,4 @@
+
 export type AccountingModuleConfig = {
   defaultCurrency: string;
   fiscalYearStart: string;
@@ -98,14 +99,28 @@ export type Bill = {
 import { 
   PayrollItem as EnhancedPayrollItem,
   PayrollRun as EnhancedPayrollRun,
-  PayrollRunStatus
+  PayrollRunStatus as EnhancedPayrollRunStatus,
+  CreatePayrollRunParams as EnhancedCreatePayrollRunParams,
+  UpdatePayrollRunParams as EnhancedUpdatePayrollRunParams,
+  PayrollRunFilterParams as EnhancedPayrollRunFilterParams,
+  CreatePayrollItemParams as EnhancedCreatePayrollItemParams,
+  UpdatePayrollItemParams as EnhancedUpdatePayrollItemParams,
+  PayrollItemFilterParams as EnhancedPayrollItemFilterParams,
+  PaginatedResponse as EnhancedPaginatedResponse,
+  TaxCalculationResult as EnhancedTaxCalculationResult
 } from './types/payroll';
 
 export type PayrollItem = EnhancedPayrollItem;
-
 export type PayrollRun = EnhancedPayrollRun;
-
-export { PayrollRunStatus };
+export type PayrollRunStatus = EnhancedPayrollRunStatus;
+export type CreatePayrollRunParams = EnhancedCreatePayrollRunParams;
+export type UpdatePayrollRunParams = EnhancedUpdatePayrollRunParams;
+export type PayrollRunFilterParams = EnhancedPayrollRunFilterParams;
+export type CreatePayrollItemParams = EnhancedCreatePayrollItemParams;
+export type UpdatePayrollItemParams = EnhancedUpdatePayrollItemParams;
+export type PayrollItemFilterParams = EnhancedPayrollItemFilterParams;
+export type PaginatedResponse<T> = EnhancedPaginatedResponse<T>;
+export type TaxCalculationResult = EnhancedTaxCalculationResult;
 
 export type AccountingModuleState = {
   isLoading: boolean;

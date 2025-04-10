@@ -310,21 +310,32 @@ export class SupabaseInvoiceService implements IInvoiceService {
 export default new SupabaseInvoiceService();
 
 export const mapInvoicesFromApi = (data: any[]): Invoice[] => {
-  // Cast data to any[] to avoid "Type instantiation is excessively deep" error
-  return (data as any[]).map(invoice => ({
-    id: invoice.id,
-    invoiceNumber: invoice.invoice_number,
-    customerId: invoice.contact_id,
-    customerName: invoice.customer_name || 'Unknown Customer',
-    issueDate: invoice.issue_date,
-    dueDate: invoice.due_date,
-    items: invoice.items ? mapInvoiceItemsFromApi(invoice.items) : [],
-    subtotal: invoice.subtotal,
-    taxAmount: invoice.tax_amount,
-    total: invoice.total,
-    status: invoice.status,
-    notes: invoice.notes,
-    createdAt: invoice.created_at,
-    updatedAt: invoice.updated_at
+  return (data as any[]).map(item => ({
+    id: item.id,
+    invoiceNumber: item.invoice_number,
+    customerId: item.customer_id,
+    customerName: item.customer_name,
+    issueDate: item.issue_date,
+    dueDate: item.due_date,
+    items: mapInvoiceItemsFromApi(item.items || []),
+    subtotal: parseFloat(item.subtotal) || 0,
+    taxAmount: parseFloat(item.tax_amount) || 0,
+    total: parseFloat(item.total) || 0,
+    status: item.status,
+    notes: item.notes,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at
+  }));
+};
+
+export const mapInvoiceItemsFromApi = (data: any[]): InvoiceItem[] => {
+  return (data as any[]).map(item => ({
+    id: item.id,
+    description: item.description,
+    quantity: parseFloat(item.quantity) || 0,
+    unitPrice: parseFloat(item.unit_price) || 0,
+    taxRate: parseFloat(item.tax_rate) || 0,
+    amount: parseFloat(item.amount) || 0,
+    accountId: item.account_id
   }));
 };

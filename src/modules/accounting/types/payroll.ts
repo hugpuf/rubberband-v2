@@ -14,7 +14,13 @@ export type BenefitType = 'health' | 'dental' | 'vision' | 'retirement' | 'bonus
 /**
  * Valid payroll run statuses
  */
-export type PayrollRunStatus = 'draft' | 'processing' | 'completed' | 'error' | 'cancelled';
+export enum PayrollRunStatus {
+  DRAFT = 'draft',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  ERROR = 'error',
+  CANCELLED = 'cancelled'
+}
 
 /**
  * Represents a single deduction in a payroll item
@@ -80,7 +86,7 @@ export interface PayrollRun extends BaseEntity {
   organizationId: string;
   periodStart: string;
   periodEnd: string;
-  status: PayrollRunStatus;
+  status: keyof typeof PayrollRunStatus | string;
   employeeCount: number;
   grossAmount: number;
   taxAmount: number;
@@ -107,7 +113,7 @@ export type UpdatePayrollRunParams = Partial<Omit<PayrollRun, 'id' | 'createdAt'
  * Parameters for filtering payroll runs
  */
 export interface PayrollRunFilterParams {
-  status?: PayrollRunStatus;
+  status?: keyof typeof PayrollRunStatus | string;
   startDate?: string;
   endDate?: string;
   search?: string;
@@ -152,4 +158,15 @@ export interface TaxCalculationResult {
   medicareTax: number;
   socialSecurityTax: number;
   totalTax: number;
+}
+
+/**
+ * Generic paginated response type
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
