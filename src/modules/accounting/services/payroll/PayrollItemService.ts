@@ -54,7 +54,10 @@ export class PayrollItemService extends PayrollServiceBase {
         return rest;
       });
 
-      const mappedData = filteredData.map(item => this.mapPayrollItemFromDB(item));
+      // Fix the type instantiation issue by using an arrow function wrapper
+      const mappedData = filteredData.map((item) => {
+        return this.mapPayrollItemFromDB(item);
+      });
       
       return {
         data: mappedData,
