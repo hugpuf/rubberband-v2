@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { 
@@ -53,8 +54,9 @@ export class PayrollItemService extends PayrollServiceBase {
         return rest;
       });
 
-      // Fix the type instantiation issue by using an arrow function wrapper
-      const mappedData = filteredData.map((item) => this.mapPayrollItemFromDB(item));
+      // Fix the type instantiation issue by using an arrow function callback
+      const mapperFunction = (item: any) => this.mapPayrollItemFromDB(item);
+      const mappedData = filteredData.map(mapperFunction);
       
       return {
         data: mappedData,
