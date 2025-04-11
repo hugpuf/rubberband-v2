@@ -1,5 +1,5 @@
 
-import { useAccounting } from "@/modules/accounting";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -24,7 +24,31 @@ import { CurrencyDisplay } from "./CurrencyDisplay";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 export function AccountingDashboard() {
-  const { state } = useAccounting();
+  const [state, setState] = useState({
+    isLoading: false,
+    isError: false,
+    config: {
+      isEnabled: true,
+      defaultCurrency: 'USD'
+    }
+  });
+  
+  // Try to use the accounting context, but handle errors gracefully
+  useEffect(() => {
+    const loadAccountingState = async () => {
+      try {
+        // Import dynamically to avoid the error at component render time
+        const { useAccounting } = await import("@/modules/accounting");
+        const { state: accountingState } = useAccounting();
+        setState(accountingState);
+      } catch (error) {
+        console.error("Could not load accounting module:", error);
+        setState(prev => ({ ...prev, isError: true }));
+      }
+    };
+    
+    loadAccountingState();
+  }, []);
   
   if (state.isLoading) {
     return (
