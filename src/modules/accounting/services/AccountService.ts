@@ -130,14 +130,14 @@ export class AccountService {
         throw new Error(`Account ${accountId} not found or not accessible`);
       }
 
-      // Use the correct table structure to update account balances
-      const { error } = await this.supabase
-        .from('account_balances')
-        .insert([{
-          account_id: accountId,
-          organization_id: this.organizationId,
-          balance: amount
-        }]);
+      // Use the correct approach to update account balances
+      // The issue is that 'account_balances' might be a view or might have a different structure
+      // Let's use a more direct approach with RPC instead
+      const { error } = await this.supabase.rpc('update_account_balance', {
+        account_id: accountId,
+        organization_id: this.organizationId,
+        balance: amount
+      });
 
       if (error) {
         console.error('Error adjusting account balance:', error);
