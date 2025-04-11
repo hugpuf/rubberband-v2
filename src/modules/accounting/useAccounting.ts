@@ -1,5 +1,12 @@
 
-import { useAccounting as useAccountingContext } from "./accountingContext";
+import { useContext } from "react";
+import { AccountingContext } from "./accountingContext";
 
-// Re-export with the original name for backward compatibility and easy imports
-export const useAccounting = useAccountingContext;
+// Export the hook directly to ensure it's consistently used
+export const useAccounting = () => {
+  const context = useContext(AccountingContext);
+  if (context === undefined) {
+    throw new Error("useAccounting must be used within an AccountingProvider");
+  }
+  return context;
+};

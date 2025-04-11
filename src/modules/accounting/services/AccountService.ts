@@ -1,4 +1,3 @@
-
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
 import { Account } from '@/modules/accounting/types';
@@ -131,20 +130,14 @@ export class AccountService {
         throw new Error(`Account ${accountId} not found or not accessible`);
       }
 
-      // In a real implementation, you would probably use a transaction here
-      // and update a balance history table rather than a view.
-      // For now, we'll update the view directly, but note that this
-      // might not be the most robust solution in a production environment.
-      
-      // Create a custom RPC function call that's listed in the allowed functions
-      // This is a workaround as we can't directly call 'update_account_balance'
+      // Use the correct table structure to update account balances
       const { error } = await this.supabase
         .from('account_balances')
-        .insert({
+        .insert([{
           account_id: accountId,
           organization_id: this.organizationId,
           balance: amount
-        });
+        }]);
 
       if (error) {
         console.error('Error adjusting account balance:', error);

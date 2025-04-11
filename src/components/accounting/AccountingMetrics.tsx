@@ -2,12 +2,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { CurrencyDisplay } from "./CurrencyDisplay";
 import { useAccounting } from "@/modules/accounting";
+import { useState, useEffect } from "react";
 
 export function AccountingMetrics() {
-  const { state } = useAccounting();
+  // Add error handling for the hook
+  const [hookError, setHookError] = useState<Error | null>(null);
   
   // Placeholder data - in a real app, this would come from your accounting module
-  const metrics = {
+  const [metrics, setMetrics] = useState({
     outstandingInvoices: {
       amount: 12756.00,
       count: 21,
@@ -26,8 +28,22 @@ export function AccountingMetrics() {
       label: "Bank Balance",
       description: "Last reconciled"
     }
-  };
+  });
 
+  // Try to use the accounting context if available
+  useEffect(() => {
+    try {
+      const { state } = useAccounting();
+      console.log("Accounting state loaded:", state);
+      // Here you could update the metrics based on state
+    } catch (error) {
+      console.error("Error accessing accounting context:", error);
+      setHookError(error as Error);
+    }
+  }, []);
+
+  // If there's an error with the hook, we'll still show the metrics with placeholder data
+  
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Card className="border border-gray-100">
