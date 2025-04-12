@@ -29,7 +29,7 @@ export type Services = ReturnType<typeof createServices>;
 // Define API functions that use the services
 export const getAccountingConfig = async (supabase: SupabaseClient<Database>, organizationId: string) => {
   // Placeholder for fetching accounting config
-  console.log('Fetching accounting config', supabase, organizationId);
+  console.log('Fetching accounting config for organization:', organizationId);
   return {
     defaultCurrency: 'USD',
     fiscalYearStart: '2023-01-01',

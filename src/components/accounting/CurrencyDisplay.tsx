@@ -1,6 +1,5 @@
 
-import { useAccounting } from "@/modules/accounting";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface CurrencyDisplayProps {
   amount: number;
@@ -15,17 +14,25 @@ export function CurrencyDisplay({
   showSymbol = true,
   className = "",
 }: CurrencyDisplayProps) {
-  // Fallback to USD if context is not available
-  const [fallbackCurrency] = useState("USD");
+  // Default fallback currency
+  const [contextCurrency, setContextCurrency] = useState("USD");
   
-  // Try to get the context, but use fallback values if it fails
-  let contextCurrency = fallbackCurrency;
-  try {
-    const { state } = useAccounting();
-    contextCurrency = state.config?.defaultCurrency || fallbackCurrency;
-  } catch (error) {
-    console.warn("AccountingContext not available, using fallback currency", error);
-  }
+  // Try to get the context currency, but use fallback if it fails
+  useEffect(() => {
+    const getContextCurrency = async () => {
+      try {
+        const { useAccounting } = await import("@/modules/accounting");
+        const { state } = useAccounting();
+        if (state.config?.defaultCurrency) {
+          setContextCurrency(state.config.defaultCurrency);
+        }
+      } catch (error) {
+        console.warn("AccountingContext not available, using fallback currency", error);
+      }
+    };
+    
+    getContextCurrency();
+  }, []);
   
   // Use provided currency or fall back to the context/default currency
   const currencyCode = currency || contextCurrency;
