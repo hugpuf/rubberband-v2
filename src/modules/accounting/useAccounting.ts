@@ -4,7 +4,6 @@ import { AccountingContext } from "./accountingContext";
 
 /**
  * Hook to access accounting context with graceful error handling
- * Throws an error only when used directly without a try/catch block
  */
 export const useAccounting = () => {
   const context = useContext(AccountingContext);
