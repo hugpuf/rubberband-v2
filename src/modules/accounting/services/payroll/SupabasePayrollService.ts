@@ -43,8 +43,13 @@ export class SupabasePayrollService implements IPayrollService {
     return this.runService.getPayrollRunById(id);
   }
 
-  async createPayrollRun(params: CreatePayrollRunParams & { organization_id?: string }): Promise<PayrollRun> {
-    return this.runService.createPayrollRun(params);
+  async createPayrollRun(params: CreatePayrollRunParams): Promise<PayrollRun> {
+    // Ensure organization_id is set
+    const paramsWithOrg = {
+      ...params,
+      organization_id: this.organizationId
+    };
+    return this.runService.createPayrollRun(paramsWithOrg);
   }
 
   async updatePayrollRun(id: string, updates: UpdatePayrollRunParams): Promise<PayrollRun> {
@@ -77,7 +82,11 @@ export class SupabasePayrollService implements IPayrollService {
   }
 
   async createPayrollItem(params: CreatePayrollItemParams): Promise<PayrollItem> {
-    return this.itemService.createPayrollItem(params);
+    // Convert params to PayrollItem shape
+    const item: Omit<PayrollItem, "id" | "createdAt" | "updatedAt"> = {
+      ...params,
+    };
+    return this.itemService.createPayrollItem(item);
   }
 
   async updatePayrollItem(id: string, updates: UpdatePayrollItemParams): Promise<PayrollItem> {

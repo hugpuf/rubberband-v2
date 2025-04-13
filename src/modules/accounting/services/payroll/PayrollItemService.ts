@@ -56,7 +56,7 @@ export class PayrollItemService extends PayrollServiceBase {
       });
 
       // Map database items to application model
-      const mappedItems = filteredData.map(this.mapPayrollItemFromDB);
+      const mappedItems = filteredData.map(this.mapPayrollItemFromDB.bind(this));
       
       return {
         data: mappedItems,
@@ -107,7 +107,7 @@ export class PayrollItemService extends PayrollServiceBase {
         return [];
       }
 
-      return data.map(this.mapPayrollItemFromDB);
+      return data.map(item => this.mapPayrollItemFromDB(item));
     } catch (error) {
       console.error(`Error in getPayrollItemsByRunId:`, error);
       return [];
@@ -185,8 +185,8 @@ export class PayrollItemService extends PayrollServiceBase {
     }
   }
   
-  // Helper methods for mapping between DB and model formats
-  private mapPayrollItemFromDB(item: any): PayrollItem {
+  // Using the base class implementation by making this method public
+  protected mapPayrollItemFromDB(item: any): PayrollItem {
     return {
       id: item.id,
       status: item.status || 'pending',
@@ -196,14 +196,14 @@ export class PayrollItemService extends PayrollServiceBase {
       grossSalary: item.gross_salary || 0,
       regularHours: item.regular_hours || 0,
       overtimeHours: item.overtime_hours || 0,
-      sickLeaveHours: item.sick_leave_hours || 0,
-      vacationHours: item.vacation_hours || 0,
       taxAmount: item.tax_amount || 0,
       deductionAmount: item.deduction_amount || 0,
       netSalary: item.net_salary || 0,
+      deductions: item.deductions || [],
+      benefits: item.benefits || [],
       notes: item.notes,
-      createdAt: item.created_at ? new Date(item.created_at) : new Date(),
-      updatedAt: item.updated_at ? new Date(item.updated_at) : new Date()
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
     };
   }
   
@@ -216,8 +216,6 @@ export class PayrollItemService extends PayrollServiceBase {
       gross_salary: item.grossSalary,
       regular_hours: item.regularHours,
       overtime_hours: item.overtimeHours,
-      sick_leave_hours: item.sickLeaveHours,
-      vacation_hours: item.vacationHours,
       tax_amount: item.taxAmount,
       deduction_amount: item.deductionAmount,
       net_salary: item.netSalary,
@@ -236,8 +234,6 @@ export class PayrollItemService extends PayrollServiceBase {
     if (updates.grossSalary !== undefined) dbUpdates.gross_salary = updates.grossSalary;
     if (updates.regularHours !== undefined) dbUpdates.regular_hours = updates.regularHours;
     if (updates.overtimeHours !== undefined) dbUpdates.overtime_hours = updates.overtimeHours;
-    if (updates.sickLeaveHours !== undefined) dbUpdates.sick_leave_hours = updates.sickLeaveHours;
-    if (updates.vacationHours !== undefined) dbUpdates.vacation_hours = updates.vacationHours;
     if (updates.taxAmount !== undefined) dbUpdates.tax_amount = updates.taxAmount;
     if (updates.deductionAmount !== undefined) dbUpdates.deduction_amount = updates.deductionAmount;
     if (updates.netSalary !== undefined) dbUpdates.net_salary = updates.netSalary;

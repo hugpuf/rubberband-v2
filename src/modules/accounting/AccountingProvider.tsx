@@ -30,6 +30,18 @@ export function AccountingProvider({ children, supabase }: AccountingProviderPro
   const billOperations = useBillOperations(supabase, organizationId);
   const payrollOperations = usePayrollOperations(supabase, organizationId);
   
+  // Initialize module function (placeholder - to be implemented)
+  const initializeModule = async () => {
+    console.log("Initializing accounting module");
+    // This would typically load initial data, check settings, etc.
+  };
+  
+  // Update module config function (placeholder - to be implemented)
+  const updateModuleConfig = async (config: any) => {
+    console.log("Updating module config", config);
+    // This would typically save config changes to the database
+  };
+
   // Define the context value
   const contextValue = {
     state: {
@@ -46,12 +58,21 @@ export function AccountingProvider({ children, supabase }: AccountingProviderPro
       },
       isInitialized: state.isInitialized,
     },
+    initializeModule,
+    updateModuleConfig,
     getModuleConfig,
     ...accountOperations,
     ...transactionOperations,
     ...invoiceOperations,
     ...billOperations,
     ...payrollOperations,
+    // Adding customer and vendor balance methods as stubs
+    getCustomerBalance: async (customerId: string) => 0,
+    getVendorBalance: async (vendorId: string) => 0,
+    // Add payroll-specific methods that might be missing
+    exportPayrollRun: async (id: string, format: 'csv' | 'pdf' | 'json') => '',
+    processPayrollRun: async (id: string) => ({ id } as any),
+    finalizePayrollRun: async (id: string) => ({ id } as any),
   };
   
   return (

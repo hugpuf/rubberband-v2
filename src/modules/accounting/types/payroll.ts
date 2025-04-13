@@ -1,3 +1,4 @@
+
 import { BaseEntity } from "./common";
 
 /**
@@ -67,6 +68,7 @@ export interface PayrollItem extends BaseEntity {
   netSalary: number;
   notes?: string;
   status: 'pending' | 'processed' | 'error';
+  // Removed sickLeaveHours and vacationHours as they're not in database schema
 }
 
 /**
@@ -87,7 +89,7 @@ export interface CreatePayrollItemParams {
   deductionAmount: number;
   netSalary: number;
   notes?: string;
-  status?: 'pending' | 'processed' | 'error';
+  status: 'pending' | 'processed' | 'error'; // Changed from optional to required
 }
 
 /**
